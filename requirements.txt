@@ -1,0 +1,3 @@
+PyYAML==6.0.3
+# Editable install with no version control (RunUpdates==0.1.0)
+-e /home/doug/projects/Python/RunUpdates

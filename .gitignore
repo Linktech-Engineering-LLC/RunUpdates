@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite
+.env
+.venv/
+.vscode/
+.pytest_cache/
+Logs/
+var/
+ignore-list.txt
+RunUpdates.egg-info/

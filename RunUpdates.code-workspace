@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{  "path": "/home/doug/projects/Python/RunUpdates" },
+		{ "path": "/home/doug/ansible" }
+	],
+	"settings": {
+		"terminal.integrated.env.linux": {
+			"RUNUPDATES_VAULT_PATH": "~/ansible/vault.yml",
+			"RUNUPDATES_VAULT_PASSWORD_FILE": "~/.ansible/password",
+		},
+		"logViewer.watch": [
+			{
+				"title": "RunUpdates Log",
+				"pattern": "${workspaceFolder}/RunUpdates/var/log/RunUpdates.log",
+				"autoFollow": true
+			},
+			{
+				"title": "Maintenance Logs",
+				"pattern": "${workspaceFolder}/Logs/*.log",
+				"autoFollow": false
+			}
+		],
+	}
+}
