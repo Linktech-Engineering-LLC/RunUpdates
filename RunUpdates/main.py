@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Leon McClatchey
+# Copyright (c) 2026 Leon McClatchey, Linktech Engineering LLC
 """
  Package: RunUpdates
  Author: Leon McClatchey
@@ -16,12 +16,13 @@ Modified: 2026-04-15
 # System Libraries
 
 # Project Libraries
+from .ansible.config_loader import InventoryProcessor
 from .logging.log_helpers import (
     init_logger,
     register_custom_levels
 )
 from .parser import ScriptParser
-from .utils.vault import resolve_vault_password, resolve_vault_path
+from .parser.vault import resolve_vault_password, resolve_vault_path
 
 def initialize_logging(context: dict) -> dict:
     """
@@ -64,22 +65,18 @@ def initialize_logging(context: dict) -> dict:
         "config": log_cfg,
         "paths": paths,
     }
-
+def load_inventory(cfg_dir: str, context: dict, log=None):
+    pass
 def main():
     parser = ScriptParser()
     args = parser.parse()
     context = vars(args)
     logging_ctx = initialize_logging(context)
     logger = logging_ctx["logger"]
-    vault_path = resolve_vault_path(args.vault_path)
-    vault_password = resolve_vault_password(
-        cli_password_file=args.vault_password_file,
-        cli_direct_password=args.vault_password,
-    )
-    print(args)
-    print(vault_path)
-    print(vault_password)
+    inventory = load_inventory(args.inventory, context, logger)
+
     print(logging_ctx)
+    print(inventory)
     logger.banner("RunUpdates complete")
     
 

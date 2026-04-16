@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Leon McClatchey
+# Copyright (c) 2026 Leon McClatchey, Linktech Engineering LLC
 """
  Package: RunUpdates
  Author: Leon McClatchey
@@ -20,7 +20,6 @@ from ..core.constants import (
     PROJECT_NAME, 
     PROJECT_VERSION, 
     LINUX_VERSION, 
-    PYTHON_VERSION,
     VAULT_PATH_ENV,
 )
 from ..utils.common import (
@@ -28,6 +27,7 @@ from ..utils.common import (
     DEFAULT_LOG_DIR,
     resolve_inventory_path
 )
+from .vault import resolve_vault_path
 
 # ------------------------------------------------------------
 # Project metadata
@@ -200,13 +200,13 @@ class ScriptParser:
         self._validate()
         self.args.log_dir = os.path.expanduser(self.args.log_dir)
         self.args.inventory = os.path.expanduser(resolve_inventory_path(self.args.inventory))
+        self.args.vault_path = os.path.expanduser(resolve_vault_path(self.args.vault_path))
         return self.args
 
     def _validate(self):
         
         if not self.args.vault_path and not VAULT_PATH_ENV in os.environ:
             raise CheckArgError("Missing required --vault-path")
-
         # Additional validation will be added later
 
     # --------------------------------------------------------
