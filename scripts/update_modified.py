@@ -69,7 +69,7 @@ def update_file(path: Path) -> str | None:
     with path.open("r", encoding="utf-8") as f:
         for line in f:
             if line.strip().startswith("Modified:"):
-                lines.append(f"Modified: {today}\n")
+                lines.append(f" Modified: {today}\n")
                 updated = True
             else:
                 lines.append(line)

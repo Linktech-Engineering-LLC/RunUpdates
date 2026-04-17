@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-04-13
+Modified: 2026-04-17
  File: RunUpdates/utils/vault.py
  Version: 1.0.0
  Description: Description of this module
@@ -16,7 +16,6 @@ import os
 from pathlib import Path
 # Project Libraries
 from ..core.constants import (
-    VAULT_PASSWORD_ENV,
     VAULT_PASSWORD_FILE_ENV,
     VAULT_PATH_ENV,
 )
@@ -26,53 +25,39 @@ class VaultPasswordError(Exception):
 class VaultPathError(Exception):
     pass
 
-def resolve_vault_password(
-    cli_password_file: str | None,
-    cli_direct_password: str | None,
-) -> str:
+def resolve_vault_password(cli_value: str | None, logger=None):
     """
-    Resolve vault password using priority:
-      1. Environment variable containing the password
-      2. Environment variable pointing to a password file
-      3. CLI-provided password file
-      4. CLI-provided direct password
+    Determine whether a vault password source was supplied.
+
+    This function:
+    - does NOT read files
+    - does NOT validate paths
+    - does NOT interpret the password
+    - only checks CLI first, then environment
+    - returns the raw value (string or path)
+
+    Returns:
+        str | None
     """
 
-    # 1. ENVIRONMENT VARIABLE CONTAINING PASSWORD
-    if VAULT_PASSWORD_ENV in os.environ:
-        value = os.environ[VAULT_PASSWORD_ENV].strip()
-        if value:
-            return value
+    # 1. CLI takes precedence
+    if cli_value:
+        if logger:
+            logger.debug("Vault password source supplied via CLI")
+        return cli_value
 
-    # 2. ENVIRONMENT VARIABLE POINTING TO PASSWORD FILE
-    if VAULT_PASSWORD_FILE_ENV in os.environ:
-        path = Path(os.environ[VAULT_PASSWORD_FILE_ENV]).expanduser()
-        if not path.exists():
-            raise VaultPasswordError(
-                f"Password file from {VAULT_PASSWORD_FILE_ENV} not found: {path}"
-            )
-        value = path.read_text().strip()
-        if value:
-            return value
+    # 2. Environment fallback
+    env_value = os.getenv(VAULT_PASSWORD_FILE_ENV)
+    if env_value:
+        if logger:
+            logger.debug("Vault password source supplied via environment")
+        return env_value
 
-    # 3. CLI-PROVIDED PASSWORD FILE
-    if cli_password_file:
-        path = Path(cli_password_file).expanduser()
-        if not path.exists():
-            raise VaultPasswordError(f"Password file not found: {cli_password_file}")
-        value = path.read_text().strip()
-        if value:
-            return value
+    # 3. No password source
+    if logger:
+        logger.debug("No vault password source supplied")
+    return None
 
-    # 4. CLI-PROVIDED DIRECT PASSWORD
-    if cli_direct_password:
-        return cli_direct_password.strip()
-
-    raise VaultPasswordError(
-        "No vault password provided. "
-        f"Set {VAULT_PASSWORD_ENV}, {VAULT_PASSWORD_FILE_ENV}, "
-        "use --vault-password-file, or --vault-password."
-    )
 def resolve_vault_path(cli_vault_path: str | None) -> str:
     """
     Priority:

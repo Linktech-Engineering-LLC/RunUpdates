@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
-Modified: 2026-04-15
+Modified: 2026-04-17
  File: RunUpdates/parser/ScriptParser.py
  Version: 1.0.0
  Description: NMS_Tools-style command-line parser for RunUpdates (CLI-driven)
@@ -27,7 +27,7 @@ from ..utils.common import (
     DEFAULT_LOG_DIR,
     resolve_inventory_path
 )
-from .vault import resolve_vault_path
+from .vault import resolve_vault_path, resolve_vault_password
 
 # ------------------------------------------------------------
 # Project metadata
@@ -40,8 +40,9 @@ DESCRIPTION = (
 # Formatter + Error Classes (NMS_Tools style)
 # ------------------------------------------------------------
 class CustomFormatter(
-    argparse.ArgumentDefaultsHelpFormatter,
-    argparse.RawDescriptionHelpFormatter
+    argparse.RawTextHelpFormatter,
+    argparse.ArgumentDefaultsHelpFormatter
+    #argparse.RawDescriptionHelpFormatter,
 ):
     def _get_help_string(self, action):
         help_text = action.help or ""
@@ -161,19 +162,24 @@ class ScriptParser:
         vault.add_argument(
             "--vault-password",
             dest="vault_password",
-            help="Direct vault password (least secure)"
+            help=(
+                "1. A string containing the password (least secure)\n"
+                "2. A path pointing to a file containing the password"
+            )
         )
 
-        vault.add_argument(
-            "--vault-password-file",
-            dest="vault_password_file",
-            help="Path to file containing vault password"
-        )
     # --------------------------------------------------------
     # Update Options
     # --------------------------------------------------------
     def _add_update_args(self):
         upd = self.parser.add_argument_group("Update Options")
+
+        upd.add_argument(
+            "--family",
+            choices=["linux"],
+            default="linux",
+            help="Target operating system family (currently only 'linux' is supported)"
+        )
 
         upd.add_argument(
             "--distro",
@@ -199,8 +205,9 @@ class ScriptParser:
         self.args = self.parser.parse_args()
         self._validate()
         self.args.log_dir = os.path.expanduser(self.args.log_dir)
-        self.args.inventory = os.path.expanduser(resolve_inventory_path(self.args.inventory))
-        self.args.vault_path = os.path.expanduser(resolve_vault_path(self.args.vault_path))
+        self.args.inventory = resolve_inventory_path(self.args.inventory)
+        self.args.vault_path = resolve_vault_path(self.args.vault_path)
+        self.args.vault_password = resolve_vault_password(self.args.vault_password)
         return self.args
 
     def _validate(self):

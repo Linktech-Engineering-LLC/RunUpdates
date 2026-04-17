@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
-Modified: 2026-04-15
+ Modified: 2026-04-17
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates
@@ -14,15 +14,20 @@ Modified: 2026-04-15
 """
 
 # System Libraries
-
+from pathlib import Path
+import yaml
 # Project Libraries
 from .ansible.config_loader import InventoryProcessor
+from .ansible.vault_loader import VaultLoader
 from .logging.log_helpers import (
     init_logger,
     register_custom_levels
 )
 from .parser import ScriptParser
 from .parser.vault import resolve_vault_password, resolve_vault_path
+
+class InventoryLoadError(Exception):
+    pass
 
 def initialize_logging(context: dict) -> dict:
     """
@@ -65,18 +70,75 @@ def initialize_logging(context: dict) -> dict:
         "config": log_cfg,
         "paths": paths,
     }
-def load_inventory(cfg_dir: str, context: dict, log=None):
-    pass
+def load_inventory_file(inv_path: Path, logger):
+    """
+    Load inventory from either:
+    - a direct file path, or
+    - a directory containing exactly one inventory file.
+
+    Rules:
+    1. If inv_path is a file → load it directly.
+    2. If inv_path is a directory:
+        a. If hosts.yml exists → load it.
+        b. Else if exactly one *.yml exists → load it.
+        c. Else → error.
+    """
+
+    # ------------------------------------------------------------
+    # Case 1: inventory is a file
+    # ------------------------------------------------------------
+    if Path(inv_path).is_file():
+        if logger:
+            logger.debug(f"Loading inventory from file: {inv_path}")
+        return { "inventory": yaml.safe_load(inv_path.read_text(encoding="utf-8"))} or {}
+
+    # ------------------------------------------------------------
+    # Case 2: inventory is a directory
+    # ------------------------------------------------------------
+    if not Path(inv_path).exists() or not Path(inv_path).is_dir():
+        raise InventoryLoadError(f"Inventory path is not a directory or file: {inv_path}")
+
+    # 1. Prefer hosts.yml
+    hosts_file = Path(inv_path) / "hosts.yml"
+    if hosts_file.exists():
+        if logger:
+            logger.debug(f"Loading inventory from {hosts_file}")
+        return { "inventory": yaml.safe_load(hosts_file.read_text(encoding="utf-8"))} or {}
+
+    # 2. Fallback: exactly one *.yml
+    yml_files = list(Path(inv_path).glob("*.yml"))
+    if len(yml_files) == 1:
+        if logger:
+            logger.debug(f"Loading inventory from {yml_files[0]}")
+        return { "inventory": yaml.safe_load(yml_files[0].read_text(encoding="utf-8"))} or {}
+
+    # 3. Error on ambiguity or absence
+    raise InventoryLoadError(
+        f"Inventory directory must contain hosts.yml or exactly one *.yml file "
+        f"(found {len(yml_files)} files)"
+    )
+def load_secrets(context: dict) -> dict:
+    secrets = {}
+    vault_path = context.get("vault_path","")
+    vault_password = context.get("vault_password","")
+    loader = VaultLoader(vault_path, vault_password)
+    secrets = loader.decrypt_yaml()
+    
+    return secrets 
+    
+    
 def main():
     parser = ScriptParser()
     args = parser.parse()
     context = vars(args)
     logging_ctx = initialize_logging(context)
     logger = logging_ctx["logger"]
-    inventory = load_inventory(args.inventory, context, logger)
-
+    cfg = load_inventory_file(context.get("inventory",""), logger)
+    cfg.update({ "secrets": load_secrets(context)})
     print(logging_ctx)
-    print(inventory)
+    print(context)
+    print(cfg.get("inventory",{}))
+    print(cfg.get("secrets",{}))
     logger.banner("RunUpdates complete")
     
 
