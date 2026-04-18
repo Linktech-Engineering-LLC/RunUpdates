@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
-Modified: 2026-04-17
+ Modified: 2026-04-18
  File: RunUpdates/parser/ScriptParser.py
  Version: 1.0.0
  Description: NMS_Tools-style command-line parser for RunUpdates (CLI-driven)
@@ -116,6 +116,21 @@ class ScriptParser:
             default=DEFAULT_INVENTORY_PATH,
             help="Path to inventory YAML file"
         )
+
+        group = inv.add_mutually_exclusive_group()
+
+        group.add_argument("--list-families", action="store_true",
+                        help="List all inventory families as JSON")
+
+        group.add_argument("--list-distros", action="store_true",
+                        help="List all distros for the selected family as JSON")
+
+        group.add_argument("--list-hosts", action="store_true",
+                        help="List all hosts for the selected family/distro as JSON")
+
+        group.add_argument("--list-inventory", action="store_true",
+                        help="Dump the full inventory block for the selected family/distro as JSON")
+
     # --------------------------------------------------------
     # Logging Options
     # --------------------------------------------------------

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-04-17
+ Modified: 2026-04-18
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates
@@ -14,6 +14,7 @@
 """
 
 # System Libraries
+import json
 from pathlib import Path
 import yaml
 # Project Libraries
@@ -23,6 +24,8 @@ from .logging.log_helpers import (
     init_logger,
     register_custom_levels
 )
+from .operations.listops import ListOperations
+from .operations.orchestrator import UpdateOrchestrator
 from .parser import ScriptParser
 from .parser.vault import resolve_vault_password, resolve_vault_path
 
@@ -128,17 +131,70 @@ def load_secrets(context: dict) -> dict:
     
     
 def main():
+    # --------------------------------------------------------------
+    # 1. Parse CLI arguments
+    # --------------------------------------------------------------
     parser = ScriptParser()
     args = parser.parse()
     context = vars(args)
+
+    # --------------------------------------------------------------
+    # 2. Initialize logging
+    # --------------------------------------------------------------
     logging_ctx = initialize_logging(context)
     logger = logging_ctx["logger"]
-    cfg = load_inventory_file(context.get("inventory",""), logger)
-    cfg.update({ "secrets": load_secrets(context)})
-    print(logging_ctx)
-    print(context)
-    print(cfg.get("inventory",{}))
-    print(cfg.get("secrets",{}))
+
+    # --------------------------------------------------------------
+    # 3. Load inventory + secrets
+    # --------------------------------------------------------------
+    cfg = load_inventory_file(context.get("inventory", ""), logger)
+    secrets = load_secrets(context)
+
+    inventory = cfg.get("inventory", {})
+
+    # --------------------------------------------------------------
+    # 4. Initialize InventoryProcessor
+    # --------------------------------------------------------------
+    proc = InventoryProcessor(
+        inventory=inventory,
+        family=args.family,
+        distro=args.distro,
+        logger=logger
+    )
+
+    # --------------------------------------------------------------
+    # 5. Handle list operations via dispatch dictionary
+    # --------------------------------------------------------------
+    listops = ListOperations(inventory, proc, logger)
+
+    dispatch = {
+        "list_families": lambda: print(listops.list_families()),
+        "list_distros":  lambda: print(listops.list_distros(args.family)),
+        "list_hosts":    lambda: print(listops.list_hosts(args.family, args.distro)),
+        "list_inventory": lambda: print(listops.list_inventory()),
+    }
+
+    # Determine which list flag was used
+    for flag, action in dispatch.items():
+        if getattr(args, flag):
+            action()
+            return
+
+    # --------------------------------------------------------------
+    # 6. Execute update orchestration
+    # --------------------------------------------------------------
+    orchestrator = UpdateOrchestrator(
+        args=args,
+        inventory_processor=proc,
+        secrets=secrets,
+        logger=logger
+    )
+
+    orchestrator.run()
+
+    # --------------------------------------------------------------
+    # 7. Final banner
+    # --------------------------------------------------------------
     logger.banner("RunUpdates complete")
     
 
