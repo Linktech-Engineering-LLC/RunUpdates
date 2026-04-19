@@ -1,64 +1,46 @@
 # RunUpdates
-
 <p align="center">
 
-  <!-- Project Status -->
-  <img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge" />
-
-  <!-- License -->
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" />
-
-  <!-- Python Version -->
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white" />
-
-  <!-- Platform -->
-  <img src="https://img.shields.io/badge/platform-linux-lightgrey?style=for-the-badge&logo=linux&logoColor=white" />
-
-  <!-- Linktech Engineering Branding -->
-  <img src="https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-8A2BE2?style=for-the-badge" />
+<img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge" />
+<img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" />
+<img src="https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white" />
+<img src="https://img.shields.io/badge/platform-linux-lightgrey?style=for-the-badge&logo=linux&logoColor=white" />
+<img src="https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-8A2BE2?style=for-the-badge" />
 
 </p>
 
-RunUpdates is a deterministic, operator‑grade update orchestrator for Linux hosts.  
-It provides reproducible sequencing, audit‑transparent execution, and a clean inventory‑driven model for managing package updates across heterogeneous environments.
+RunUpdates is a deterministic, operator‑grade update orchestrator for Linux hosts.
+It provides reproducible sequencing, audit‑transparent execution, and a clean, YAML‑driven model for managing package updates across heterogeneous environments.
 
 RunUpdates is designed for engineers who want predictable behavior, clear logging, and a workflow that scales from a single workstation to a full fleet.
 
----
-
 ## ✨ Features
 
-- **Deterministic execution pipeline**  
-  check → refresh → update → clean → reboot (optional)
+* **Deterministic execution pipeline**: check → refresh → update → clean → reboot (optional)
 
-- **Inventory‑driven orchestration**  
-  Families → Distros → Hosts with inheritance and flattening
+* **Inventory‑driven orchestration**: Families → Distros → Hosts with inheritance, flattening, and validation
 
-- **Local + remote execution**  
-  LocalSession (sudo) and SSHSession (keyfile + password fallback)
+* **Local + remote execution**
 
-- **Operator‑grade logging**  
-  Structured, timestamped, and suitable for audit trails
+  * Local execution via sudo_run
+  * Remote execution via SSHSession (keyfile + password fallback)
 
-- **Flexible host selection**  
-  `--family`, `--distro`, `--host`, or full‑inventory runs
+* **YAML‑driven distro model**: Commands and exit‑codes defined declaratively per distro
 
-- **List operations**  
-  Introspect families, distros, hosts, or the entire inventory
+* **Operator‑grade logging**: Structured, timestamped, and suitable for audit trails
 
-- **Dry‑run mode**  
-  Preview commands without executing them
+* **Flexible host selection**: --family, --distro, --host, or full‑inventory runs
 
----
+* **Dry‑run mode**: Preview commands without executing them
 
 ## 📦 Installation
-
 Clone the repository:
 
 ```bash
 git clone https://github.com/Linktech-Engineering-LLC/RunUpdates.git
 cd RunUpdates
 ```
+
 Create a virtual environment:
 
 ```bash
@@ -75,35 +57,51 @@ pip install -r requirements.txt
 RunUpdates is now ready to use.
 
 ## 🧩 Inventory Model
-RunUpdates uses a structured YAML inventory:
+RunUpdates uses a structured YAML inventory that defines:
+
+* distro families
+* package manager commands
+* exit‑code interpretation
+* host lists
+* connection parameters
+
+*** Example (openSUSE)
 
 ```yaml
 linux:
-ubuntu:
-    defaults:
-    port: 22
-    commands:
-        check: "apt-get check"
-        refresh: "apt-get update"
-        update: "apt-get upgrade -y"
-        clean: "apt-get autoremove -y"
+  opensuse:
+    packages:
+      check: "zypper refresh && zypper patch-check --with-optional"
+      refresh: "zypper refresh"
+      update: "zypper --non-interactive up --auto-agree-with-licenses --replacefiles"
+      clean: "zypper clean"
+      reboot: "zypper needs-rebooting"
+
+      exit_codes:
+        check:
+          up_to_date: [0]
+          patches_available: [101]
+          error: ["*"]
+
+    port: 2222
+
     hosts:
-    ub25-srvr-01:
-        address: "192.168.1.10"
+      Lab-Suse-01:
         enabled: true
+        address: [192.168.0.67, 10.145.156.10]
 ```
 
-## Inventory hierarchy
+### Inventory hierarchy
 
-- **Family** (e.g., linux)
-- **Distro** (e.g., ubuntu)
-- **Hosts** (e.g., ub25-srvr-01)
+* **Family** (e.g., linux)
+* **Distro** (e.g., opensuse)
+* **Hosts** (e.g., Lab-Suse-01)
 
 RunUpdates merges:
 
-- family defaults
-- distro defaults
-- host overrides
+* family defaults
+* distro defaults
+* host overrides
 
 …into a flattened host object used during execution.
 
@@ -111,19 +109,23 @@ RunUpdates merges:
 
 Secrets are loaded from a vault file or environment variables.
 
-Required fields:
+### Required fields
 
 ```yaml
-sudo_user: "elevated username"
-sudo_pass: "elevated password"
-keyfile: "/path/to/ssh/key"
+username: "ssh username"
+password: "optional ssh + sudo password"
+keyfile: "/path/to/private/key"
 ```
 
-**Authentication model:**
+### Authentication model
 
-- sudo_user → SSH username
-- keyfile → primary SSH authentication
-- sudo_pass → fallback SSH password and sudo password
+* **username** → SSH username
+* **keyfile** → primary SSH authentication
+* **password** → fallback SSH authentication + sudo password
+
+At least one authentication method must be available.
+
+RunUpdates injects secrets into PythonTools at startup.
 
 ## 🚀 Usage
 
@@ -147,13 +149,13 @@ runupdates --family linux
 Run against a specific distro:
 
 ```bash
-runupdates --family linux --distro ubuntu
+runupdates --family linux --distro opensuse
 ```
 
 Run against a single host:
 
 ```bash
-runupdates --host ub25-srvr-01
+runupdates --host Lab-Suse-01
 ```
 
 Dry‑run mode:
@@ -166,39 +168,52 @@ runupdates --dry-run
 
 Each host runs the following steps in order:
 
-- check
-- refresh
-- update
-- clean
-- reboot (optional)
+1. check
+2. refresh
+3. update
+4. clean
+5. reboot (optional)
 
 Each step is logged with:
 
-- exit code
-- stdout
-- stderr
+* exit code
+* stdout
+* stderr
 
 Failures are reported but do not stop the overall run.
 
 ## 🧱 Architecture Overview
 
-```code
+text
 main.py
  └── UpdateOrchestrator
+      ├── InventoryProcessor
       ├── HostSelector
       ├── HostConnector
-      │     ├── LocalSession
+      │     ├── local (sudo_run)
       │     └── SSHSession
       └── HostExecutor
-```
 
 ### Responsibilities
 
-- **HostSelector** → decides whether a host should run
-- **HostConnector** → decides how to connect
-- **HostExecutor**   → decides what commands to run
-- **InventoryProcessor** → flattens and normalizes inventory
-- **ListOperations** → introspection utilities
+* **InventoryProcessor** → flattens and normalizes inventory
+* **HostSelector** → determines which hosts should run
+* **HostConnector** → selects local vs remote execution
+* **HostExecutor** → runs the distro‑defined pipeline
+* **PythonTools** → provides execution primitives and session layer
+
+### PythonTools Integration
+
+RunUpdates includes a shared execution layer called **PythonTools**, which provides:
+
+* `sudo_run` for local privileged execution
+* `local_command` for non‑privileged local execution
+* `SSHSession` for remote execution
+* injected logging
+* injected secrets
+* reusable helpers (in progress)
+
+PythonTools is internal today but will eventually be extracted into a standalone Linktech Engineering library.
 
 ## 🤝 Contributing
 
@@ -206,11 +221,10 @@ Pull requests are welcome.
 
 Please ensure:
 
-- consistent formatting
-- deterministic behavior
-- clear logging
-
-no breaking changes to inventory schema
+* consistent formatting
+* deterministic behavior
+* clear logging
+* no breaking changes to inventory schema
 
 ## 📄 License
 MIT License — see LICENSE for details.

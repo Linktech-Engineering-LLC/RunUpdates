@@ -1,0 +1,38 @@
+name: "Documentation Update"
+description: "Request improvements or corrections to the documentation"
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help keep the documentation accurate, complete, and operator‑grade.
+
+  - type: textarea
+    id: location
+    attributes:
+      label: "Documentation Location"
+      description: "Which file or section needs updating?"
+      placeholder: "e.g., README.md → Execution Pipeline"
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: "Issue Description"
+      description: "What is incorrect, missing, unclear, or outdated?"
+      placeholder: "Describe the documentation problem"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed Update"
+      description: "Optional: suggest the corrected or improved text"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: "Additional Context"
+      description: "Anything else relevant to the update"

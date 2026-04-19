@@ -12,3 +12,4 @@ Logs/
 var/
 ignore-list.txt
 RunUpdates.egg-info/
+*.code-workspace

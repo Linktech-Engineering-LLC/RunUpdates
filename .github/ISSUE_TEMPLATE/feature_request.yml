@@ -1,0 +1,46 @@
+name: "Feature Request"
+description: "Propose a new capability or enhancement for RunUpdates"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for contributing ideas to improve RunUpdates.
+        Please describe the feature clearly and explain the operator‑grade value it provides.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Feature Summary"
+      description: "What should be added or improved?"
+      placeholder: "Clear, concise description of the feature"
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: "Motivation"
+      description: "Why is this feature needed? What problem does it solve?"
+      placeholder: "Describe the operational or workflow benefit"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed Implementation"
+      description: "Optional: describe how the feature could be implemented"
+      placeholder: "High‑level design, YAML additions, execution flow, etc."
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      description: "Optional: list any alternative approaches you evaluated"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: "Additional Context"
+      description: "Anything else relevant to the request"

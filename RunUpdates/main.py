@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-04-18
+ Modified: 2026-04-19
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates
@@ -156,9 +156,6 @@ def main():
     # 4. Initialize InventoryProcessor
     # --------------------------------------------------------------
     proc = InventoryProcessor(
-        inventory=inventory,
-        family=args.family,
-        distro=args.distro,
         logger=logger
     )
 
@@ -186,6 +183,7 @@ def main():
     orchestrator = UpdateOrchestrator(
         args=args,
         inventory_processor=proc,
+        inventory=inventory,
         secrets=secrets,
         logger=logger
     )

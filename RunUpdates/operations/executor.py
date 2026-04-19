@@ -6,14 +6,15 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-18
+ Modified: 2026-04-19
  File: RunUpdates/operations/executor.py
  Version: 1.0.0
  Description: Executes update commands on a host using a session object.
 """
 # System Libraries
 from typing import Optional
-
+# Project5 Libraries
+from PythonTools.net_tools import sudo_run
 
 class HostExecutor:
     """
@@ -22,7 +23,8 @@ class HostExecutor:
         run(command: str) -> (exit_code, stdout, stderr)
     """
 
-    def __init__(self, logger=None, dry_run: bool = False):
+    def __init__(self, secrets: dict, logger=None, dry_run: bool = False):
+        self.secrets = secrets
         self.logger = logger
         self.dry_run = dry_run
 
@@ -90,7 +92,11 @@ class HostExecutor:
         if self.logger:
             self.logger.info(f"[{host_name}] {step}: {command}")
 
-        exit_code, out, err = session.run(command)
+        if session == "local":
+            rc = sudo_run(cmd = command, sudo_password = self.secrets.get("sudo_pass",""))
+            exit_code, out, err = rc.as_tuple
+        else:
+            exit_code, out, err = session.run(command)
 
         if self.logger:
             self.logger.debug(f"[{host_name}] {step} exit={exit_code}")

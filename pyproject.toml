@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "RunUpdates"
-version = "0.1.0"
+version = "0.2.0"
 description = "Multi-distro update orchestrator with SSH, inventory, and vault integration."
 authors = [
     { name = "Leon McClatchey", email = "leon@linktech.engineering" }
@@ -12,13 +12,20 @@ authors = [
 requires-python = ">=3.12"
 readme = "README.md"
 
-# No dependencies yet — you will add them as needed
-dependencies = []
+dependencies = [
+    "paramiko",
+    "PyYAML",
+    "cryptography",
+    "invoke",
+    "packaging",
+    "Pygments",
+    "PyNaCl",
+]
 
 [project.scripts]
 # Optional: if you want a CLI entry point
 runupdates = "RunUpdates.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["RunUpdates*"]
+include = ["RunUpdates*", "PythonTools*"]
 exclude = ["data*", "Logs*", "archive*"]

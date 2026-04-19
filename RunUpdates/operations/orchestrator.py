@@ -6,47 +6,57 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-18
+ Modified: 2026-04-19
  File: RunUpdates/operations/orchestrator.py
  Version: 1.0.0
  Description: High-level coordinator for the RunUpdates execution pipeline.
 """
 # System Libraries
-from typing import List
-
+# Project Libraries
+from PythonTools.net_tools import sudo_run, local_command
 from .selector import HostSelector
 from .connector import HostConnector
 from .executor import HostExecutor
-
+from ..ansible.config_loader import load_inventory
 
 class UpdateOrchestrator:
     """
     Coordinates:
       - InventoryProcessor (provided externally)
-      - HostSelector
+      - HostSelector (CLI filtering only)
       - HostConnector
       - HostExecutor
-
-    This class does not perform any update logic itself.
-    It simply orchestrates the flow.
+      - Shared execution tools from PythonTools
     """
 
-    def __init__(self, args, inventory_processor, secrets, logger=None):
+    def __init__(self, args, inventory_processor, secrets, inventory, logger=None):
         """
         :param args: Parsed CLI arguments
-        :param inventory_processor: InventoryProcessor instance (already loaded)
-        :param secrets: Vault-loaded secrets
+        :param inventory_processor: InventoryProcessor instance
+        :param secrets: Vault-loaded secrets (contains sudo password)
+        :param inventory: Parsed inventory dictionary
         :param logger: Optional logger
         """
         self.args = args
         self.proc = inventory_processor
         self.secrets = secrets
+        self.inventory = inventory
         self.logger = logger
 
         # Subsystems
         self.selector = HostSelector(args, logger=logger)
-        self.connector = HostConnector(secrets, logger=logger)
-        self.executor = HostExecutor(logger=logger, dry_run=args.dry_run)
+
+        # Pass shared execution tools into connector/executor
+        self.connector = HostConnector(
+            secrets,
+            logger=logger,
+        )
+
+        self.executor = HostExecutor(
+            secrets=self.secrets,
+            logger=logger,
+            dry_run=args.dry_run,
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -59,10 +69,12 @@ class UpdateOrchestrator:
         if self.logger:
             self.logger.info("=== Starting RunUpdates Orchestration ===")
 
-        # 1. Flatten inventory for the selected family/distro
-        hosts: List[dict] = self.proc.flatten(
+        # 1. Flatten inventory for the selected family/distro/host
+        hosts = self.proc.flatten(
+            inventory=self.inventory,
             family=self.args.family,
             distro=self.args.distro,
+            host=self.args.host,
         )
 
         if self.logger:
@@ -72,7 +84,7 @@ class UpdateOrchestrator:
         for host in hosts:
             name = host["name"]
 
-            # 2a. Selection filter
+            # 2a. CLI-based selection filter
             if not self.selector.should_process(host):
                 continue
 
@@ -91,7 +103,6 @@ class UpdateOrchestrator:
                 if self.logger:
                     self.logger.error(f"[{name}] Update failed: {e}")
             finally:
-                # Always close remote sessions
                 if hasattr(session, "close"):
                     session.close()
 

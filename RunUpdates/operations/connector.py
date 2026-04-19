@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-18
+ Modified: 2026-04-19
  File: RunUpdates/operations/connector.py
  Version: 1.0.0
  Description: Determines how to connect to a host (local or remote)
@@ -15,10 +15,12 @@
 
 # System Libraries
 import socket
-import subprocess
-import paramiko   # You already use this in other tools; if not, we can wrap it
+#import subprocess
+#import paramiko   # You already use this in other tools; if not, we can wrap it
 from typing import Optional, List
-
+# Project Libraries
+from PythonTools.sessions.local_sessions import LocalSession
+from PythonTools.sessions.ssh_sessions import SSHSession
 
 DEFAULT_SSH_PORT = 22
 
@@ -26,6 +28,7 @@ DEFAULT_SSH_PORT = 22
 # ----------------------------------------------------------------------
 # Session Abstractions
 # ----------------------------------------------------------------------
+'''
 class LocalSession:
     """
     Executes commands locally using subprocess.
@@ -52,8 +55,8 @@ class LocalSession:
         )
         out, err = proc.communicate()
         return proc.returncode, out, err
-
-
+'''
+'''
 class SSHSession:
     """
     Executes commands on a remote host via SSH.
@@ -129,7 +132,7 @@ class SSHSession:
         if self.client:
             self.client.close()
             self.client = None
-
+'''
 
 # ----------------------------------------------------------------------
 # HostConnector
@@ -163,23 +166,23 @@ class HostConnector:
           - address_list
           - port
         """
+        username = self.secrets.get("sudo_user")
+        if not username:
+            raise RuntimeError("Vault missing required field: sudo_user")
+        password = self.secrets.get("sudo_pass")
+        if not password:
+            raise RuntimeError("Vault missing required field: sudo_pass")
+        keyfile = self.secrets.get("keyfile")
 
         # 1. Local host detection
         if self._is_localhost(host["name"], host.get("address")):
             if self.logger:
                 self.logger.debug(f"Host {host['name']} is local; using LocalSession")
-            return LocalSession(use_sudo=True, logger=self.logger)
+            return "local"
 
         # 2. Remote host → iterate address list
         addresses: List[str] = host.get("address_list") or [host["address"]]
         port = host.get("port") or DEFAULT_SSH_PORT
-
-        username = self.secrets.get("sudo_user")
-        keyfile = self.secrets.get("keyfile")
-        password = self.secrets.get("sudo_pass")
-
-        if not username:
-            raise RuntimeError("Vault missing required field: sudo_user")
 
         for addr in addresses:
             # Try key-based auth first

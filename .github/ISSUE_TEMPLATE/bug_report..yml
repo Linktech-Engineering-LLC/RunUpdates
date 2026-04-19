@@ -1,0 +1,70 @@
+name: "Bug Report"
+description: "Report a reproducible issue in RunUpdates"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug.
+        Please provide as much detail as possible so the issue can be reproduced deterministically.
+
+  - type: input
+    id: version
+    attributes:
+      label: "RunUpdates Version"
+      description: "Output of `runupdates --version`"
+      placeholder: "e.g., 1.0.3"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Issue Description"
+      description: "What happened? What did you expect to happen?"
+      placeholder: "Clear, operator‑grade description of the issue"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Provide deterministic steps to reproduce the issue"
+      placeholder: |
+        1. Run command X
+        2. Use inventory Y
+        3. Observe behavior Z
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Relevant Logs"
+      description: "Include stdout/stderr snippets or log excerpts (redact sensitive data)"
+      render: shell
+
+  - type: textarea
+    id: inventory
+    attributes:
+      label: "Inventory Snippet"
+      description: "Include the relevant portion of your hosts.yml"
+      render: yaml
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: "Execution Environment"
+      options:
+        - "Local (sudo_run)"
+        - "Remote (SSHSession)"
+        - "Both"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: "Additional Context"
+      description: "Anything else that may help diagnose the issue"
