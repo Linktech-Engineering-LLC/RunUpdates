@@ -11,32 +11,24 @@
  Version: 1.0.0
  Description: Description of this module
 """
-# System Libraries
+
 import paramiko
 from types import SimpleNamespace
-# Project Libraries
-from PythonTools.net_tools import sudo_run
 
 
 class SSHSession:
     """
-    Reusable SSH execution session.
-    Provides a unified interface for running commands on a remote host,
-    with optional sudo support and injected logging.
+    Persistent SSH execution session.
+    Executor controls lifecycle:
+        session = SSHSession(...)
+        session.connect()
+        session.run(...)
+        session.close()
     """
 
     def __init__(self, hostname, username, password=None, keyfile=None,
                  port=22, logger=None, sudo_password=None, timeout=30):
-        """
-        :param hostname: Remote host to connect to.
-        :param username: SSH username.
-        :param password: SSH password (optional if using keyfile).
-        :param keyfile: Path to private key file (optional).
-        :param port: SSH port (default 22).
-        :param logger: Optional logger with .debug(), .info(), .error(), etc.
-        :param sudo_password: Optional sudo password for privileged commands.
-        :param timeout: SSH connection timeout.
-        """
+
         self.hostname = hostname
         self.username = username
         self.password = password
@@ -46,16 +38,15 @@ class SSHSession:
         self.sudo_password = sudo_password
         self.timeout = timeout
 
-        self.client = None
-        self._connect()
+        self.client = None   # Not connected yet
 
     # ------------------------------------------------------------
     # Connection handling
     # ------------------------------------------------------------
-    def _connect(self):
+    def connect(self):
         if self.logger:
             self.logger.debug(
-                f"[SSHSession] Connecting to {self.username}@{self.hostname}:{self.port}"
+                f"[SSHSession] Connecting to {self.hostname}:{self.port}"
             )
 
         self.client = paramiko.SSHClient()
@@ -83,20 +74,13 @@ class SSHSession:
     # Core execution
     # ------------------------------------------------------------
     def run(self, command: str, use_sudo: bool = False):
-        """
-        Execute a command on the remote host.
-
-        :param command: Shell command to run.
-        :param use_sudo: Whether to run the command with sudo.
-        :return: SimpleNamespace(stdout, stderr, code, msg, returncode, as_tuple)
-        """
         client = self._require_client()
+
         if self.logger:
             mode = "sudo" if use_sudo else "ssh"
             self.logger.debug(f"[SSHSession] Executing ({mode}): {command}")
 
         if use_sudo:
-            # Use sudo_run() but executed *remotely* via SSH
             sudo_cmd = f"sudo -S {command}"
             stdin, stdout, stderr = client.exec_command(sudo_cmd)
             stdin.write(f"{self.sudo_password}\n")
@@ -134,14 +118,10 @@ class SSHSession:
     # Lifecycle
     # ------------------------------------------------------------
     def close(self):
-        """
-        Close the SSH connection.
-        """
         if self.client:
             if self.logger:
                 self.logger.debug(f"[SSHSession] Closing connection to {self.hostname}")
             self.client.close()
             self.client = None
             return True
-
         return False

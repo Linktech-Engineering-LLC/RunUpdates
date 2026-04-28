@@ -99,6 +99,7 @@ class UpdateOrchestrator:
             # 2c. Execute update lifecycle
             try:
                 self.executor.run_updates(host, session)
+                session.close()
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"[{name}] Update failed: {e}")

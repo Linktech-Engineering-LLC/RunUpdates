@@ -100,6 +100,7 @@ def init_logger(run_cfg: dict):
             "LIFECYCLE": 26,
             "TRACE": 5,
         },
+        "log_level": "DEBUG" if run_cfg.get("verbose") else "INFO",
     }
 
     # ------------------------------------------------------------

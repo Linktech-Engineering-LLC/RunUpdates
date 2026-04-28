@@ -14,12 +14,12 @@
 """
 
 # System Libraries
-import json
+import os
 from pathlib import Path
 import yaml
 # Project Libraries
 from .ansible.config_loader import InventoryProcessor
-from .ansible.vault_loader import VaultLoader
+from .ansible.vault_loader import VaultLoader, VaultError
 from .logging.log_helpers import (
     init_logger,
     register_custom_levels
@@ -121,13 +121,33 @@ def load_inventory_file(inv_path: Path, logger):
         f"(found {len(yml_files)} files)"
     )
 def load_secrets(context: dict) -> dict:
-    secrets = {}
-    vault_path = context.get("vault_path","")
-    vault_password = context.get("vault_password","")
+    vault_path = context.get("vault_path")
+    vault_password = context.get("vault_password")
+
+    if not vault_path:
+        raise VaultError("vault_path missing from context")
+
+    if not vault_password:
+        raise VaultError("vault_password missing from context")
+
     loader = VaultLoader(vault_path, vault_password)
     secrets = loader.decrypt_yaml()
-    
-    return secrets 
+
+    if not isinstance(secrets, dict):
+        raise VaultError("Vault decrypted but did not contain a top-level dictionary")
+
+    # Example required fields — adjust to your schema
+    required_keys = ["sudo_user", "sudo_pass", "keyfile"]
+
+    for key in required_keys:
+        if key not in secrets:
+            raise VaultError(f"Missing required secret: {key}")
+        if not secrets[key]:
+            raise VaultError(f"Secret '{key}' is empty or null")
+
+    secrets["keyfile"] = os.path.expanduser(secrets["keyfile"])
+
+    return secrets
     
     
 def main():

@@ -10,6 +10,7 @@ __pycache__/
 .pytest_cache/
 Logs/
 var/
+etc/
 ignore-list.txt
 RunUpdates.egg-info/
 *.code-workspace

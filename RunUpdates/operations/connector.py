@@ -13,248 +13,145 @@
               and returns a session object capable of executing commands.
 """
 
-# System Libraries
 import socket
-#import subprocess
-#import paramiko   # You already use this in other tools; if not, we can wrap it
+import time
+from dataclasses import dataclass
 from typing import Optional, List
-# Project Libraries
-from PythonTools.sessions.local_sessions import LocalSession
-from PythonTools.sessions.ssh_sessions import SSHSession
 
 DEFAULT_SSH_PORT = 22
 
 
-# ----------------------------------------------------------------------
-# Session Abstractions
-# ----------------------------------------------------------------------
-'''
-class LocalSession:
-    """
-    Executes commands locally using subprocess.
-    If use_sudo=True, prefixes commands with sudo.
-    """
+@dataclass
+class SSHConnectionInfo:
+    hostname: str
+    port: int
+    username: str
+    keyfile: Optional[str]
+    password: Optional[str]
+    logger: Optional[object] = None
 
-    def __init__(self, use_sudo: bool = False, logger=None):
-        self.use_sudo = use_sudo
-        self.logger = logger
 
-    def run(self, command: str) -> tuple[int, str, str]:
-        if self.use_sudo:
-            command = f"sudo {command}"
-
-        if self.logger:
-            self.logger.debug(f"[LOCAL] Executing: {command}")
-
-        proc = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        out, err = proc.communicate()
-        return proc.returncode, out, err
-'''
-'''
-class SSHSession:
-    """
-    Executes commands on a remote host via SSH.
-
-    Supports:
-      - key-based auth (keyfile)
-      - password auth
-    """
-
-    def __init__(
-        self,
-        hostname: str,
-        port: int,
-        username: str,
-        keyfile: Optional[str] = None,
-        password: Optional[str] = None,
-        logger=None,
-    ):
-        self.hostname = hostname
-        self.port = port
-        self.username = username
-        self.keyfile = keyfile
-        self.password = password
-        self.logger = logger
-        self.client: Optional[paramiko.SSHClient] = None
-
-    def connect(self):
-        if self.logger:
-            self.logger.debug(
-                f"[SSH] Connecting to {self.hostname}:{self.port} as {self.username} "
-                f"(keyfile={bool(self.keyfile)}, password={bool(self.password)})"
-            )
-
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        connect_kwargs: dict = {
-            "hostname": self.hostname,
-            "port": self.port,
-            "username": self.username,
-            "timeout": 5,
-        }
-
-        if self.keyfile:
-            connect_kwargs["key_filename"] = self.keyfile
-
-        if self.password:
-            connect_kwargs["password"] = self.password
-
-        client.connect(**connect_kwargs)
-        self.client = client
-
-    def run(self, command: str) -> tuple[int, str, str]:
-        if not self.client:
-            raise RuntimeError("SSHSession not connected")
-
-        if self.logger:
-            self.logger.debug(f"[SSH] Executing on {self.hostname}: {command}")
-
-        stdin, stdout, stderr = self.client.exec_command(command)
-        exit_code = stdout.channel.recv_exit_status()
-
-        out = stdout.read()
-        err = stderr.read()
-
-        # Decode bytes → str
-        out_str = out.decode("utf-8", errors="replace") if isinstance(out, bytes) else str(out)
-        err_str = err.decode("utf-8", errors="replace") if isinstance(err, bytes) else str(err)
-
-        return exit_code, out_str, err_str
-
-    def close(self):
-        if self.client:
-            self.client.close()
-            self.client = None
-'''
-
-# ----------------------------------------------------------------------
-# HostConnector
-# ----------------------------------------------------------------------
 class HostConnector:
     """
     Determines how to connect to a host:
-      - Local host → LocalSession (sudo)
-      - Remote host → SSHSession (keyfile first, password fallback)
-      - Remote host → address iteration until reachable
+      - Local host → "local"
+      - Remote host → SSHConnectionInfo
     """
 
     def __init__(self, secrets: dict, logger=None):
-        """
-        :param secrets: Vault-loaded credentials
-        :param logger: Optional logger
-        """
         self.secrets = secrets or {}
         self.logger = logger
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
     def connect(self, host: dict):
         """
-        Returns a session object (LocalSession or SSHSession).
-
-        Host dict fields (from InventoryProcessor.flatten()):
-          - name
-          - address
-          - address_list
-          - port
+        Returns:
+            - "local"
+            - SSHConnectionInfo(...)
+            - False (if unreachable)
         """
-        username = self.secrets.get("sudo_user")
-        if not username:
-            raise RuntimeError("Vault missing required field: sudo_user")
-        password = self.secrets.get("sudo_pass")
-        if not password:
-            raise RuntimeError("Vault missing required field: sudo_pass")
-        keyfile = self.secrets.get("keyfile")
+
+        username = self.secrets["sudo_user"]
+        password = self.secrets["sudo_pass"]
+        keyfile = self.secrets["keyfile"]
 
         # 1. Local host detection
         if self._is_localhost(host["name"], host.get("address")):
             if self.logger:
-                self.logger.debug(f"Host {host['name']} is local; using LocalSession")
+                self.logger.debug(f"[CONNECT] Host {host['name']} is local")
             return "local"
 
-        # 2. Remote host → iterate address list
-        addresses: List[str] = host.get("address_list") or [host["address"]]
+        # 2. Remote host → build candidate list
+        candidates = [host["name"]] + host["address"]
         port = host.get("port") or DEFAULT_SSH_PORT
 
-        for addr in addresses:
-            # Try key-based auth first
-            if keyfile:
-                try:
-                    if self.logger:
-                        self.logger.debug(
-                            f"[SSH] Trying keyfile auth for {addr}:{port} as {username}"
-                        )
-                    session = SSHSession(
-                        hostname=addr,
-                        port=port,
-                        username=username,
-                        keyfile=keyfile,
-                        password=None,
-                        logger=self.logger,
-                    )
-                    session.connect()
-                    return session
-                except Exception as e:
-                    if self.logger:
-                        self.logger.warning(
-                            f"Key-based SSH failed for {addr}:{port} → {e}"
-                        )
+        # 3. Port probe
+        reachable = None
+        for addr in candidates:
+            if self.port_open(addr, port):
+                reachable = addr
+                break
 
-            # Fallback to password auth
-            if password:
-                try:
-                    if self.logger:
-                        self.logger.debug(
-                            f"[SSH] Trying password auth for {addr}:{port} as {username}"
-                        )
-                    session = SSHSession(
-                        hostname=addr,
-                        port=port,
-                        username=username,
-                        keyfile=None,
-                        password=password,
-                        logger=self.logger,
-                    )
-                    session.connect()
-                    return session
-                except Exception as e:
-                    if self.logger:
-                        self.logger.warning(
-                            f"Password SSH failed for {addr}:{port} → {e}"
-                        )
+        if not reachable:
+            if self.logger:
+                self.logger.error(
+                    f"[CONNECT] No reachable SSH port for host {host['name']} "
+                    f"on any candidate: {candidates}"
+                )
+            return False
 
-        # If we get here, all addresses failed
-        raise RuntimeError(
-            f"Unable to connect to host {host['name']} using any address: {addresses}"
+        if self.logger:
+            self.logger.debug(
+                f"[CONNECT] Using reachable endpoint {reachable}:{port} "
+                f"for host {host['name']}"
+            )
+
+        # 4. Build connection descriptor (NOT a session)
+        if keyfile:
+            if self.logger:
+                self.logger.debug(
+                    f"[CONNECT] Using keyfile authentication for {reachable}:{port}"
+                )
+            return SSHConnectionInfo(
+                hostname=reachable,
+                port=port,
+                username=username,
+                keyfile=keyfile,
+                password=None,
+                logger=self.logger,
+            )
+
+        # Fallback to password
+        if self.logger:
+            self.logger.debug(
+                f"[CONNECT] Using password authentication for {reachable}:{port}"
+            )
+        return SSHConnectionInfo(
+            hostname=reachable,
+            port=port,
+            username=username,
+            keyfile=None,
+            password=password,
+            logger=self.logger,
         )
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _is_localhost(self, hostname: str, address: Optional[str]) -> bool:
-        """
-        Determines if the host is the local machine.
-        """
-
+    def _is_localhost(self, hostname: str, addresses: list[str] | None) -> bool:
         local_names = {
             socket.gethostname(),
             socket.getfqdn(),
             "localhost",
-            "127.0.0.1",
         }
 
         if hostname in local_names:
             return True
 
-        if address in local_names:
-            return True
+        if not addresses:
+            return False
 
-        return False
+        local_ips = {"127.0.0.1"}
+        try:
+            local_ips.update(socket.gethostbyname_ex(socket.gethostname())[2])
+        except Exception:
+            pass
+
+        return any(addr in local_ips for addr in addresses)
+
+    def port_open(self, host: str, port: int, timeout: float = 1.0) -> bool:
+        try:
+            start = time.time()
+            with socket.create_connection((host, port), timeout=timeout):
+                duration = (time.time() - start) * 1000
+                if self.logger:
+                    self.logger.debug(
+                        f"[PORT] {host}:{port} reachable ({duration:.1f} ms)"
+                    )
+                return True
+
+        except OSError as e:
+            if self.logger:
+                self.logger.debug(
+                    f"[PORT] {host}:{port} unreachable → {e}"
+                )
+            return False
