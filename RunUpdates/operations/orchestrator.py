@@ -6,18 +6,16 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-19
+ Modified: 2026-04-28
  File: RunUpdates/operations/orchestrator.py
  Version: 1.0.0
  Description: High-level coordinator for the RunUpdates execution pipeline.
 """
 # System Libraries
 # Project Libraries
-from PythonTools.net_tools import sudo_run, local_command
 from .selector import HostSelector
 from .connector import HostConnector
 from .executor import HostExecutor
-from ..ansible.config_loader import load_inventory
 
 class UpdateOrchestrator:
     """
@@ -99,7 +97,6 @@ class UpdateOrchestrator:
             # 2c. Execute update lifecycle
             try:
                 self.executor.run_updates(host, session)
-                session.close()
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"[{name}] Update failed: {e}")

@@ -79,9 +79,13 @@ class InventoryProcessor:
         for distro_name in distros:
             distro_node = family_node[distro_name]
 
-            distro_cmds = distro_node.get("packages", {}) or {}
+            raw_cmds = distro_node.get("packages", {}) or {}
             distro_port = distro_node.get("port")
             hosts_block = distro_node.get("hosts", {}) or {}
+
+            # Extract exit codes and commands ONCE per distro
+            exit_codes = raw_cmds.get("exit_codes", {})
+            commands = {k: v for k, v in raw_cmds.items() if k != "exit_codes"}
 
             # Determine which hosts to process
             if host:
@@ -101,10 +105,11 @@ class InventoryProcessor:
                     distro=distro_name,
                     host_name=host_name,
                     host_data=host_data,
-                    distro_cmds=distro_cmds,
+                    distro_cmds=commands,
                     host_port=host_data.get("port"),
                     distro_port=distro_port,
                     family_port=family_port,
+                    exit_codes=exit_codes,
                 )
 
                 if host_obj:
@@ -125,6 +130,7 @@ class InventoryProcessor:
         host_port: Optional[int],
         distro_port: Optional[int],
         family_port: Optional[int],
+        exit_codes: Optional[Dict[str, Any]]
     ) -> Optional[Dict[str, Any]]:
 
         enabled = host_data.get("enabled", True)
@@ -159,6 +165,7 @@ class InventoryProcessor:
             "address": address,
             "port": port,
             "commands": commands,
+            "exit_codes": exit_codes or {},   # ← FIXED
             "vm_host": host_data.get("vm_host"),
         }
 

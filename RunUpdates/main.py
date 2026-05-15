@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-04-19
+ Modified: 2026-04-28
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates

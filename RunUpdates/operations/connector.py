@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-19
+ Modified: 2026-04-28
  File: RunUpdates/operations/connector.py
  Version: 1.0.0
  Description: Determines how to connect to a host (local or remote)
@@ -17,6 +17,7 @@ import socket
 import time
 from dataclasses import dataclass
 from typing import Optional, List
+from PythonTools.sessions.ssh_sessions import SSHSession
 
 DEFAULT_SSH_PORT = 22
 
@@ -46,7 +47,7 @@ class HostConnector:
         """
         Returns:
             - "local"
-            - SSHConnectionInfo(...)
+            - SSHSession(...)
             - False (if unreachable)
         """
 
@@ -85,34 +86,20 @@ class HostConnector:
                 f"for host {host['name']}"
             )
 
-        # 4. Build connection descriptor (NOT a session)
-        if keyfile:
-            if self.logger:
-                self.logger.debug(
-                    f"[CONNECT] Using keyfile authentication for {reachable}:{port}"
-                )
-            return SSHConnectionInfo(
-                hostname=reachable,
-                port=port,
-                username=username,
-                keyfile=keyfile,
-                password=None,
-                logger=self.logger,
-            )
-
-        # Fallback to password
-        if self.logger:
-            self.logger.debug(
-                f"[CONNECT] Using password authentication for {reachable}:{port}"
-            )
-        return SSHConnectionInfo(
+        # 4. Build SSHSession (NOT SSHConnectionInfo)
+        session = SSHSession(
             hostname=reachable,
             port=port,
             username=username,
-            keyfile=None,
-            password=password,
+            keyfile=keyfile,
+            password=None if keyfile else password,
             logger=self.logger,
         )
+
+        # 5. Connect
+        session.connect()
+
+        return session
 
     # ------------------------------------------------------------------
     # Helpers
