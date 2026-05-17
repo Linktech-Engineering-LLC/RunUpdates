@@ -15,6 +15,7 @@ This document describes:
 
 RunUpdates follows these principles:
 
+* **Append Only** - log entries are never overwritten or deleted
 * **Deterministic** — logs always reflect the exact sequence of operations
 * **Structured** — consistent formatting across all hosts and commands
 * **Audit‑friendly** — timestamps, exit codes, and classifications are always present
@@ -119,11 +120,23 @@ Every command executed by RunUpdates is logged with:
 * step (check/refresh/update/clean/reboot)
 * command string
 * exit code
-* stdout (truncated if large)
+* stdout (Stdout is truncated to prevent log bloat and ensure logs remain readable and diff‑friendly.)
 * stderr
 * classification (from YAML exit‑code model)
 
 This ensures complete auditability.
+
+### Relationship to Per‑Host Summaries
+
+RunUpdates produces two separate forms of output:
+
+- **Operator logs** — chronological, human‑readable logs describing the execution flow
+- **Per‑host summaries** — structured JSON artifacts intended for dashboards, monitoring tools, or external automation
+
+Operator logs record *events*.  
+Summaries record *results*.  
+
+These two outputs are intentionally separate to preserve clarity and auditability.
 
 ## 🔐 6. Redaction Rules
 
@@ -217,6 +230,13 @@ Each run produces:
 * one entry per command per host
 
 Parallel execution (future) will preserve ordering per host.
+
+### Parallel Execution Ordering Guarantees
+
+When parallel execution is introduced, RunUpdates will maintain strict ordering **per host**.  
+Even if multiple hosts run concurrently, each host’s log entries will remain internally ordered and deterministic.  
+Cross‑host interleaving may occur, but never within a single host’s sequence.
+
 
 ## 🔮 10. Future Enhancements
 

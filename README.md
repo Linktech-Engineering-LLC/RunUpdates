@@ -1,72 +1,57 @@
 # RunUpdates
-<p align="center">
 
-<p align="center">
+![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech%20Engineering-Tools%20Suite-0052CC?style=flat-square&logo=powershell)
+![Status](https://img.shields.io/badge/Status-Under%20Construction-orange?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.12%2B-blue?style=flat-square&logo=python&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey?style=flat-square&logo=linux&logoColor=white)
+![Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/RunUpdates?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-  <!-- Status -->
-  <img src="https://img.shields.io/badge/status-under__construction-orange?style=for-the-badge" />
-
-  <!-- License -->
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" />
-
-  <!-- Python -->
-  <img src="https://img.shields.io/badge/python-3.13%2B-blue?style=for-the-badge&logo=python&logoColor=white" />
-
-  <!-- Platform -->
-  <img src="https://img.shields.io/badge/platform-linux-lightgrey?style=for-the-badge&logo=linux&logoColor=white" />
-
-  <!-- Suite Badge -->
-  <img src="https://img.shields.io/badge/Linktech_Engineering-Tools_Suite-8A2BE2?style=for-the-badge" />
-
-</p>
-
-</p>
-
-RunUpdates is a deterministic, operator‑grade update orchestrator for Linux hosts.
+RunUpdates is a deterministic, operator‑grade update orchestrator for Linux hosts.  
 It provides reproducible sequencing, audit‑transparent execution, and a clean, YAML‑driven model for managing package updates across heterogeneous environments.
 
 RunUpdates is designed for engineers who want predictable behavior, clear logging, and a workflow that scales from a single workstation to a full fleet.
 
-## ✨ Features
+---
 
-* **Deterministic execution pipeline**: check → refresh → update → clean → reboot (optional)
+# ✨ Features
 
-* **Inventory‑driven orchestration**: Families → Distros → Hosts with inheritance, flattening, and validation
+- **Deterministic execution pipeline**  
+  Pre‑update list → Update → Post‑update list → Reboot detection → Summary generation
 
-* **Local + remote execution**
+- **Inventory‑driven orchestration**  
+  Families → Distros → Hosts with inheritance, flattening, and strict validation
 
-  * Local execution via sudo_run
-  * Remote execution via SSHSession (keyfile + password fallback)
+- **Local + remote execution**  
+  - Local execution via `sudo_run`  
+  - Remote execution via `SSHSession` (keyfile preferred, password fallback)
 
-* **YAML‑driven distro model**: Commands and exit‑codes defined declaratively per distro
+- **Declarative distro model**  
+  Commands, exit‑codes, and reboot indicators defined per distro
 
-* **Operator‑grade logging**: Structured, timestamped, and suitable for audit trails
+- **Operator‑grade logging**  
+  Structured, timestamped, redacted, and suitable for audit trails
 
-* **Flexible host selection**: --family, --distro, --host, or full‑inventory runs
+- **Flexible host selection**  
+  `--family`, `--distro`, `--host`, or full‑inventory runs
 
-* **Dry‑run mode**: Preview commands without executing them
+- **Dry‑run mode**  
+  Preview commands without executing them
 
-## 📦 Installation
-Clone the repository:
+- **Machine‑readable summaries**  
+  Per‑host JSON summaries for dashboards and automation
+
+---
+
+# 📦 Installation
 
 ```bash
 git clone https://github.com/Linktech-Engineering-LLC/RunUpdates.git
 cd RunUpdates
-```
-
-Create a virtual environment:
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
 ```
-
 RunUpdates is now ready to use.
 
 ## 🧩 Inventory Model
@@ -80,28 +65,49 @@ RunUpdates uses a structured YAML inventory that defines:
 
 *** Example (openSUSE)
 
+**Note:** All values below (ports, addresses, hostnames) are placeholders. Replace them with your actual environment.
+
 ```yaml
 linux:
   opensuse:
     packages:
-      check: "zypper refresh && zypper patch-check --with-optional"
-      refresh: "zypper refresh"
-      update: "zypper --non-interactive up --auto-agree-with-licenses --replacefiles"
+      check: "zypper patch-check --with-optional"
+      refresh: "zypper refresh" 
+      update: "zypper --non-interactive up --auto-agree-with-licenses --recommends --replacefiles --allow-vendor-change"
       clean: "zypper clean"
+      orphans: "zypper packages --orphaned"
+      list: "zypper list-updates --all"
       reboot: "zypper needs-rebooting"
-
+      reboot_now: "systemctl reboot || shutdown -r now"
       exit_codes:
-        check:
-          up_to_date: [0]
-          patches_available: [101]
+        refresh:
+          success: [0]
           error: ["*"]
 
-    port: 2222
+        check:
+          up_to_date: [0]
+          patches_available: [100, 101]
+          error: ["*"]
+
+        update:
+          success: [0]
+          reboot_required: [102, 104]
+          restart_services: [103]
+          error: ["*"]
+
+        reboot:
+          no_reboot: [0]
+          reboot_required: [102]
+          restart_services: [103]
+          reboot_and_restart: [104]
+          error: ["*"]
+
+    port: nnnn # Non-Standard Port used for ssh
 
     hosts:
-      Lab-Suse-01:
+      sample_host:
         enabled: true
-        address: [192.168.0.67, 10.145.156.10]
+        address: [nnn.nnn.nnn.nnn, nnn.nnn.nnn.nnn]
 ```
 
 ### Inventory hierarchy
@@ -139,6 +145,7 @@ keyfile: "/path/to/private/key"
 At least one authentication method must be available.
 
 RunUpdates injects secrets into PythonTools at startup.
+Secrets are never logged or written to disk.
 
 ## 🚀 Usage
 
@@ -177,23 +184,26 @@ Dry‑run mode:
 runupdates --dry-run
 ```
 
-## 🛠 Execution Pipeline
+## 🛠 Execution Flow
 
 Each host runs the following steps in order:
 
-1. check
-2. refresh
-3. update
-4. clean
-5. reboot (optional)
+1. Pre‑update list
+2. Update execution
+3. Post‑update list
+4. Reboot detection
+5. Summary generation
 
 Each step is logged with:
 
 * exit code
-* stdout
-* stderr
+* stdout/stderr
+* classification (success/warning/error/fatal)
 
-Failures are reported but do not stop the overall run.
+Failures do not stop the overall run.
+
+For full details, see:
+![📄 Execution](docs/Execution_Flow.md)
 
 ## 🧱 Architecture Overview
 
@@ -215,18 +225,54 @@ main.py
 * **HostExecutor** → runs the distro‑defined pipeline
 * **PythonTools** → provides execution primitives and session layer
 
+For full architecture details:
+![📄 ARCHITECTURE](ARCHITECTURE.md)
+
+## 🧪 Error Classification
+
+RunUpdates uses a unified, distro‑agnostic classification model:
+
+* success
+* warning
+* error
+* fatal
+
+Mapped from exit codes and PythonTools exceptions.
+
+Full classification rules:
+
+![📄 Error_Classification](docs/Error_Classification.md)
+
+## 🔒 Security Model
+
+RunUpdates is designed with a minimal attack surface:
+
+* no dynamic code execution
+* no YAML‑driven logic paths
+* no secrets in logs
+* SSH keyfile preferred
+* deterministic logging
+* strict inventory validation
+
+Full security policy:
+![📄 SECURITY](SECURITY.md)
+
 ### PythonTools Integration
 
-RunUpdates includes a shared execution layer called **PythonTools**, which provides:
+RunUpdates is built on top of a shared execution layer called **PythonTools**, which provides the deterministic command‑execution substrate used across the Linktech Engineering Tools Suite.
 
-* `sudo_run` for local privileged execution
-* `local_command` for non‑privileged local execution
-* `SSHSession` for remote execution
-* injected logging
-* injected secrets
-* reusable helpers (in progress)
+PythonTools supplies:
 
-PythonTools is internal today but will eventually be extracted into a standalone Linktech Engineering library.
+- `sudo_run` for privileged local execution  
+- `local_command` for non‑privileged local execution  
+- `SSHSession` for remote execution  
+- structured logging injection  
+- secrets injection  
+- consistent return structures  
+- reusable helpers (in progress)
+
+PythonTools is currently embedded within RunUpdates for rapid iteration, but it is architected for extraction into a standalone Linktech Engineering micro‑library.  
+Once extracted, RunUpdates, BotScanner, TimerDeck, and future tools will share a unified execution model.
 
 ## 🤝 Contributing
 
@@ -234,10 +280,14 @@ Pull requests are welcome.
 
 Please ensure:
 
-* consistent formatting
 * deterministic behavior
-* clear logging
-* no breaking changes to inventory schema
+* no breaking changes to the inventory schema
+* clear, structured logging
+* placeholder‑only examples
+* documentation updates for new features
+
+Full guidelines:
+![📄 CONTRIBUTING](CONTRIBUTING.md)
 
 ## 📄 License
 MIT License — see LICENSE for details.

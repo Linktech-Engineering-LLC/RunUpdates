@@ -43,7 +43,7 @@ class HostExecutor:
             self.logger.info(f"=== Running updates for {name} ===")
 
         # Ordered lifecycle steps
-        lifecycle = ["check", "refresh", "update", "clean", "reboot"]
+        lifecycle = ["refresh", "check", "update", "clean", "reboot"]
         skip_updates = False
 
         for step in lifecycle:
@@ -83,7 +83,9 @@ class HostExecutor:
                 if status in ("reboot_required", "restart_services", "reboot_and_restart"):
                     if self.logger:
                         self.logger.info(f"[{name}] Rebooting host due to status: {status}")
-                    session.run("reboot_now")
+                    boot = "reboot_now"
+                    bcmd = cmds.get(boot)
+                    status = self._run_step(session, host, boot, bcmd)
                     continue
 
             # refresh: success/error handled inside _run_step

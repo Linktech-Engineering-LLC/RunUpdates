@@ -17,6 +17,7 @@ RunUpdates is built around:
 - minimal dependencies  
 - audit‑friendly output  
 - explicit configuration (no magic)  
+- stable, documented interfaces  
 
 Please keep these principles in mind when proposing changes.
 
@@ -47,6 +48,7 @@ Please ensure:
 - code is deterministic and reproducible
 - functions remain small and explicit
 - no unnecessary dependencies are introduced
+- new features include documentation updates where appropriate
 
 ### 4. Run linting (if configured)
 
@@ -62,6 +64,7 @@ Your PR should include:
 - why it improves the project
 - any relevant test cases or examples
 - confirmation that it does not break existing inventories
+- notes on any new configuration fields or schema changes
 
 ## 📦 Inventory Schema Stability
 
@@ -80,6 +83,8 @@ Please avoid adding complexity unless it provides clear operational value.
 Do not include:
 
 - real hostnames
+- real addresses
+- real ports
 - real usernames
 - real passwords
 - real SSH keys
@@ -96,6 +101,8 @@ When adding new features:
 - test inventory flattening
 - test host selection logic
 - test error handling and logging output
+- test per‑host summary generation (if applicable)
+- test behavior on multiple distros (Debian-family, openSUSE, RedHat-family)
 
 ## 🗂 Project Structure
 
