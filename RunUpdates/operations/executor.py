@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-28
+ Modified: 2026-05-20
  File: RunUpdates/operations/executor.py
  Version: 1.0.0
  Description: Executes update commands on a host using a session object.
@@ -123,7 +123,7 @@ class HostExecutor:
                 cmd=command,
                 sudo_password=self.secrets.get("sudo_pass", "")
             )
-            exit_code, out, err = rc.as_tuple
+            out, exit_code, err = rc.as_tuple
         else:
             result = session.run(command)
             out, exit_code, err = result.as_tuple

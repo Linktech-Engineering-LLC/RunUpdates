@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-28
+ Modified: 2026-05-20
  File: RunUpdates/operations/orchestrator.py
  Version: 1.0.0
  Description: High-level coordinator for the RunUpdates execution pipeline.
@@ -92,6 +92,12 @@ class UpdateOrchestrator:
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"[{name}] Connection failed: {e}")
+                continue
+
+            # NEW: handle boolean/None returns
+            if not session:
+                if self.logger:
+                    self.logger.error(f"[{name}] Connection failed: no SSH session returned")
                 continue
 
             # 2c. Execute update lifecycle

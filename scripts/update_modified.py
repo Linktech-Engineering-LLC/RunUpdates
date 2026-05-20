@@ -5,9 +5,10 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 # RunUpdates Libraries
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 from RunUpdates.logging.factory import LoggerFactory
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_DIR = PROJECT_ROOT / "RunUpdates"
 IGNORE_FILE = PROJECT_ROOT / "ignore-list.txt"
 

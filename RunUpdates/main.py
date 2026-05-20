@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-04-28
+ Modified: 2026-05-17
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates
@@ -31,7 +31,13 @@ from .parser.vault import resolve_vault_password, resolve_vault_path
 
 class InventoryLoadError(Exception):
     pass
+def assert_not_root():
+    if os.geteuid() == 0:
+        raise RuntimeError("RunUpdates must not be executed as root")
 
+def assert_sudo_available(sudo_password):
+    if sudo_password is None:
+        raise RuntimeError("No sudo password available for non-root execution")
 def initialize_logging(context: dict) -> dict:
     """
     Initialize RunUpdates logging system:
@@ -149,7 +155,6 @@ def load_secrets(context: dict) -> dict:
 
     return secrets
     
-    
 def main():
     # --------------------------------------------------------------
     # 1. Parse CLI arguments
@@ -169,7 +174,8 @@ def main():
     # --------------------------------------------------------------
     cfg = load_inventory_file(context.get("inventory", ""), logger)
     secrets = load_secrets(context)
-
+    assert_sudo_available(secrets.get("sudo_pass"))
+    assert_not_root()
     inventory = cfg.get("inventory", {})
 
     # --------------------------------------------------------------
