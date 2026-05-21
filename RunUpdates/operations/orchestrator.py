@@ -27,16 +27,14 @@ class UpdateOrchestrator:
       - Shared execution tools from PythonTools
     """
 
-    def __init__(self, args, inventory_processor, secrets, inventory, logger=None):
+    def __init__(self, args,  secrets, inventory, logger=None):
         """
         :param args: Parsed CLI arguments
-        :param inventory_processor: InventoryProcessor instance
         :param secrets: Vault-loaded secrets (contains sudo password)
         :param inventory: Parsed inventory dictionary
         :param logger: Optional logger
         """
         self.args = args
-        self.proc = inventory_processor
         self.secrets = secrets
         self.inventory = inventory
         self.logger = logger

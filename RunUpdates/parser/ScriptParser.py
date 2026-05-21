@@ -10,24 +10,30 @@
  Version: 1.0.0
  Description: NMS_Tools-style command-line parser for RunUpdates (CLI-driven)
 """
-# System Libraries
+
 import argparse
 import os
 import sys
 from pathlib import Path
-# Project Libraries
-from ..core.constants import (
-    PROJECT_NAME, 
-    PROJECT_VERSION, 
-    LINUX_VERSION, 
+
+# RunUpdates-specific constants
+from RunUpdates.core.constants import (
+    PROJECT_NAME,
+    PROJECT_VERSION,
+    LINUX_VERSION,
+    INVENTORY_ENV,
     VAULT_PATH_ENV,
-)
-from ..utils.common import (
+    VAULT_PASSWORD_ENV,
     DEFAULT_INVENTORY_PATH,
     DEFAULT_LOG_DIR,
-    resolve_inventory_path
 )
-from .vault import resolve_vault_path, resolve_vault_password
+
+# RunUpdates-specific helpers
+from RunUpdates.utils.common import (
+    resolve_inventory_path,
+    resolve_vault_path,
+    resolve_vault_password_file,
+)
 
 # ------------------------------------------------------------
 # Project metadata
@@ -36,13 +42,13 @@ DESCRIPTION = (
     f"{PROJECT_NAME} version {PROJECT_VERSION} "
     "Manages System Patches and/or Updates"
 )
+
 # ------------------------------------------------------------
 # Formatter + Error Classes (NMS_Tools style)
 # ------------------------------------------------------------
 class CustomFormatter(
     argparse.RawTextHelpFormatter,
-    argparse.ArgumentDefaultsHelpFormatter
-    #argparse.RawDescriptionHelpFormatter,
+    argparse.ArgumentDefaultsHelpFormatter,
 ):
     def _get_help_string(self, action):
         help_text = action.help or ""
@@ -51,13 +57,19 @@ class CustomFormatter(
         if action.default in (None, False):
             return help_text
         return f"{help_text} (default: {action.default})"
+
+
 class CheckArgError(Exception):
     pass
+
+
 class CheckArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         print(f"ERROR: {message}\n")
         self.print_help()
         sys.exit(1)
+
+
 # ------------------------------------------------------------
 # ScriptParser (CLI-driven)
 # ------------------------------------------------------------
@@ -80,6 +92,7 @@ class ScriptParser:
         self._add_inventory_args()
         self._add_vault_args()
         self._add_update_args()
+
     # --------------------------------------------------------
     # Core Options
     # --------------------------------------------------------
@@ -104,6 +117,7 @@ class ScriptParser:
             action="version",
             version=f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}"
         )
+
     # --------------------------------------------------------
     # Inventory Options
     # --------------------------------------------------------
@@ -113,54 +127,59 @@ class ScriptParser:
         inv.add_argument(
             "-i", "--inventory",
             required=False,
-            default=DEFAULT_INVENTORY_PATH,
+            default=str(DEFAULT_INVENTORY_PATH),
             help="Path to inventory YAML file"
         )
 
         group = inv.add_mutually_exclusive_group()
 
         group.add_argument("--list-families", action="store_true",
-                        help="List all inventory families as JSON")
+                           help="List all inventory families as JSON")
 
         group.add_argument("--list-distros", action="store_true",
-                        help="List all distros for the selected family as JSON")
+                           help="List all distros for the selected family as JSON")
 
         group.add_argument("--list-hosts", action="store_true",
-                        help="List all hosts for the selected family/distro as JSON")
+                           help="List all hosts for the selected family/distro as JSON")
 
         group.add_argument("--list-inventory", action="store_true",
-                        help="Dump the full inventory block for the selected family/distro as JSON")
+                           help="Dump the full inventory block for the selected family/distro as JSON")
 
     # --------------------------------------------------------
     # Logging Options
     # --------------------------------------------------------
     def _add_logging_args(self):
         log = self.parser.add_argument_group("Logging Options")
+
         log.add_argument(
             "-l", "--log-dir",
             dest="log_dir",
-            default=DEFAULT_LOG_DIR,
+            default=str(DEFAULT_LOG_DIR),
             help="Folder containing the log file"
         )
+
         log.add_argument(
             "--log-max-mb",
             dest="log_max_mb",
             type=int,
             default=50,
-            help="Maximum size of logs in MB before rotation"           
+            help="Maximum size of logs in MB before rotation"
         )
+
         log.add_argument(
             "--compress-archive",
             dest="compress_archive",
             action="store_true",
-            help="Compress rotated Log"
+            help="Compress rotated log"
         )
+
         log.add_argument(
             "--delete-log",
             dest="delete_log",
             action="store_true",
             help="Remove rotated log"
         )
+
     # --------------------------------------------------------
     # Vault Options
     # --------------------------------------------------------
@@ -175,12 +194,10 @@ class ScriptParser:
         )
 
         vault.add_argument(
-            "--vault-password",
-            dest="vault_password",
-            help=(
-                "1. A string containing the password (least secure)\n"
-                "2. A path pointing to a file containing the password"
-            )
+            "--vault-password-file",
+            dest="vault_password_file",
+            required=False,
+            help="Path to file containing vault password"
         )
 
     # --------------------------------------------------------
@@ -193,19 +210,19 @@ class ScriptParser:
             "--family",
             choices=["linux"],
             default="linux",
-            help="Target operating system family (currently only 'linux' is supported)"
+            help="Target operating system family"
         )
 
         upd.add_argument(
             "--distro",
             required=False,
-            help="Target Linux distribution (ubuntu, debian, rocky, etc.)"
+            help="Target Linux distribution"
         )
-        
+
         upd.add_argument(
             "-H", "--host",
             required=False,
-            help="Target Host to be updateded"
+            help="Target host to update"
         )
 
         upd.add_argument(
@@ -213,27 +230,44 @@ class ScriptParser:
             action="store_true",
             help="Force update even if checks fail"
         )
+
     # --------------------------------------------------------
     # Parse + Validate
     # --------------------------------------------------------
     def parse(self):
         self.args = self.parser.parse_args()
-        self._validate()
-        self.args.log_dir = os.path.expanduser(self.args.log_dir)
+
+        # Resolve using RunUpdates logic
         self.args.inventory = resolve_inventory_path(self.args.inventory)
         self.args.vault_path = resolve_vault_path(self.args.vault_path)
-        self.args.vault_password = resolve_vault_password(self.args.vault_password)
+        self.args.vault_password_file = resolve_vault_password_file(self.args.vault_password_file)
+
+        self._validate()
         return self.args
 
+    # --------------------------------------------------------
+    # Validation
+    # --------------------------------------------------------
     def _validate(self):
-        
-        if not self.args.vault_path and not VAULT_PATH_ENV in os.environ:
-            raise CheckArgError("Missing required --vault-path")
-        # Additional validation will be added later
+
+        # Vault path required
+        if not self.args.vault_path and VAULT_PATH_ENV not in os.environ:
+            raise CheckArgError(
+                f"Missing required --vault-path or ${VAULT_PATH_ENV}"
+            )
+
+        # Vault password file required
+        if not self.args.vault_password_file and VAULT_PASSWORD_ENV not in os.environ:
+            raise CheckArgError(
+                f"Missing required --vault-password-file or ${VAULT_PASSWORD_ENV}"
+            )
+
+        # Inventory must exist
+        if not Path(self.args.inventory).exists():
+            raise CheckArgError(f"Inventory file not found: {self.args.inventory}")
 
     # --------------------------------------------------------
     # Accessor
     # --------------------------------------------------------
     def get_args(self):
         return self.args
-

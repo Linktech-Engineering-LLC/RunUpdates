@@ -6,7 +6,7 @@
  Company: Linktech Engineering LLC
  Created: 2026-04-13
  Modified: 2026-04-13
- File: RunUpdates/utils/BitmapFlags.py
+ File: PythonTools/utils/BitmapFlags.py
  Version: 1.0.0
  Description: Bitmap flag container for RunUpdates parser
 """

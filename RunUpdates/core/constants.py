@@ -8,36 +8,77 @@
 Modified: 2026-04-17
  File: RunUpdates/core/constants.py
  Version: 1.0.0
- Description: Description of this module
+ Description: 
+        RunUpdates-specific constants.
+        This file defines ONLY the constants and environment variable names
+        that belong to the RunUpdates project itself.
 """
-# System Libraries
+
+from pathlib import Path
 import platform
 import sys
-from pathlib import Path
-# Project Libraries
-from ..utils.common import read_project_file
+import tomllib
 
 # ------------------------------------------------------------
-# Project metadata
+# Project roots
 # ------------------------------------------------------------
-PROJECT_NAME = str(read_project_file("project.name"))
-PROJECT_VERSION = str(read_project_file("project.version"))
-LINUX_VERSION = platform.release()
+
+# Root of the RunUpdates package (…/RunUpdates/RunUpdates)
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+
+# Root of the RunUpdates repository (…/RunUpdates)
+PROJECT_ROOT = PACKAGE_ROOT.parent
+
+# ------------------------------------------------------------
+# Project metadata (from RunUpdates/pyproject.toml)
+# ------------------------------------------------------------
+
+def _read_project_file(key: str):
+    """Read a dotted key from RunUpdates' own pyproject.toml."""
+    project_path = PROJECT_ROOT / "pyproject.toml"
+    with project_path.open("rb") as f:
+        data = tomllib.load(f)
+
+    value = data
+    for part in key.split("."):
+        value = value[part]
+    return value
+
+PROJECT_NAME = str(_read_project_file("project.name"))
+PROJECT_VERSION = str(_read_project_file("project.version"))
+
+# ------------------------------------------------------------
+# System metadata
+# ------------------------------------------------------------
+
 PYTHON_VERSION = sys.version.split()[0]
+LINUX_VERSION = platform.release()
 
 # ------------------------------------------------------------
 # Environment variable prefix
 # ------------------------------------------------------------
+
 ENV_PREFIX = PROJECT_NAME.upper().replace("-", "_").replace(" ", "_")
+
 # ------------------------------------------------------------
-# Ansible environment variables
+# RunUpdates-specific environment variables
 # ------------------------------------------------------------
-INVENTORY_PATH=f"{ENV_PREFIX}_INVENTORY"
+
+INVENTORY_ENV = f"{ENV_PREFIX}_INVENTORY"
 VAULT_PATH_ENV = f"{ENV_PREFIX}_VAULT_PATH"
-VAULT_PASSWORD_FILE_ENV = f"{ENV_PREFIX}_VAULT_PASSWORD_FILE"
+VAULT_PASSWORD_ENV = f"{ENV_PREFIX}_VAULT_PASSWORD_FILE"
+
+# ------------------------------------------------------------
+# Default paths (RunUpdates-specific)
+# ------------------------------------------------------------
+
+DEFAULT_ETC_DIR = PACKAGE_ROOT / "etc"
+DEFAULT_LOG_DIR = PACKAGE_ROOT / "var" / "log"
+DEFAULT_INVENTORY_PATH = DEFAULT_ETC_DIR / "hosts.yml"
 
 # ------------------------------------------------------------
 # CLI defaults
 # ------------------------------------------------------------
+
 DEFAULT_INVENTORY_FORMAT = "yaml"
 DEFAULT_DISTRO = None

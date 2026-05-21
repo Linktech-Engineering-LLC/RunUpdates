@@ -14,7 +14,7 @@
 # System Libraries
 from typing import Optional
 # Project Libraries
-from PythonTools.net_tools import sudo_run
+from PythonTools.net.tools import sudo_run
 from PythonTools.sessions.ssh_sessions import SSHSession
 
 class HostExecutor:

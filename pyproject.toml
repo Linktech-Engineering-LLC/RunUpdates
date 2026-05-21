@@ -20,6 +20,7 @@ dependencies = [
     "packaging",
     "Pygments",
     "PyNaCl",
+    "PythonTools"
 ]
 
 [project.scripts]
@@ -27,5 +28,5 @@ dependencies = [
 runupdates = "RunUpdates.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["RunUpdates*", "PythonTools*"]
+include = ["RunUpdates*"]
 exclude = ["data*", "Logs*", "archive*"]

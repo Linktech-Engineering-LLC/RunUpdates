@@ -9,150 +9,107 @@ Modified: 2026-04-15
  File: RunUpdates/utils/common.py
  Version: 1.0.0
  Description: Description of this module
+        RunUpdates-specific utility functions.
+        This module contains ONLY logic that belongs to the RunUpdates project.
+        Generic helpers live in PythonTools.utils.common.
 """
-# System imports
-import json
+
 import os
-import tomllib
-import yaml
 from pathlib import Path
 from datetime import datetime
-# Project imports 
 
-# Package Constants => Unable to import from core.constants
-PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = PACKAGE_ROOT.parent
-DEFAULT_LOG_DIR = PACKAGE_ROOT / "var" / "log"
-DEFAULT_INVENTORY_PATH = PACKAGE_ROOT / "etc"
+# Import generic helpers from PythonTools
+from PythonTools.utils.common import (
+    load_yaml,
+    load_json,
+    string_to_dictionary,
+    dict_to_string,
+    coerce_bool,
+    parse_size,
+    resolve_path,
+)
+
+# Import RunUpdates-specific constants
+from RunUpdates.core.constants import (
+    INVENTORY_ENV,
+    VAULT_PATH_ENV,
+    VAULT_PASSWORD_ENV,
+    DEFAULT_INVENTORY_PATH,
+)
+
+
+# ------------------------------------------------------------
+# Timestamp helper (RunUpdates-specific formatting)
+# ------------------------------------------------------------
 
 def current_timestamp() -> str:
-    # Detect system timezone automatically
-    return datetime.now.strftime("%Y-%m-%dT%H:%M:%S %Z%z")
+    """Return a timezone-aware timestamp in ISO format."""
+    return datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S %Z%z")
 
-def parse_size(size_str: str) -> int:
-    size_str = size_str.upper()
-    if size_str.endswith("KB"):
-        return int(size_str[:-2]) * 1024
-    elif size_str.endswith("MB"):
-        return int(size_str[:-2]) * 1024 * 1024
-    elif size_str.endswith("GB"):
-        return int(size_str[:-2]) * 1024 * 1024 * 1024
-    return int(size_str)
 
-def read_project_file(key: str):
+# ------------------------------------------------------------
+# Inventory resolution logic (RunUpdates-specific)
+# ------------------------------------------------------------
+
+def resolve_inventory_path(args_inventory: str | None) -> str:
     """
-    Read a value from pyproject.toml using a dotted key path.
-    Example: "project.name" or "project.version"
-    """
-    project_path = PROJECT_ROOT / "pyproject.toml"
-    with project_path.open("rb") as f:
-        data = tomllib.load(f)
+    Determine the inventory path using RunUpdates rules.
 
-    # Walk the dotted key path
-    parts = key.split(".")
-    value = data
-    for part in parts:
-        if part not in value:
-            raise KeyError(f"Key '{key}' not found in pyproject.toml")
-        value = value[part]
-    return value
-
-INVENTORY_PATH=f"{str(read_project_file("project.name")).upper().replace("-", "_").replace(" ", "_")}_INVENTORY"
-
-def resolve_inventory_path(args_inventory: str) -> str:
-    """
     Priority:
-    1. CLI argument (if user explicitly set it)
-    2. Environment variable (if CLI is still default)
-    3. Default path (if neither override)
+      1. CLI argument (if provided)
+      2. Environment variable RUNUPDATES_INVENTORY
+      3. Default inventory path under RunUpdates/etc
     """
+    # Case 1: CLI argument provided
+    if args_inventory:
+        return str(resolve_path(args_inventory))
 
-    env_value = os.environ.get(INVENTORY_PATH)
-
-    # Case 1: User explicitly provided --inventory
-    if args_inventory != DEFAULT_INVENTORY_PATH:
-        return str(Path(args_inventory).expanduser())
-
-    # Case 2: CLI is default AND environment variable is set
+    # Case 2: Environment variable
+    env_value = os.getenv(INVENTORY_ENV)
     if env_value:
-        return str(Path(env_value).expanduser())
+        return str(resolve_path(env_value))
 
-    # Case 3: No overrides → use default
-    return str(Path(DEFAULT_INVENTORY_PATH).expanduser())
+    # Case 3: Default
+    return str(resolve_path(DEFAULT_INVENTORY_PATH))
 
-def string_to_dictionary(value: str) -> dict:
+
+# ------------------------------------------------------------
+# Vault path resolution (RunUpdates-specific)
+# ------------------------------------------------------------
+
+def resolve_vault_path(args_vault: str | None) -> str | None:
     """
-    Parse a config string like:
-      'ipfilter=botfilter,manager.name=firewalld,manager.timeout=1h,kernel.nam>
-    into a dict with nested keys.
+    Determine the vault path using RunUpdates rules.
 
-    Handles commas inside braces by tracking nesting depth.
-    Coerces values: "None"->None, "True"/"False"->bool, numeric strings->int/f>
+    Priority:
+      1. CLI argument
+      2. Environment variable RUNUPDATES_VAULT_PATH
+      3. None (caller must validate)
     """
-    if not value:
-        return {}
+    if args_vault:
+        return str(resolve_path(args_vault))
 
-    result = {}
-    parts = []
-    buf = []
-    depth = 0
+    env_value = os.getenv(VAULT_PATH_ENV)
+    if env_value:
+        return str(resolve_path(env_value))
 
-    # Split only on top-level commas
-    for ch in value:
-        if ch in "{[":
-            depth += 1
-            buf.append(ch)
-        elif ch in "}]":
-            depth -= 1
-            buf.append(ch)
-        elif ch == "," and depth == 0:
-            parts.append("".join(buf).strip())
-            buf = []
-        else:
-            buf.append(ch)
-    if buf:
-        parts.append("".join(buf).strip())
+    return None
 
-    def coerce(val: str):
-        if val == "None":
-            return None
-        if val.lower() in ("true", "false"):
-            return val.lower() == "true"
-        try:
-            if "." in val:
-                return float(val)
-            return int(val)
-        except ValueError:
-            return val
 
-    for part in parts:
-        if "=" not in part:
-            continue
-        key, raw_val = part.split("=", 1)
-        val = coerce(raw_val.strip())
+def resolve_vault_password_file(args_password_file: str | None) -> str | None:
+    """
+    Determine the vault password file path.
 
-        # Support dotted keys for nested dicts
-        keys = key.strip().split(".")
-        d = result
-        for k in keys[:-1]:
-            if k not in d or not isinstance(d[k], dict):
-                d[k] = {}
-            d = d[k]
-        d[keys[-1]] = val
+    Priority:
+      1. CLI argument
+      2. Environment variable RUNUPDATES_VAULT_PASSWORD_FILE
+      3. None
+    """
+    if args_password_file:
+        return str(resolve_path(args_password_file))
 
-    return result
+    env_value = os.getenv(VAULT_PASSWORD_ENV)
+    if env_value:
+        return str(resolve_path(env_value))
 
-def dict_to_string(d: dict) -> str:
-    return ",".join(f"{k}={v}" for k, v in d.items())
-
-def coerce_bool(val: str) -> bool:
-    return str(val).lower() in ("1", "true", "yes", "on")
-
-def load_yaml(path: str) -> dict:
-    with open(Path(path), "r") as f:
-        return yaml.safe_load(f)
-
-def load_json(path: str) -> dict:
-    with open(Path(path), "r") as f:
-        return json.load(f)
-
+    return None
