@@ -1,12 +1,21 @@
 # RunUpdates Roadmap
 
 ## Current Phase
-**Status:** Under Construction  
-RunUpdates is in active development, focused on building a deterministic, YAML‑driven update orchestration engine for Linux hosts. The priority is establishing a stable execution pipeline, consistent inventory model, and reliable SSH session handling.
-
+**Status**: Active Development
+RunUpdates now has a stable execution pipeline, a normalized inventory model, and a reliable SSH/local session layer via PythonTools.
+The current focus is expanding backend support, improving observability, and preparing for structured output in the next release.
 ---
 
 ## Near‑Term Goals (Pre‑Release)
+
+### Check Operation Enhancements
+
+* Add backend‑specific parsing for update availability:
+  * **zypper**: extract total + security patch counts
+  * **dnf**: detect update table + advisories
+  * **apt**: parse upgrade summary + security origins
+* Return a unified structured result to the orchestrator
+* Improve exit‑code classification consistency across backends
 
 ### Core Functionality
 - Finalize the `hosts.yml` schema for distro blocks  
@@ -16,41 +25,51 @@ RunUpdates is in active development, focused on building a deterministic, YAML�
 - Improve error handling and deterministic failure states  
 
 ### Inventory & Execution
-- Normalize inventory traversal logic  
-- Add validation for host entries (addresses, ports, enabled flags)  
-- Improve Debug mode output for multi‑host runs  
-- Add support for non‑standard SSH ports at the distro or host level  
+* Finalize normalized inventory structure
+* Improve validation for host entries (addresses, ports, enabled flags)
+* Improve debug output for multi‑host runs
+* Add support for non‑standard SSH ports at the distro or host level
+* Add optional tags for host grouping (planned)
 
 ### Documentation
-- Add README examples for openSUSE, Debian-family, and RedHat-family  
-- Add schema documentation for `hosts.yml`  
-- Add troubleshooting section for SSH, permissions, and exit codes  
+* Update README with corrected lifecycle
+* Add schema documentation for hosts.yml
+* Add troubleshooting section for SSH, permissions, and exit codes
+* Add backend‑specific examples (openSUSE, Debian-family, RedHat-family)
 
 ---
 
 ## Mid‑Term Goals (Architecture & Features)
 
 ### Inventory Model Evolution
-- Introduce full family hierarchy:  
-  `linux → family → distro → hosts`  
-- Add migration path for existing flat inventories  
-- Add schema versioning for future compatibility  
+* Add schema versioning for future compatibility
+* Add migration path for older inventories
+* Add richer host metadata (tags, roles, groups)
 
 ### Repository & Key Management
 - Add support for importing vendor GPG keys (including Linktech Engineering key)  
 - Add repo definitions to `hosts.yml`  
 - Add lifecycle ordering: import keys → add repos → refresh → update  
 
+### Structured Output & Summaries
+* Add per‑host JSON summaries
+* Include:
+  * refresh/check/update/clean/reboot results
+  * exit codes + classifications
+  * timestamps
+  * update counts (once parsing is implemented)
+* Add optional machine‑readable fleet summary
+
 ### Execution Enhancements
-- Add dry‑run diff output (planned vs actual operations)  
-- Add per‑host execution summaries (JSON)  
-- Add pre‑ and post‑update “list updates” capture for package counts  
-- Add parallel execution mode with concurrency limits  
+* Add dry‑run diff output (planned vs actual operations)
+* Add pre‑ and post‑update “list updates” capture
+* Add parallel execution mode with concurrency limits
+* Improve reboot classification across distros
 
 ### Testing & Validation
-- Add nightly validation harness  
-- Add multi‑host test matrix (Debian, Ubuntu, openSUSE, RedHat-family)  
-- Add mock SSH backend for local testing  
+* Add nightly validation harness
+* Add multi‑host test matrix (Debian, Ubuntu, openSUSE, RedHat-family)
+* Add mock SSH backend for local testing
 
 ---
 
@@ -60,16 +79,19 @@ RunUpdates is in active development, focused on building a deterministic, YAML�
 - Publish RunUpdates v0.9 (feature‑complete beta)  
 - Publish RunUpdates v1.0 (stable release)  
 
+### PythonTools Integration
+* Continue stabilizing PythonTools as a standalone micro‑library
+* Ensure RunUpdates, BotScanner, TimerDeck, and future tools consume PythonTools consistently
+* Expand PythonTools session layer (timeouts, retries, diagnostics)
+
 ### Architecture & Refactoring
 - Export PythonTools into its own standalone repository once the API surface stabilizes  
 - Update RunUpdates to import PythonTools as an external dependency  
 
 ### Integration & Ecosystem
-- Establish PythonTools as a shared library for future Linktech Engineering projects  
-- Ensure RunUpdates, BotScanner, and future tools can consume PythonTools consistently  
-- Add optional web dashboard for update status visualization (read‑only)  
-- Provide structured per‑host summary files (JSON) to enable external tools, dashboards, or monitoring systems to consume RunUpdates results without requiring direct integration  
-- Evaluate optional read‑only diagnostics endpoints (no remote execution, no control surface)  
+* Add optional web dashboard for update status visualization (read‑only)
+* Provide structured per‑host summary files for dashboards and monitoring systems
+* Evaluate optional read‑only diagnostics endpoints (no remote execution)
 
 ### Advanced Features
 - Add rollback hooks for supported distros  
@@ -83,3 +105,4 @@ RunUpdates is in active development, focused on building a deterministic, YAML�
 - Evaluate support for Windows hosts (PowerShell remoting)  
 - Evaluate container‑based update execution for isolated testing  
 - Explore package‑level dependency graph visualization  
+- Investigate optional REST API for read‑only fleet status

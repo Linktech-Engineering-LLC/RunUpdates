@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-05-20
+ Modified: 2026-05-22
  File: RunUpdates/operations/executor.py
  Version: 1.0.0
  Description: Executes update commands on a host using a session object.
@@ -52,7 +52,7 @@ class HostExecutor:
                 continue
 
             # Skip update steps if up-to-date
-            if skip_updates and step in ("refresh", "update", "clean"):
+            if skip_updates and step in ("refresh", "update"):
                 continue
 
             status = self._run_step(session, host, step, command)

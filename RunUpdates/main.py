@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-17
+ Modified: 2026-05-22
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates
@@ -27,9 +27,9 @@ import yaml
 
 # RunUpdates imports
 from RunUpdates.parser import ScriptParser
+from RunUpdates.ansible.loader import RunUpdatesInventoryLoader
 from RunUpdates.core.constants import (
     PROJECT_NAME,
-    PROJECT_VERSION,
 )
 from RunUpdates.utils.common import (
     resolve_inventory_path,
@@ -40,10 +40,12 @@ from RunUpdates.utils.common import (
 # PythonTools imports (generic only)
 from PythonTools.logging.helpers import (
     init_logger,
+    resolve_paths,
+    build_log_cfg,
     register_custom_levels
 )
 from PythonTools.ansible.vault import VaultLoader, VaultError
-from PythonTools.ansible.loader import GenericInventoryLoader, InventoryError
+from PythonTools.ansible.loader import InventoryLoadError
 # RunUpdates components
 from RunUpdates.operations.listops import ListOperations
 from RunUpdates.operations.orchestrator import UpdateOrchestrator
@@ -52,9 +54,6 @@ from RunUpdates.operations.orchestrator import UpdateOrchestrator
 # ------------------------------------------------------------
 # Safety checks
 # ------------------------------------------------------------
-
-class InventoryLoadError(Exception):
-    pass
 
 
 def assert_not_root():
@@ -71,12 +70,12 @@ def assert_sudo_available(sudo_password):
 # Logging initialization
 # ------------------------------------------------------------
 
-def initialize_logging(context: dict) -> dict:
+def initialize_logging(context: dict, paths: dict) -> dict:
     """
     Initialize RunUpdates logging system.
     """
-
-    paths, log_cfg, logger_factory = init_logger(context)
+    log_cfg = build_log_cfg(paths, context)
+    logger_factory = init_logger(log_cfg, paths["PROJECT_NAME"])
 
     register_custom_levels(log_cfg)
 
@@ -187,35 +186,32 @@ def main():
     parser = ScriptParser()
     args = parser.parse()
     context = vars(args)
+    paths = resolve_paths(__file__)
 
     # 2. Initialize logging
-    logging_ctx = initialize_logging(context)
+    logging_ctx = initialize_logging(context, paths)
     logger = logging_ctx["logger"]
 
-    # 3. Load raw inventory YAML
-    inv_path = Path(resolve_inventory_path(context.get("inventory", "")))
-    # Load raw YAML
-    raw_inventory = load_inventory_file(inv_path, logger)
-    
-    # 4. Load secrets
+    # 3. Load secrets
     secrets = load_secrets(context)
 
     assert_sudo_available(secrets.get("sudo_pass"))
     assert_not_root()
 
-    # 5. Schema path
+    # 4. Schema path
+    inv_path = Path(resolve_inventory_path(context.get("inventory", "")))
     schema_path = Path(__file__).resolve().parent / "schema" / "hosts.schema.yml"
 
-    # 6. Initialize schema-driven loader
-    loader = GenericInventoryLoader(
+    # 5. Initialize schema-driven loader
+    loader = RunUpdatesInventoryLoader(
         inventory_path=inv_path,
         schema_path=schema_path
     )
-    # 7. Normalize inventory into host objects
+    # 6. Normalize inventory into host objects
     normalized_inventory = loader.normalize()
 
-    # 8. List operations (raw inventory)
-    listops = ListOperations(raw_inventory, logger)
+    # 7. List operations (raw inventory)
+    listops = ListOperations(loader.raw_yaml, logger)
 
     dispatch = {
         "list_families": lambda: print(listops.list_families()),

@@ -1,7 +1,7 @@
 # RunUpdates — Execution Flow
 
 This document describes the full execution lifecycle of RunUpdates, from startup to final result aggregation.  
-It complements `ARCHITECTURE.md` by focusing on *when* each component runs and *how* the system behaves during a complete update cycle.
+It complements [ARCHITECTURE.md] by focusing on *when* each component runs and *how* the system behaves during a complete update cycle.
 
 RunUpdates is designed to be deterministic, predictable, and operator‑grade.  
 The execution flow reflects these principles.
@@ -28,20 +28,19 @@ A full RunUpdates execution follows this sequence:
 
 1. Load inventory
 2. Validate schema
-3. Build execution plans
+3. Normalize inventory
 4. Initialize logging
-5. Iterate through hosts
-6. Create session (local or SSH)
-7. Pre‑update list
-8. Update execution
-9. Post‑update list
-10. Reboot detection
-11. Summary generation
-12. Logging
+5. Select hosts
+6. Iterate through hosts
+7. Create session (local or SSH)
+8. refresh
+9. check
+10. update (only if needed)
+11. clean
+12. reboot detection
 13. Final aggregation
 
-
-Each step is deterministic and produces structured output.
+Each step is deterministic and produces structured logs.
 
 ---
 
@@ -49,13 +48,12 @@ Each step is deterministic and produces structured output.
 
 ## 3.1 Load Inventory
 
-RunUpdates loads `hosts.yml` and parses it into an internal structure.
+RunUpdates loads [hosts.yml] using the **RunUpdatesInventoryLoader**.
 
 Actions:
-
-- read YAML  
-- normalize hierarchy  
-- prepare family/distro/host mappings  
+* read YAML
+* load raw structure
+* prepare for validation
 
 Failures here stop execution immediately.
 
@@ -64,296 +62,233 @@ Failures here stop execution immediately.
 ## 3.2 Validate Schema
 
 Validation ensures:
-
-- required fields exist  
-- types are correct  
-- no unknown keys  
-- no empty blocks  
-- no invalid ports  
-- no missing usernames  
-- no disabled hosts selected for execution  
+* required fields exist
+* types are correct
+* no unknown keys
+* no invalid ports
+* no malformed host entries
 
 If validation fails:
-
-- an error is logged  
-- execution stops before any host is contacted  
+* an error is logged
+* execution stops before any host is contacted
 
 ---
 
-## 3.3 Build Execution Plans
+## 3.3 Normalize Inventory
 
-The selector constructs a **HostExecutionPlan** for each enabled host.
+The loader performs:
+* inheritance merging
+* flattening
+* normalization into host entries
 
-Each plan contains:
+Two representations are produced:
+* [raw_yaml] — used for list operations
+* [normalized] — used for orchestration
 
-- host metadata  
-- distro metadata  
-- resolved commands  
-- connection parameters  
-
-This step is deterministic and produces a stable ordering.
+The orchestrator receives only normalized hosts.
 
 ---
 
 ## 3.4 Initialize Logging
 
 RunUpdates:
-
-- creates a timestamped log file  
-- injects its logger into PythonTools  
-- writes initial lifecycle entries  
+* resolves log paths
+* initializes logging with explicit paths
+* injects logger into PythonTools
+* writes initial lifecycle entries
 
 PythonTools never initializes logging on its own.
 
 ---
 
-## 3.5 Iterate Through Hosts
+## 3.5 Select Hosts
+
+The selector filters normalized hosts based on CLI arguments:
+* --family
+* --distro
+* --host
+
+If no hosts match, execution stops with an error.
+
+---
+
+## 3.6 Iterate Through Hosts
 
 Hosts are processed in deterministic order:
-
-- as defined by the inventory  
-- with no parallelism (current version)  
+* as defined by the normalized inventory
+* with no parallelism (current version)
 
 Future versions will allow concurrency while preserving per‑host ordering.
 
 ---
 
-## 3.6 Create Session
+## 3.7 Create Session
 
 For each host:
-
-- `LocalSession` is used for local mode  
-- `SSHSession` is used for remote hosts  
+* [LocalSession] is used for local mode
+* [SSHSession] is used for remote hosts
 
 Session creation logs:
-
-- connection attempt  
-- success or failure  
-- authentication method used (non‑sensitive)  
+* connection attempt
+* success or failure
+* authentication method (non‑sensitive)
 
 If session creation fails:
-
-- the host is marked as failed  
-- execution continues to the next host  
+* the host is marked as failed
+* execution continues to the next host
 
 ---
 
-## 3.7 Pre‑Update List
+# 4. Lifecycle Stages
 
-RunUpdates executes the distro’s “list updates” command.
+The executor runs the deterministic lifecycle:
+
+[refresh → check → update? → clean → reboot?]
+
+Each stage logs:
+* command
+* exit code
+* stdout/stderr
+* classification
+* timing
+
+## 4.1 refresh
+
+Runs the distro’s refresh/update‑metadata command.
 
 Examples:
+* [zypper refresh]
+* [apt update]
+* [dnf check-update]
 
-- `zypper lu`
-- `apt list --upgradable`
-- `dnf check-update`
+If refresh fails:
+* host is marked as failed
+* execution continues
 
-Captured:
+## 4.2 check
 
-- `available_before`  
-- exit code  
-- stdout/stderr  
-
-This establishes a baseline for update counts.
-
----
-
-## 3.8 Update Execution
-
-RunUpdates executes the distro’s update command.
+Runs the distro’s “check for updates” command.
 
 Examples:
+* [zypper patch-check]
+* [apt list --upgradable]
+* [dnf check-update]
 
-- `zypper --non-interactive up --auto-agree-with-licenses --recommends --replacefiles --allow-vendor-change`
-- `apt upgrade -y`
-- `dnf upgrade -y`
+Current behavior:
+* exit‑code interpretation only
+* no parsing of update counts yet
+
+Future versions will add:
+* total update count
+* security update count
+* structured JSON result
+
+## 4.3 update (conditional)
+
+Runs only if the check stage indicates updates are available.
+
+Examples:
+* [zypper up]
+* [apt upgrade -y]
+* [dnf upgrade -y]
+
+Failures here do not stop execution for other hosts.
+
+## 4.4 clean
+
+Runs the distro’s cleanup command.
+
+Examples:
+* [zypper clean]
+* [apt autoremove]
+* [dnf clean all]
+
+This stage always runs, even if update failed.
+
+---
+
+## 4.5 reboot detection
+
+Checks distro‑specific reboot indicators.
+
+Examples:
+* [openSUSE: zypper needs-rebooting]
+* [Debian/Ubuntu: /var/run/reboot-required]
+* [RedHat-family: needs-restarting -r]
 
 Captured:
-
-- exit code  
-- stdout/stderr  
-- classification (from exit‑code model)  
-
-Failures here do **not** stop execution for other hosts.
+* [reboot_required: true/false]
 
 ---
 
-## 3.9 Post‑Update List
+#  5. Final Aggregation
 
-RunUpdates executes the list command again.
-
-Captured:
-
-- `available_after`  
-- `updated_count = before - after`  
-
-This provides deterministic update metrics.
-
----
-
-## 3.10 Reboot Detection
-
-RunUpdates checks distro‑specific reboot indicators:
-
-- openSUSE: zypper exit codes or `/var/run/reboot-required`
-- Debian/Ubuntu: `/var/run/reboot-required`
-- RedHat-family: `needs-restarting -r`
-
-Captured:
-
-- `reboot_required: true/false`
-
----
-
-## 3.11 Summary Generation
-
-A structured JSON summary is written per host:
-
-/var/log/runupdates/summaries/<hostname>.json
-
-
-Contains:
-
-- host metadata  
-- timestamps  
-- exit code  
-- package counts  
-- reboot_required  
-- errors (if any)  
-
-Summaries are designed for:
-
-- dashboards  
-- monitoring systems  
-- external automation  
-
-They are separate from operator logs.
-
----
-
-## 3.12 Logging
-
-Every stage logs:
-
-- command start  
-- command end  
-- exit codes  
-- errors  
-- timing  
-- classifications  
-
-Logs are chronological and append‑only.
-
-### Parallel Execution Ordering Guarantee (Future)
-
-When concurrency is introduced:
-
-- each host’s log entries remain internally ordered  
-- cross‑host interleaving may occur  
-- determinism is preserved per host  
-
----
-
-## 3.13 Final Aggregation
-
-RunUpdates aggregates all host results into a final in‑memory structure:
-
-- total hosts  
-- successes  
-- failures  
-- reboot_required list  
-- update counts  
+RunUpdates aggregates all host results into an in‑memory structure:
+* total hosts
+* successes
+* failures
+* reboot_required list
 
 This is returned to the caller (CLI or API wrapper).
 
+Future versions will add:
+* per‑host JSON summaries
+* machine‑readable fleet summary
+
 ---
 
-# 4. Error Handling Flow
+# 6. Error Handling Flow
 
 RunUpdates uses deterministic error handling.
 
-## 4.1 Inventory Errors
+## 6.1 Inventory Errors
+* stop execution immediately
+* no hosts are contacted
 
-- stop execution immediately  
-- no hosts are contacted  
+## 6.2 Connection Errors
+* host marked as failed
+* execution continues
 
-## 4.2 Connection Errors
-
-- host marked as failed  
-- execution continues  
-
-## 4.3 Command Errors
-
-- logged with classification  
-- host continues through remaining steps  
-
-## 4.4 Summary Errors
-
-- logged  
-- do not affect other hosts  
+## 6.3 Command Errors
+* logged with classification
+* host continues through remaining stages
 
 RunUpdates never silently ignores errors.
 
 ---
 
-# 5. Determinism Guarantees
+# 7. Determinism Guarantees
 
 RunUpdates guarantees:
-
-- stable host ordering  
-- stable command ordering  
-- stable logging format  
-- no implicit defaults  
-- no hidden behavior  
-- reproducible results  
+* stable host ordering
+* stable lifecycle ordering
+* stable logging format
+* no implicit defaults
+* no hidden behavior
+* reproducible results
 
 Given the same inventory and environment, RunUpdates produces the same output.
 
 ---
 
-# 6. Parallel Execution (Future)
+# 8. Parallel Execution (Future)
 
 Parallel execution will introduce:
+* concurrency limits
+* per‑host execution threads
+* grouped logging
+* deterministic ordering per host
 
-- concurrency limits  
-- per‑host execution threads  
-- grouped logging  
-- deterministic ordering per host  
-
-The execution flow remains the same; only scheduling changes.
-
----
-
-# 7. Example Timeline (Abstract)
-
-```
-14:00:01 Load inventory
-14:00:01 Validate schema
-14:00:02 Build execution plans
-14:00:02 Initialize logging
-
-14:00:03 Host A: session start
-14:00:03 Host A: pre‑update list
-14:00:04 Host A: update execution
-14:00:20 Host A: post‑update list
-14:00:21 Host A: reboot detection
-14:00:21 Host A: summary written
-
-14:00:22 Host B: session start
-```
-
-
-This example uses placeholders only.
+The lifecycle remains unchanged; only scheduling changes.
 
 ---
 
-# 8. Summary
+# 9. Summary
 
 The RunUpdates execution flow is:
-
-- explicit  
-- deterministic  
-- auditable  
-- operator‑grade  
+* explicit
+* deterministic
+* auditable
+* operator‑grade
 
 This document defines the authoritative lifecycle for all update operations.

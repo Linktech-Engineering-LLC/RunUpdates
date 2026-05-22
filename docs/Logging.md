@@ -29,27 +29,25 @@ Logging is not optional and not configurable — it is a core part of the system
 
 RunUpdates uses two layers:
 
-1. RunUpdates LoggingFactory (project‑specific)
-
+### 2.1 RunUpdates Logging Layer (project‑specific)
 Responsible for:
-
-* creating the logger
-* setting log file paths
+* resolving log paths
+* initializing the logger
 * formatting messages
 * writing structured entries
 * redacting sensitive fields
 
-2. PythonTools Logging Interface (project‑agnostic)
+RunUpdates fully controls logging behavior.
+
+### 2.2 PythonTools Logging Interface (project‑agnostic)
 
 Responsible for:
-
 * receiving an injected logger
 * providing _NullLogger fallback
 * exposing a minimal logging API
 * never initializing logging itself
 
 PythonTools does not know:
-
 * where logs are stored
 * how logs are formatted
 * what the project’s logging policy is
@@ -126,21 +124,14 @@ Every command executed by RunUpdates is logged with:
 
 This ensures complete auditability.
 
-### Relationship to Per‑Host Summaries
+### Note on Summaries
 
-RunUpdates produces two separate forms of output:
-
-- **Operator logs** — chronological, human‑readable logs describing the execution flow
-- **Per‑host summaries** — structured JSON artifacts intended for dashboards, monitoring tools, or external automation
-
-Operator logs record *events*.  
-Summaries record *results*.  
-
-These two outputs are intentionally separate to preserve clarity and auditability.
+Per‑host summaries are planned, but not yet implemented.
+Operator logs are currently the authoritative record of execution.
 
 ## 🔐 6. Redaction Rules
 
-RunUpdates never logs:
+RunUpdates **never logs**:
 
 * passwords
 * sudo prompts
@@ -156,7 +147,7 @@ If a command contains a password (rare), it is redacted before logging.
 
 PythonTools exposes a minimal logging API:
 
-```python
+```Python
 logger.debug(...)
 logger.info(...)
 logger.warning(...)
@@ -169,8 +160,7 @@ logger.command_error(host, step, exit_code, stderr)
 
 ### PythonTools responsibilities:
 
-call the logger at the correct times
-
+* call the logger at the correct times
 * pass structured data
 * never format messages itself
 * never write files
@@ -216,20 +206,45 @@ ERROR: No valid authentication method available
 Errors never stop the pipeline unless they occur before execution begins.
 
 ## 🧭 9. Log File Structure
-RunUpdates typically writes logs to:
+
+RunUpdates writes logs to a stable, non‑timestamped log file:
+
+Code
 
 ```Code
 logs/
-  runupdates-2026-04-19.log
+  runupdates.log
 ```
 
-Each run produces:
+This file is append‑only and persists across runs.
 
-* a timestamped log file
-* deterministic ordering
-* one entry per command per host
+### Log Rotation and Archival
+Timestamped log files are **only created when logs are archived**.
 
-Parallel execution (future) will preserve ordering per host.
+Archived logs use date‑only filenames in the format:
+
+`logs/archive/runupdates-YYYYMMDD.log`
+
+Examples:
+
+`runupdates-20260522.log`
+`runupdates-20260523.log`
+
+This ensures:
+* deterministic naming
+* clean daily grouping
+* predictable sorting
+* consistency with other Linktech Engineering tools
+
+RunUpdates does not currently perform automatic rotation; archival support is planned for a future release.
+
+### Determinism Guarantees
+* Each run appends to the same active log file
+* Archived logs preserve the exact state of the file at the time of rotation
+* Ordering is strictly chronological
+* No log entries are overwritten
+
+Parallel execution (future) will preserve ordering per host, even if cross‑host interleaving occurs.
 
 ### Parallel Execution Ordering Guarantees
 
@@ -244,5 +259,3 @@ Cross‑host interleaving may occur, but never within a single host’s sequence
 * structured event IDs
 * parallel execution log grouping
 * log streaming for UI integrations
-
-PythonTools extraction into standalone library

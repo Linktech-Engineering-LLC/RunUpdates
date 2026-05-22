@@ -1,6 +1,6 @@
 # RunUpdates Architecture
 
-RunUpdates is a deterministic, YAML‑driven update orchestration engine designed for Linux hosts.  
+RunUpdates is a deterministic, YAML‑driven update orchestrator for Linux hosts.
 Its architecture emphasizes clarity, reproducibility, and operator‑grade behavior.
 
 This document describes the internal structure of RunUpdates, the execution pipeline, and the responsibilities of each component.
@@ -11,12 +11,12 @@ This document describes the internal structure of RunUpdates, the execution pipe
 
 RunUpdates is built around:
 
-- **Deterministic execution** — no hidden behavior, no implicit defaults  
-- **Explicit configuration** — all behavior originates from `hosts.yml`  
-- **Minimal dependencies** — pure Python + standard libraries where possible  
-- **Structured logging** — predictable, machine‑readable output  
-- **Separation of concerns** — each module has a single responsibility  
-- **Audit‑friendly operation** — logs and summaries reflect exactly what happened  
+* **Deterministic execution** — no hidden behavior, no implicit defaults  
+* **Explicit configuration** — all behavior originates from `hosts.yml`  
+* **Minimal dependencies** — pure Python + standard libraries where possible  
+* **Structured logging** — predictable, machine‑readable output  
+* **Separation of concerns** — each module has a single responsibility  
+* **Audit‑friendly operation** — logs and summaries reflect exactly what happened  
 
 ---
 
@@ -28,36 +28,33 @@ Inventory → Selector → Connector → Executor → Orchestrator
 
 Each layer transforms structured input into structured output, with no side effects outside its scope.
 
-### 2.1 Inventory Layer (`hosts.yml`)
-The inventory defines:
+### 2.1 Inventory Loader ([inventory/loader.py])
 
-- families (e.g., `debian-family`)
-- distros (e.g., `ubuntu`, `opensuse-tumbleweed`)
-- hosts (address, port, username, enabled flag)
-- optional repo and key definitions (future)
+The **RunUpdatesInventoryLoader** is responsible for:
+* loading hosts.yml
+* schema validation
+* inheritance merging
+* normalization into flattened host entries
+* exposing both:
+  * raw_yaml (for list operations)
+  * normalized inventory (for orchestration)
 
-The inventory is parsed into a normalized internal structure before execution begins.
+This loader fully replaces the old InventoryProcessor.
 
-### 2.2 Selector Layer (`operations/selector.py`)
+### 2.2 Selector Layer ([operations/selector.py])
+
 Responsible for:
+* filtering normalized hosts based on CLI arguments
+* validating that selected hosts exist
+* returning a list of host execution targets
 
-- flattening the inventory hierarchy  
-- resolving family → distro → host relationships  
-- filtering hosts based on CLI arguments  
-- validating host entries  
+The selector **no longer performs flattening or inheritance resolution**.
 
-The selector produces a list of **HostExecutionPlan** objects, each containing:
+### 2.3 Connector Layer ([operations/connector.py])
 
-- host metadata  
-- distro metadata  
-- resolved commands  
-- connection parameters  
-
-### 2.3 Connector Layer (`operations/connector.py`)
 Responsible for establishing sessions:
-
-- `LocalSession` for local testing  
-- `SSHSession` for remote hosts  
+* LocalSession (via PythonTools [sudo_run])
+* SSHSession (via PythonTools SSH abstraction)
 
 Each session provides a unified interface:
 
@@ -67,49 +64,57 @@ session.run(command) → (exit_code, stdout, stderr)
 
 The executor does not know or care whether the session is local or remote.
 
-### 2.4 Executor Layer (operations/executor.py)
-Responsible for:
+### 2.4 Executor Layer ([operations/executor.py])
 
-- running distro‑specific update commands
-- running pre‑ and post‑update “list updates” commands
-- capturing exit codes
-- detecting reboot requirements
-- collecting structured execution data
+Responsible for running the deterministic lifecycle:
 
-The executor produces a HostResult object containing:
+[refresh → check → update? → clean → reboot?]
 
-- Exit code
-- stdout/stderr
-- package counts (before/after)
-- updated_count
-- reboot_required
-- timestamps
+The executor:
+* runs distro‑defined commands
+* interprets exit codes
+* detects reboot requirements
+* logs each stage
 
-### 2.5 Orchestrator Layer (operations/orchestrator.py)
+Future versions will add:
+* backend‑specific check parsing
+* pre/post list operations
+* per‑host summaries
+
+### 2.5 Orchestrator Layer ([operations/orchestrator.py])
 
 The orchestrator coordinates the entire run:
+1. Receive normalized inventory
+2. Select hosts
+3. Create sessions
+4. Execute lifecycle
+5. Log results
+6. Return aggregated status
 
-1. Load and validate inventory
-2. Build execution plans
-3. Iterate through hosts
-4. Create sessions
-5. Execute update pipeline
-6. Write logs
-7. Write per‑host summaries (JSON)
-8. Return aggregated results
+The orchestrator no longer:
+* flattens inventory
+* merges inheritance
+* builds execution plans
+* writes per‑host summaries (planned)
 
-The orchestrator is the only component aware of the full lifecycle.
+It is now a clean, minimal coordinator.
 
 ## 3. Execution Pipeline
 
 Each host follows the same deterministic sequence:
 
-1. Pre‑update list (count available updates)
-2. Update execution
-3. Post‑update list (count remaining updates)
-4. Reboot detection
-5. Summary generation
-6. Logging
+1. **refresh**
+2. **check**
+  * exit‑code interpretation
+  * backend‑specific parsing (future)
+3. **update** (only if needed)
+4. **clean** (always runs)
+5. **reboot detection**
+
+Future enhancements:
+* pre‑update list
+* post‑update list
+* per‑host summaries
 
 ### 3.1 Pre‑Update List
 
@@ -182,40 +187,49 @@ All stages produce structured logs:
 The inventory supports a hierarchical model:
 
 linux:
-  debian-family:
-    ubuntu:
-      hosts:
-        - address: nnn.nnn.nnn.nnn
-          port: nn
+  opensuse:
+    hosts:
+      sample:
+        address: 192.168.1.10
+        port: 2222
 
-Future enhancements include:
+The loader merges:
+* family defaults
+* distro defaults
+* host overrides
 
-- schema versioning
-- repo definitions
-- GPG key imports
-- host grouping and tags
+…into normalized host entries.
+
+Future enhancements:
+* schema versioning
+* repo definitions
+* GPG key imports
+* host grouping and tags
 
 ## 5. PythonTools Integration
 
-RunUpdates currently uses internal helper modules that will eventually be extracted into a standalone repository:
+RunUpdates uses **PythonTools** as its execution substrate:
+* sudo_run for privileged local execution
+* local_command for non‑privileged execution
+* SSHSession for remote execution
+* structured logging injection
+* secrets injection
+* consistent return structures
 
-- command helpers
-- parsing utilities
-- SSH abstractions
-- logging helpers
-
-Once extracted, RunUpdates will import PythonTools as an external dependency.
+PythonTools is now a standalone micro‑library shared across the Linktech Engineering Tools Suite.
 
 ## 6. Future Enhancements
 
 Planned architectural improvements:
-
-- concurrency limits for parallel execution
-- pluggable execution backends (local, SSH, containerized)
-- rollback hooks
-- package‑level filtering
-- optional read‑only diagnostics endpoints
-- optional web dashboard (read‑only)
+* backend‑specific check parsing
+* per‑host JSON summaries
+* pre/post list operations
+* concurrency limits for parallel execution
+* pluggable execution backends
+* rollback hooks
+* package‑level filtering
+* optional diagnostics endpoints
+* optional web dashboard (read‑only)
 
 ## 7. Summary
 

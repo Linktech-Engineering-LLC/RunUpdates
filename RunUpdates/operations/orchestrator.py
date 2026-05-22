@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-05-20
+ Modified: 2026-05-22
  File: RunUpdates/operations/orchestrator.py
  Version: 1.0.0
  Description: High-level coordinator for the RunUpdates execution pipeline.
@@ -66,15 +66,7 @@ class UpdateOrchestrator:
             self.logger.info("=== Starting RunUpdates Orchestration ===")
 
         # 1. Flatten inventory for the selected family/distro/host
-        hosts = self.proc.flatten(
-            inventory=self.inventory,
-            family=self.args.family,
-            distro=self.args.distro,
-            host=self.args.host,
-        )
-
-        if self.logger:
-            self.logger.debug(f"Flattened {len(hosts)} hosts for processing")
+        hosts = self.inventory
 
         # 2. Iterate hosts
         for host in hosts:
