@@ -16,7 +16,9 @@ from typing import Optional
 # Project Libraries
 from PythonTools.net.tools import sudo_run
 from PythonTools.sessions.ssh_sessions import SSHSession
-
+from PythonTools.sessions.systemd_runner import SystemdRunner
+from PythonTools.utils.common import classify_exit_code
+from PythonTools.utils.parsers import Parser
 class HostExecutor:
     """
     Executes update commands on a host using a connection descriptor.
@@ -36,14 +38,16 @@ class HostExecutor:
     # ------------------------------------------------------------------
     def run_updates(self, host: dict, session) -> None:
         name = host["name"]
-        cmds = host.get("commands", {})
-        exit_map = host.get("exit_codes", {})
+        use_systemd = host.get("systemd", False)
+
+        self.systemd = SystemdRunner(session, logger=self.logger, hostname=name) if use_systemd else None
 
         if self.logger:
             self.logger.info(f"=== Running updates for {name} ===")
 
         # Ordered lifecycle steps
-        lifecycle = ["refresh", "check", "update", "clean", "reboot"]
+        lifecycle = host.get("lifecycle", [])
+        cmds = host.get("commands", {})
         skip_updates = False
 
         for step in lifecycle:
@@ -52,7 +56,7 @@ class HostExecutor:
                 continue
 
             # Skip update steps if up-to-date
-            if skip_updates and step in ("refresh", "update"):
+            if skip_updates and step == "update":
                 continue
 
             status = self._run_step(session, host, step, command)
@@ -117,6 +121,11 @@ class HostExecutor:
         if self.logger:
             self.logger.info(f"[{name}] {step}: {command}")
 
+        # Systemd execution path
+        if self.systemd and step == "update":
+            result = self.systemd.run_and_wait(command, unit=f"runupdates-{name}")
+            return self._map_systemd_result(result)
+
         # Local execution path
         if session == "local":
             rc = sudo_run(
@@ -136,52 +145,33 @@ class HostExecutor:
             if err.strip():
                 self.logger.warning(f"[{name}] stderr: {err.strip()}")
 
+        # ------------------------------------------------------
         # Exit-code handling
+        # ------------------------------------------------------
         rules = host.get("exit_codes", {}).get(step)
 
         if rules:
-            # Special handling (check, refresh, etc.)
-            status = self._check_exit_code(host.get("name"), step, exit_code, rules)
-            if self.logger:
-                self.logger.debug(f"[{host.get('name')}] {step} status={status}")
-            return status
+            status = classify_exit_code(step, exit_code, rules, name)
+        else:
+            if exit_code != 0:
+                raise RuntimeError(
+                    f"[{name}] Step '{step}' failed with exit code {exit_code}"
+                )
+            status = "success"
 
-        # Default behavior for steps without exit-code rules
-        if exit_code != 0:
-            raise RuntimeError(
-                f"[{host.get('name')}] Step '{step}' failed with exit code {exit_code}"
-            )
+        # ------------------------------------------------------
+        # ADD PARSING HERE
+        # ------------------------------------------------------
+        distro = host.get("family") or host.get("distro")
+        parsed = Parser.parse(distro, step, out)
 
-        return "success"
-
-    def _check_exit_code(self, host_name, step, exit_code, rules):
-        """
-        rules = {
-            "success": [...],
-            "up_to_date": [...],
-            "patches_available": [...],
-            "error": ["*"]
+        # ------------------------------------------------------
+        # Return structured result
+        # ------------------------------------------------------
+        return {
+            "status": status,
+            "exit_code": exit_code,
+            "output": out,
+            "parsed": parsed,
         }
-        """
-        # Wildcard error rule
-        if "error" in rules and "*" in rules["error"]:
-            # If exit code is explicitly listed in any non-error category → OK
-            for category, values in rules.items():
-                if category == "error":
-                    continue
-                if exit_code in values:
-                    return category  # e.g., "patches_available"
-
-            # Otherwise → error
-            raise RuntimeError(
-                f"Host '{host_name}' step '{step}' failed with exit code {exit_code}"
-            )
-
-        # No wildcard → strict matching
-        for category, values in rules.items():
-            if exit_code in values:
-                return category
-
-        raise RuntimeError(
-            f"Host '{host_name}' step '{step}' failed with exit code {exit_code}"
-        )
+    

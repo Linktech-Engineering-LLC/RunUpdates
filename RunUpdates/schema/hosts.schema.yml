@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: MIT
-# Schema: RunUpdates Inventory Schema (v1.1)
+# Schema: RunUpdates Inventory Schema (v1.2)
 
-version: 1.1
+version: 1.2
 
 root:
   type: dict
   required: true
   children:
 
-    "*":        # OS family (linux, windows, etc.)
+    "*":                      # OS family (linux, windows, etc.)
       type: dict
       required: false
       inherit: true
@@ -19,21 +19,58 @@ root:
           required: false
           inherit: true
 
-        "*":    # distro names (opensuse, redhat, debian-family)
+        "*":                  # distro names (opensuse, redhat, debian-family)
           type: dict
           required: false
           inherit: true
           children:
 
+            # Optional distro-level vars
             vars:
               type: dict
               required: false
               inherit: true
 
+            # NEW: systemd support
+            systemd:
+              type: bool
+              required: false
+
+            systemd_mode:
+              type: str
+              required: false
+
+            # NEW: lifecycle list
+            lifecycle:
+              type: list
+              required: false
+              items:
+                type: str
+
+            # NEW: commands block
+            commands:
+              type: dict
+              required: false
+              additionalProperties:
+                type: str
+
+            # NEW: exit-code rules
+            exit_codes:
+              type: dict
+              required: false
+              additionalProperties:
+                type: dict
+                additionalProperties:
+                  type: list
+                  items:
+                    type: int
+
+            # Optional packages block (legacy)
             packages:
               type: dict
               required: false
 
+            # Hosts block (unchanged)
             hosts:
               type: dict
               required: false
@@ -52,3 +89,5 @@ root:
                     address:
                       type: list
                       required: true
+                      items:
+                        type: str

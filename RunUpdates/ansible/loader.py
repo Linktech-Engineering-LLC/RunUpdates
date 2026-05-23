@@ -41,13 +41,17 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
                 if not isinstance(distro_node, dict):
                     continue
 
+                # Extract distro-level settings
                 distro_vars = distro_node.get("vars", {})
                 distro_port = distro_vars.get("port")
 
-                # Extract package commands
-                raw_cmds = distro_node.get("packages", {}) or {}
-                exit_codes = raw_cmds.get("exit_codes", {})
-                commands = {k: v for k, v in raw_cmds.items() if k != "exit_codes"}
+                systemd = distro_node.get("systemd", False)
+                systemd_mode = distro_node.get("systemd_mode", "wait")
+                lifecycle = distro_node.get("lifecycle", [])
+
+                # Extract commands + exit codes
+                commands = distro_node.get("commands", {}) or {}
+                exit_codes = distro_node.get("exit_codes", {}) or {}
 
                 # Hosts block
                 hosts_block = distro_node.get("hosts", {}) or {}
@@ -56,18 +60,15 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
                     if not isinstance(host_data, dict):
                         continue
 
-                    # Skip disabled hosts
                     if not host_data.get("enabled", True):
                         continue
 
-                    # Required: address
                     address = host_data.get("address")
                     if not address:
                         raise InventoryError(
                             f"Host '{host_name}' under {family_name}/{distro_name} is missing 'address'."
                         )
 
-                    # Port inheritance: host → distro → family → default
                     host_port = (
                         host_data.get("port")
                         or distro_port
@@ -78,9 +79,8 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
                     # Merge commands: distro-level first, host-level overrides
                     merged_cmds = {}
                     merged_cmds.update(commands)
-                    merged_cmds.update(host_data.get("packages", {}) or {})
+                    merged_cmds.update(host_data.get("commands", {}) or {})
 
-                    # Build final host object
                     host_obj = {
                         "name": host_name,
                         "family": family_name,
@@ -90,6 +90,9 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
                         "port": host_port,
                         "commands": merged_cmds,
                         "exit_codes": exit_codes,
+                        "lifecycle": lifecycle,
+                        "systemd": systemd,
+                        "systemd_mode": systemd_mode,
                         "vm_host": host_data.get("vm_host"),
                     }
 
