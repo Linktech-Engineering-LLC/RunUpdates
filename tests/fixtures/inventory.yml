@@ -1,0 +1,17 @@
+linux:
+  vars:
+    port: 2222
+
+  debian:
+    vars:
+      port: 2200
+    hosts:
+      deb-01:
+        address: 10.0.0.1
+      deb-02:
+        address: 10.0.0.2
+
+  opensuse:
+    hosts:
+      suse-01:
+        address: 10.0.1.1

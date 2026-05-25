@@ -29,6 +29,7 @@ from PythonTools.utils.common import (
     resolve_path,
 )
 from PythonTools.ansible.helpers import resolve_with_priority
+from PythonTools.parser.errors import CheckArgError
 
 # Import RunUpdates-specific constants
 from RunUpdates.core.constants import (
@@ -61,3 +62,54 @@ def resolve_vault_password_file(args_password_file: str | None) -> str | None:
     env_value = os.getenv(VAULT_PASSWORD_ENV)
     path = resolve_with_priority(args_password_file, env_value, default=None)
     return str(path) if path else None
+
+# ------------------------------------------------------------
+# Family / Distro / Host validation (RunUpdates-specific)
+# ------------------------------------------------------------
+
+def validate_family_distro_host(inventory_data, family, distro, host):
+    """
+    Validate that the selected family/distro/host exist in the RunUpdates inventory.
+    This enforces the RunUpdates schema:
+      inventory:
+        family:
+          distro:
+            hosts: [...]
+    """
+
+    if not inventory_data:
+        raise CheckArgError("Inventory data is empty or failed to load")
+
+    # Validate family
+    if family not in inventory_data:
+        raise CheckArgError(f"Family '{family}' not found in inventory")
+
+    family_block = inventory_data[family]
+
+    # Validate distro
+    if distro:
+        if distro not in family_block:
+            raise CheckArgError(
+                f"Distro '{distro}' not found under family '{family}'"
+            )
+        distro_block = family_block[distro]
+    else:
+        distro_block = None
+
+    # Validate host
+    if host:
+        if not distro:
+            raise CheckArgError(
+                f"Host '{host}' specified but no distro selected"
+            )
+
+        if distro_block is None:
+            raise CheckArgError(
+                f"Distro '{distro}' not found under family '{family}'"
+            )
+
+        hosts = distro_block.get("hosts", [])
+        if host not in hosts:
+            raise CheckArgError(
+                f"Host '{host}' not found under {family}/{distro}"
+            )

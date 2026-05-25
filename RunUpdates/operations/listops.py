@@ -13,8 +13,9 @@
 """
 # System Libraries
 import json
-from typing import Any
+from typing import Any, Optional
 
+RESERVED_KEYS = {"vars", "defaults", "global"}
 
 class ListOperations:
     """
@@ -53,12 +54,18 @@ class ListOperations:
         if family:
             if family not in self.inventory:
                 raise ValueError(f"Family '{family}' not found")
-            distros = list(self.inventory[family].keys())
+            distros = [
+                d for d in self.inventory[family].keys()
+                if d not in RESERVED_KEYS
+            ]
             return self._dump(distros)
 
         # No family specified → list all distros grouped by family
         result = {
-            fam: list(node.keys())
+            fam: [
+                d for d in node.keys()
+                if d not in RESERVED_KEYS
+            ]
             for fam, node in self.inventory.items()
             if isinstance(node, dict)
         }
@@ -89,6 +96,8 @@ class ListOperations:
 
             result = []
             for dist, dist_node in fam_node.items():
+                if dist in RESERVED_KEYS:
+                    continue
                 hosts = (dist_node.get("hosts") or {}).keys()
                 for h in hosts:
                     result.append(f"{family}.{dist}.{h}")
@@ -99,6 +108,8 @@ class ListOperations:
         result = []
         for fam, fam_node in self.inventory.items():
             for dist, dist_node in fam_node.items():
+                if dist in RESERVED_KEYS:
+                    continue
                 hosts = (dist_node.get("hosts") or {}).keys()
                 for h in hosts:
                     result.append(f"{fam}.{dist}.{h}")
@@ -111,3 +122,36 @@ class ListOperations:
     def list_inventory(self) -> str:
         """Dump the entire inventory as JSON."""
         return self._dump(self.inventory)
+
+    def show_metadata(
+        self,
+        family: Optional[str],
+        distro: Optional[str],
+        host: Optional[str]
+    ) -> str:
+        result = {}
+
+        # No family → show metadata for all families
+        if not family:
+            for fam, fam_node in self.inventory.items():
+                if "vars" in fam_node:
+                    result[fam] = {"vars": fam_node["vars"]}
+            return self._dump(result)
+
+        # Family only → show family-level metadata
+        fam_node = self.inventory.get(family)
+        if not fam_node:
+            raise ValueError(f"Family '{family}' not found")
+
+        result["vars"] = fam_node.get("vars", {})
+
+        # Family + distro → include distro-level metadata if present
+        if distro:
+            dist_node = fam_node.get(distro)
+            if not dist_node:
+                raise ValueError(f"Distro '{distro}' not found under '{family}'")
+
+            if "vars" in dist_node:
+                result["distro_vars"] = dist_node["vars"]
+
+        return self._dump(result)

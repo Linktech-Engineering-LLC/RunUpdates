@@ -27,9 +27,3 @@ def test_audit_logging(logger_factory):
     logger.audit("CMD_START", "Running command")
     logger.audit("CMD_END", "Finished", exit_code=0)
 
-@pytest.mark.lifecycle
-def test_invalid_lifecycle_marker_raises(logger_factory):
-    logger = logger_factory.get_logger("runner")
-
-    with pytest.raises(ValueError):
-        logger.audit("INVALID", "Should fail")

@@ -7,14 +7,18 @@
  Created: 2026-04-13
  Modified: 2026-04-18
  File: RunUpdates/parser/ScriptParser.py
- Version: 1.0.0
- Description: NMS_Tools-style command-line parser for RunUpdates (CLI-driven)
+ Version: 1.0.1
+ Description: 
+            RunUpdates ScriptParser (CLI-driven)
+            Uses PythonTools BaseScriptParser + InventoryBaseParser
+            Defines only RunUpdates-specific switches and validation.
 """
 
-import argparse
-import os
-import sys
 from pathlib import Path
+import os
+
+from PythonTools.parser.InventoryBaseParser import InventoryBaseParser
+from PythonTools.parser.errors import CheckArgError
 
 # RunUpdates-specific constants
 from RunUpdates.core.constants import (
@@ -33,103 +37,45 @@ from RunUpdates.utils.common import (
     resolve_inventory_path,
     resolve_vault_path,
     resolve_vault_password_file,
+    validate_family_distro_host,
 )
 
-# ------------------------------------------------------------
-# Project metadata
-# ------------------------------------------------------------
+
 DESCRIPTION = (
     f"{PROJECT_NAME} version {PROJECT_VERSION} "
     "Manages System Patches and/or Updates"
 )
 
-# ------------------------------------------------------------
-# Formatter + Error Classes (NMS_Tools style)
-# ------------------------------------------------------------
-class CustomFormatter(
-    argparse.RawTextHelpFormatter,
-    argparse.ArgumentDefaultsHelpFormatter,
-):
-    def _get_help_string(self, action):
-        help_text = action.help or ""
-        if "%(default)" in help_text:
-            return help_text
-        if action.default in (None, False):
-            return help_text
-        return f"{help_text} (default: {action.default})"
 
-
-class CheckArgError(Exception):
-    pass
-
-
-class CheckArgumentParser(argparse.ArgumentParser):
-    def error(self, message):
-        print(f"ERROR: {message}\n")
-        self.print_help()
-        sys.exit(1)
-
-
-# ------------------------------------------------------------
-# ScriptParser (CLI-driven)
-# ------------------------------------------------------------
-class ScriptParser:
+class ScriptParser(InventoryBaseParser):
     """
-    CLI-driven parser for RunUpdates.
-    No flags. No bitmask. Pure input collection + validation.
+    RunUpdates CLI parser.
+    Inherits:
+      - core switches
+      - logging switches
+      - vault switches
+      - inventory loading
+    Adds:
+      - family/distro/host switches
+      - update switches
+      - RunUpdates-specific validation
     """
 
     def __init__(self):
-        self.parser = CheckArgumentParser(
+        super().__init__(
             prog=PROJECT_NAME,
             description=DESCRIPTION,
-            formatter_class=CustomFormatter,
-            add_help=True,
+            version_string=f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}",
         )
 
-        self._add_core_args()
-        self._add_logging_args()
-        self._add_inventory_args()
-        self._add_vault_args()
+        self._add_runupdates_inventory_args()
         self._add_update_args()
 
     # --------------------------------------------------------
-    # Core Options
+    # RunUpdates Inventory Options
     # --------------------------------------------------------
-    def _add_core_args(self):
-        core = self.parser.add_argument_group("Core Options")
-
-        core.add_argument(
-            "-v", "--verbose",
-            action="store_true",
-            help="Enable verbose output"
-        )
-
-        core.add_argument(
-            "--dry-run",
-            dest="dry_run",
-            action="store_true",
-            help="Simulate updates without applying changes"
-        )
-
-        core.add_argument(
-            "-V", "--version",
-            action="version",
-            version=f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}"
-        )
-
-    # --------------------------------------------------------
-    # Inventory Options
-    # --------------------------------------------------------
-    def _add_inventory_args(self):
-        inv = self.parser.add_argument_group("Inventory Options")
-
-        inv.add_argument(
-            "-i", "--inventory",
-            required=False,
-            default=str(DEFAULT_INVENTORY_PATH),
-            help="Path to inventory YAML file"
-        )
+    def _add_runupdates_inventory_args(self):
+        inv = self.parser.add_argument_group("RunUpdates Inventory Options")
 
         group = inv.add_mutually_exclusive_group()
 
@@ -144,60 +90,10 @@ class ScriptParser:
 
         group.add_argument("--list-inventory", action="store_true",
                            help="Dump the full inventory block for the selected family/distro as JSON")
-
-    # --------------------------------------------------------
-    # Logging Options
-    # --------------------------------------------------------
-    def _add_logging_args(self):
-        log = self.parser.add_argument_group("Logging Options")
-
-        log.add_argument(
-            "-l", "--log-dir",
-            dest="log_dir",
-            default=str(DEFAULT_LOG_DIR),
-            help="Folder containing the log file"
-        )
-
-        log.add_argument(
-            "--log-max-mb",
-            dest="log_max_mb",
-            type=int,
-            default=50,
-            help="Maximum size of logs in MB before rotation"
-        )
-
-        log.add_argument(
-            "--compress-archive",
-            dest="compress_archive",
+        group.add_argument(
+            "--show-metadata",
             action="store_true",
-            help="Compress rotated log"
-        )
-
-        log.add_argument(
-            "--delete-log",
-            dest="delete_log",
-            action="store_true",
-            help="Remove rotated log"
-        )
-
-    # --------------------------------------------------------
-    # Vault Options
-    # --------------------------------------------------------
-    def _add_vault_args(self):
-        vault = self.parser.add_argument_group("Vault Options")
-
-        vault.add_argument(
-            "--vault-path",
-            dest="vault_path",
-            required=False,
-            help="Path to vault file containing credentials"
-        )
-
-        vault.add_argument(
-            "--vault-password-file",
-            dest="vault_password_file",
-            required=False,
-            help="Path to file containing vault password"
+            help="Show metadata (vars) for the selected family/distro"
         )
 
     # --------------------------------------------------------
@@ -210,61 +106,90 @@ class ScriptParser:
             "--family",
             choices=["linux"],
             default="linux",
-            help="Target operating system family"
+            help="Target operating system family",
         )
 
         upd.add_argument(
             "--distro",
             required=False,
-            help="Target Linux distribution"
+            help="Target Linux distribution",
         )
 
         upd.add_argument(
             "-H", "--host",
             required=False,
-            help="Target host to update"
+            help="Target host to update",
         )
 
         upd.add_argument(
             "--force",
             action="store_true",
-            help="Force update even if checks fail"
+            help="Force update even if checks fail",
         )
-
-    # --------------------------------------------------------
-    # Parse + Validate
-    # --------------------------------------------------------
-    def parse(self):
-        self.args = self.parser.parse_args()
-
-        # Resolve using RunUpdates logic
-        self.args.inventory = resolve_inventory_path(self.args.inventory)
-        self.args.vault_path = resolve_vault_path(self.args.vault_path)
-        self.args.vault_password_file = resolve_vault_password_file(self.args.vault_password_file)
-
-        self._validate()
-        return self.args
+        upd.add_argument(
+            "--mode",
+            choices=["sequential", "parallel", "distro-parallel"],
+            default="sequential",
+            help="Execution mode for orchestrator (default: sequential)"            
+        )
 
     # --------------------------------------------------------
     # Validation
     # --------------------------------------------------------
     def _validate(self):
+        super()._validate()
+
+        args = self.args
+
+        # Resolve vault paths using RunUpdates logic
+        args.vault_path = resolve_vault_path(args.vault_path)
+        args.vault_password_file = resolve_vault_password_file(args.vault_password_file)
 
         # Vault path required
-        if not self.args.vault_path and VAULT_PATH_ENV not in os.environ:
+        if not args.vault_path and VAULT_PATH_ENV not in os.environ:
             raise CheckArgError(
                 f"Missing required --vault-path or ${VAULT_PATH_ENV}"
             )
 
         # Vault password file required
-        if not self.args.vault_password_file and VAULT_PASSWORD_ENV not in os.environ:
+        if not args.vault_password_file and VAULT_PASSWORD_ENV not in os.environ:
             raise CheckArgError(
                 f"Missing required --vault-password-file or ${VAULT_PASSWORD_ENV}"
             )
 
-        # Inventory must exist
-        if not Path(self.args.inventory).exists():
-            raise CheckArgError(f"Inventory file not found: {self.args.inventory}")
+        # Inventory resolution (RunUpdates-specific)
+        args.inventory = resolve_inventory_path(args.inventory)
+
+        if not Path(args.inventory).exists():
+            raise CheckArgError(f"Inventory file not found: {args.inventory}")
+
+        # Validate family/distro/host relationships
+        validate_family_distro_host(
+            inventory_data=self.inventory_data,
+            family=args.family,
+            distro=args.distro,
+            host=args.host,
+        )
+    def parse(self):
+        # 1. Pre-resolve inventory BEFORE parent parse
+        #    so InventoryBaseParser sees a valid path
+        pre_resolved_inventory = resolve_inventory_path(None)
+
+        # 2. Call parent parse (InventoryBaseParser.parse)
+        args = super().parse()
+
+        # 3. If user did not supply --inventory, apply default
+        if not args.inventory:
+            args.inventory = pre_resolved_inventory
+
+            # Now that inventory is known, load it
+            self.inventory_path = Path(args.inventory).expanduser()
+            self.inventory_data = self._load_inventory_yaml()
+
+        # 4. Run RunUpdates-specific validation
+        self._validate()
+
+        return args
 
     # --------------------------------------------------------
     # Accessor

@@ -27,27 +27,15 @@ class UpdateOrchestrator:
       - Shared execution tools from PythonTools
     """
 
-    def __init__(self, args,  secrets, inventory, logger=None):
-        """
-        :param args: Parsed CLI arguments
-        :param secrets: Vault-loaded secrets (contains sudo password)
-        :param inventory: Parsed inventory dictionary
-        :param logger: Optional logger
-        """
+    def __init__(self, args, secrets, hosts, logger=None):
         self.args = args
         self.secrets = secrets
-        self.inventory = inventory
+        self.hosts = hosts
         self.logger = logger
+        self.mode = args.mode
 
-        # Subsystems
         self.selector = HostSelector(args, logger=logger)
-
-        # Pass shared execution tools into connector/executor
-        self.connector = HostConnector(
-            secrets,
-            logger=logger,
-        )
-
+        self.connector = HostConnector(secrets, logger=logger)
         self.executor = HostExecutor(
             secrets=self.secrets,
             logger=logger,
@@ -58,18 +46,19 @@ class UpdateOrchestrator:
     # Public API
     # ------------------------------------------------------------------
     def run(self):
-        """
-        Main orchestration entrypoint.
-        """
-
         if self.logger:
             self.logger.info("=== Starting RunUpdates Orchestration ===")
 
-        # 1. Flatten inventory for the selected family/distro/host
-        hosts = self.inventory
+        if self.mode == "sequential":
+            self._run_sequential()
+        else:
+            raise NotImplementedError(f"Mode '{self.mode}' not implemented yet")
 
-        # 2. Iterate hosts
-        for host in hosts:
+        if self.logger:
+            self.logger.info("=== RunUpdates Orchestration Complete ===")
+
+    def _run_sequential(self):
+        for host in self.hosts:
             name = host["name"]
 
             # 2a. CLI-based selection filter

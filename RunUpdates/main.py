@@ -182,7 +182,7 @@ def load_secrets(context: dict) -> dict:
 # ------------------------------------------------------------
 
 def main():
-    # 1. Parse CLI arguments
+    # 1. Parse CLI arguments (loads inventory + validates family/distro/host)
     parser = ScriptParser()
     args = parser.parse()
     context = vars(args)
@@ -192,50 +192,73 @@ def main():
     logging_ctx = initialize_logging(context, paths)
     logger = logging_ctx["logger"]
 
-    # 3. Load secrets
+    LISTING_FLAGS = (
+        "list_families",
+        "list_distros",
+        "list_hosts",
+        "list_inventory",
+        "show_metadata",
+    )
+
+    # Determine if any listing flag is active
+    active_flag = next(
+        (flag for flag in LISTING_FLAGS if getattr(args, flag)),
+        None
+    )
+
+    # Handle listing BEFORE vault loading
+    if active_flag:
+        raw_inventory = parser.inventory_data
+        listops = ListOperations(raw_inventory, logger)
+
+        match active_flag:
+            case "list_families":
+                print(listops.list_families())
+            case "list_distros":
+                print(listops.list_distros(args.family))
+            case "list_hosts":
+                print(listops.list_hosts(args.family, args.distro))
+            case "list_inventory":
+                print(listops.list_inventory())
+            case "show_metadata":
+                print(listops.show_metadata(args.family, args.distro, args.host))
+
+        return
+
+    # 4. Load secrets (only for update operations)
     secrets = load_secrets(context)
 
     assert_sudo_available(secrets.get("sudo_pass"))
     assert_not_root()
 
-    # 4. Schema path
-    inv_path = Path(resolve_inventory_path(context.get("inventory", "")))
+    # 5. Schema path
+    inv_path = Path(args.inventory)
     schema_path = Path(__file__).resolve().parent / "schema" / "hosts.schema.yml"
 
-    # 5. Initialize schema-driven loader
+    # 6. Initialize schema-driven loader
     loader = RunUpdatesInventoryLoader(
         inventory_path=inv_path,
         schema_path=schema_path
     )
-    # 6. Normalize inventory into host objects
-    normalized_inventory = loader.normalize()
 
-    # 7. List operations (raw inventory)
-    listops = ListOperations(loader.raw_yaml, logger)
+    # 7. Normalize inventory into host objects (filtered)
+    normalized_inventory = loader.normalize(
+        family=args.family,
+        distro=args.distro,
+        host=args.host
+    )
 
-    dispatch = {
-        "list_families": lambda: print(listops.list_families()),
-        "list_distros": lambda: print(listops.list_distros(args.family)),
-        "list_hosts": lambda: print(listops.list_hosts(args.family, args.distro)),
-        "list_inventory": lambda: print(listops.list_inventory()),
-    }
-
-    for flag, action in dispatch.items():
-        if getattr(args, flag):
-            action()
-            return
-
-    # 9. Execute update orchestration (flattened inventory)
+    # 8. Execute update orchestration
     orchestrator = UpdateOrchestrator(
         args=args,
-        inventory=normalized_inventory,
         secrets=secrets,
+        hosts=normalized_inventory,
         logger=logger
     )
 
     orchestrator.run()
 
-    # 7. Final banner
+    # 9. Final banner
     logger.banner("RunUpdates complete")
 
 
