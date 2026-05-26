@@ -11,7 +11,7 @@ root:
     "*":                      # OS family (linux, windows, etc.)
       type: dict
       required: false
-      inherit: true
+      inherit: false
       children:
 
         vars:
@@ -22,7 +22,7 @@ root:
         "*":                  # distro names (opensuse, redhat, debian-family)
           type: dict
           required: false
-          inherit: true
+          inherit: false
           children:
 
             # Optional distro-level vars
@@ -78,7 +78,7 @@ root:
                 "*":
                   type: dict
                   required: true
-                  inherit: true
+                  inherit: false
                   children:
                     enabled:
                       type: bool

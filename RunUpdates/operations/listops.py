@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-18
+ Modified: 2026-05-25
  File: RunUpdates/operations/listops.py
  Version: 1.0.0
  Description: JSON-based inventory introspection for RunUpdates

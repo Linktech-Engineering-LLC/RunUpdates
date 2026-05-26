@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-05-22
+ Modified: 2026-05-26
  File: RunUpdates/operations/executor.py
  Version: 1.0.0
  Description: Executes update commands on a host using a session object.
@@ -59,7 +59,8 @@ class HostExecutor:
             if skip_updates and step == "update":
                 continue
 
-            status = self._run_step(session, host, step, command)
+            rc = self._run_step(session, host, step, command)
+            status = rc.get("status") if rc is not None else None
 
             # --- Decision logic ---
             if step == "check":
@@ -162,8 +163,23 @@ class HostExecutor:
         # ------------------------------------------------------
         # ADD PARSING HERE
         # ------------------------------------------------------
-        distro = host.get("family") or host.get("distro")
-        parsed = Parser.parse(distro, step, out)
+        if step == "check":
+            distro = host.get("distro") or host.get("family")
+            parsed = Parser.parse(distro, step, out) or {}
+
+            # Default
+            status = "up_to_date"
+
+            # summary or upgradable means updates available
+            if parsed.get("summary") or parsed.get("upgradable"):
+                status = "updates_available"
+
+            # Debian update step never returns "upgraded", but keep for other distros
+            if parsed.get("upgraded"):
+                status = "updates_applied"
+
+            if parsed.get("reboot_required"):
+                status = "reboot_required"
 
         # ------------------------------------------------------
         # Return structured result
@@ -172,6 +188,43 @@ class HostExecutor:
             "status": status,
             "exit_code": exit_code,
             "output": out,
-            "parsed": parsed,
+            "parsed": parsed if step == "check" else None
         }
-    
+
+    def _map_systemd_result(self, result) -> dict:
+        """
+        Normalize systemd-run result (SimpleNamespace or dict) into the standard
+        command result format used by RunUpdates.
+        """
+
+        # Helper to support both dict and SimpleNamespace
+        def _get(obj, key, default=None):
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+
+        mapped = {
+            # Core fields
+            "exit_code": _get(result, "exit_code", 1),
+            "stdout": _get(result, "stdout", ""),
+            "stderr": _get(result, "stderr", ""),
+
+            # Systemd-specific fields
+            "unit": _get(result, "unit", None),
+            "systemd_state": _get(result, "state", "unknown"),   # systemd Result=
+            "success": _get(result, "success", None),
+
+            # Optional extended metadata
+            "start_time": _get(result, "start_time", None),
+            "end_time": _get(result, "end_time", None),
+            "duration": _get(result, "duration", None),
+        }
+
+        # Derive a normalized status for RunUpdates
+        # systemd Result=success AND exit_code=0 → success
+        if mapped["exit_code"] == 0 and mapped["systemd_state"] == "success":
+            mapped["status"] = "success"
+        else:
+            mapped["status"] = "failed"
+
+        return mapped

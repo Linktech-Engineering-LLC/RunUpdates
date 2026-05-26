@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-16
- Modified: 2026-05-22
+ Modified: 2026-05-26
  File: RunUpdates/ansible/loader.py
  Version: 2.0.0
  Description: Deterministic Inventory Loader for RunUpdates (multi-family)
@@ -167,13 +167,16 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         distro_port = distro_vars.get("port")
 
         # Systemd + lifecycle
-        systemd = distro_node.get("systemd", False)
-        systemd_mode = distro_node.get("systemd_mode", "wait")
-        lifecycle = distro_node.get("lifecycle", [])
+        systemd = distro_vars.get("systemd", False)
+        systemd_mode = distro_vars.get("systemd_mode", "wait")
+        lifecycle = distro_vars.get("lifecycle", [])
 
         # Commands + exit codes
-        commands = distro_node.get("commands", {}) or {}
-        exit_codes = distro_node.get("exit_codes", {}) or {}
+        commands = distro_vars.get("commands", {}) or {}
+        exit_codes = distro_vars.get("exit_codes", {}) or {}
+
+        # Host-level vars
+        host_vars = host_node.get("vars", {})
 
         # Host-level overrides
         host_port = (

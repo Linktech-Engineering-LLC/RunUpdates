@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-04-18
+ Modified: 2026-05-26
  File: RunUpdates/parser/ScriptParser.py
  Version: 1.0.1
  Description: 
@@ -66,6 +66,7 @@ class ScriptParser(InventoryBaseParser):
             prog=PROJECT_NAME,
             description=DESCRIPTION,
             version_string=f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}",
+            default_log_dir=DEFAULT_LOG_DIR
         )
 
         self._add_runupdates_inventory_args()
