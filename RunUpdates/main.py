@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-25
+ Modified: 2026-05-27
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates
@@ -55,7 +55,6 @@ from RunUpdates.operations.orchestrator import UpdateOrchestrator
 # Safety checks
 # ------------------------------------------------------------
 
-
 def assert_not_root():
     if os.geteuid() == 0:
         raise RuntimeError("RunUpdates must not be executed as root")
@@ -70,12 +69,13 @@ def assert_sudo_available(sudo_password):
 # Logging initialization
 # ------------------------------------------------------------
 
-def initialize_logging(context: dict, paths: dict) -> dict:
+def initialize_logging(context: dict) -> dict:
     """
     Initialize RunUpdates logging system.
     """
-    log_cfg = build_log_cfg(paths, context)
-    logger_factory = init_logger(log_cfg, paths["PROJECT_NAME"])
+
+    log_cfg = build_log_cfg(context)
+    logger_factory = init_logger(log_cfg, context["PROJECT_NAME"])
 
     register_custom_levels(log_cfg)
 
@@ -89,7 +89,13 @@ def initialize_logging(context: dict, paths: dict) -> dict:
         "factory": logger_factory,
         "logger": logger,
         "config": log_cfg,
-        "paths": paths,
+        "paths": {
+            "LOG_DIR": context["LOG_DIR"],
+            "CONFIG_DIR": context["CONFIG_DIR"],
+            "SCHEMA_DIR": context["SCHEMA_DIR"],
+            "PROJECT_NAME": context["PROJECT_NAME"],
+            "ENVIRONMENT": context["ENVIRONMENT"],
+        },
     }
 
 
@@ -182,15 +188,32 @@ def load_secrets(context: dict) -> dict:
 # ------------------------------------------------------------
 
 def main():
-    # 1. Parse CLI arguments (loads inventory + validates family/distro/host)
+    # 1. Parse CLI arguments
     parser = ScriptParser()
     args = parser.parse()
     context = vars(args)
-    paths = resolve_paths(__file__)
+    paths = parser.paths
 
     # 2. Initialize logging
-    logging_ctx = initialize_logging(context, paths)
+    logging_ctx = initialize_logging(context)
     logger = logging_ctx["logger"]
+
+    # ------------------------------------------------------------
+    # Summary commands (RunUpdates-specific)
+    # ------------------------------------------------------------
+    if args.command == "summary":
+        orch = UpdateOrchestrator(args=args, secrets=None, hosts=[], paths=paths, logger=logger)
+
+        if args.latest:
+            orch.show_latest_summary()
+        elif args.list:
+            orch.list_summaries()
+        elif args.host:
+            orch.show_host_summary(args.host)
+        else:
+            print("Use --latest, --list, or --host <name>")
+
+        return
 
     LISTING_FLAGS = (
         "list_families",
@@ -253,6 +276,7 @@ def main():
         args=args,
         secrets=secrets,
         hosts=normalized_inventory,
+        paths=paths,
         logger=logger
     )
 

@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-26
+ Modified: 2026-05-27
  File: RunUpdates/parser/ScriptParser.py
  Version: 1.0.1
  Description: 
@@ -19,6 +19,7 @@ import os
 
 from PythonTools.parser.InventoryBaseParser import InventoryBaseParser
 from PythonTools.parser.errors import CheckArgError
+from PythonTools.logging.helpers import resolve_paths
 
 # RunUpdates-specific constants
 from RunUpdates.core.constants import (
@@ -62,15 +63,21 @@ class ScriptParser(InventoryBaseParser):
     """
 
     def __init__(self):
+        self.paths = resolve_paths(__file__)
         super().__init__(
             prog=PROJECT_NAME,
             description=DESCRIPTION,
             version_string=f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}",
-            default_log_dir=DEFAULT_LOG_DIR
+            default_log_dir=self.paths["LOG_DIR"],
+            default_config_dir=self.paths["CONFIG_DIR"],
+            default_schema_dir=self.paths["SCHEMA_DIR"]
         )
+        self._defaults = self.paths
+        self.subparsers = self.parser.add_subparsers(dest="command")
 
         self._add_runupdates_inventory_args()
         self._add_update_args()
+        self._add_summary_args()
 
     # --------------------------------------------------------
     # RunUpdates Inventory Options
@@ -96,6 +103,15 @@ class ScriptParser(InventoryBaseParser):
             action="store_true",
             help="Show metadata (vars) for the selected family/distro"
         )
+
+    # -------------------------------------------------------
+    # Summary Options
+    # -------------------------------------------------------
+    def _add_summary_args(self):
+        summary = self.subparsers.add_parser("summary", help="Show run summary information")
+        summary.add_argument("--latest", action="store_true", help="Show the most recent run summary")
+        summary.add_argument("--list", action="store_true", help="List all run summaries")
+        summary.add_argument("--host", metavar="HOSTNAME", help="Show summary for a specific host")
 
     # --------------------------------------------------------
     # Update Options
@@ -179,7 +195,21 @@ class ScriptParser(InventoryBaseParser):
         # 2. Call parent parse (InventoryBaseParser.parse)
         args = super().parse()
 
-        # 3. If user did not supply --inventory, apply default
+        # ------------------------------------------------------------
+        # 3. Merge CLI overrides with environment defaults
+        # ------------------------------------------------------------
+        # LOG_DIR
+        args.LOG_DIR = Path(args.log_dir or self._defaults["LOG_DIR"])
+
+        # CONFIG_DIR
+        args.CONFIG_DIR = Path(args.config_dir or self._defaults["CONFIG_DIR"])
+
+        # SCHEMA_DIR
+        args.SCHEMA_DIR = Path(args.schema_dir or self._defaults["SCHEMA_DIR"])
+
+        # ------------------------------------------------------------
+        # 4. Inventory resolution (your existing logic)
+        # ------------------------------------------------------------
         if not args.inventory:
             args.inventory = pre_resolved_inventory
 
@@ -187,8 +217,16 @@ class ScriptParser(InventoryBaseParser):
             self.inventory_path = Path(args.inventory).expanduser()
             self.inventory_data = self._load_inventory_yaml()
 
-        # 4. Run RunUpdates-specific validation
+        # ------------------------------------------------------------
+        # 5. Run RunUpdates-specific validation
+        # ------------------------------------------------------------
         self._validate()
+
+        # ------------------------------------------------------------
+        # 6. Pass through project metadata
+        # ------------------------------------------------------------
+        args.PROJECT_NAME = self._defaults["PROJECT_NAME"]
+        args.ENVIRONMENT = self._defaults["ENVIRONMENT"]
 
         return args
 

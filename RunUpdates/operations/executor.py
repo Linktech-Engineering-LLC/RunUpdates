@@ -6,13 +6,16 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-05-26
+ Modified: 2026-05-27
  File: RunUpdates/operations/executor.py
  Version: 1.0.0
  Description: Executes update commands on a host using a session object.
 """
 # System Libraries
 from typing import Optional
+from pathlib import Path
+import json
+from datetime import datetime
 # Project Libraries
 from PythonTools.net.tools import sudo_run
 from PythonTools.sessions.ssh_sessions import SSHSession
@@ -28,76 +31,115 @@ class HostExecutor:
         - SSHConnectionInfo(...)
     """
 
-    def __init__(self, secrets: dict, logger=None, dry_run: bool = False):
+    def __init__(self, secrets: dict, args: dict, paths: dict, logger=None, dry_run: bool = False, force: bool = False):
         self.secrets = secrets
         self.logger = logger
-        self.dry_run = dry_run
+        self.dry_run = args.dry_run
+        self.force = args.force
+        self.paths = paths
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def run_updates(self, host: dict, session) -> None:
+    def run_updates(self, host: dict, session) -> dict:
         name = host["name"]
         use_systemd = host.get("systemd", False)
 
         self.systemd = SystemdRunner(session, logger=self.logger, hostname=name) if use_systemd else None
 
+        # -----------------------------
+        # Initialize summary
+        # -----------------------------
+        host_summary = {
+            "host": name,
+            "lifecycle_status": "in_progress",
+            "update_status": None,
+            "repo_status": None,
+            "reboot_status": None,
+            "exit_codes": {},
+            "parsed": None,
+            "lifecycle_events": [],
+            "outputs": {},
+            "timestamps": {
+                "started": datetime.now().isoformat(timespec="seconds"),
+                "completed": None,
+                "duration_seconds": None,
+            },
+        }
+
         if self.logger:
             self.logger.info(f"=== Running updates for {name} ===")
 
-        # Ordered lifecycle steps
         lifecycle = host.get("lifecycle", [])
         cmds = host.get("commands", {})
         skip_updates = False
 
+        # -----------------------------
+        # Lifecycle loop
+        # -----------------------------
         for step in lifecycle:
             command = cmds.get(step)
             if not command:
                 continue
 
-            # Skip update steps if up-to-date
+            # Skip update step if flagged
             if skip_updates and step == "update":
                 continue
 
+            # Run the step
             rc = self._run_step(session, host, step, command)
-            status = rc.get("status") if rc is not None else None
 
-            # --- Decision logic ---
+            # Record exit code + outputs
+            if rc is not None:
+                host_summary["exit_codes"][step] = rc.get("exit_code")
+                host_summary["outputs"][step] = {
+                    "stdout": rc.get("output", ""),
+                    "stderr": rc.get("stderr", ""),
+                }
+
+            # -----------------------------
+            # CHECK STEP
+            # -----------------------------
             if step == "check":
-                if status == "up_to_date":
-                    if self.logger:
-                        self.logger.info(f"[{name}] System is up-to-date. Skipping update steps.")
+                action = self._handle_check_step(rc, host_summary, name)
+
+                if action == "skip_updates":
                     skip_updates = True
-                    continue
-
-                elif status in ("patches_available", "updates_available"):
-                    if self.logger:
-                        self.logger.info(f"[{name}] Updates available. Continuing lifecycle.")
-                    continue
-
-                else:
-                    raise RuntimeError(f"[{name}] Unexpected check status: {status}")
-
-            # Reboot logic
-            if step == "reboot":
-                if status == "no_reboot":
-                    if self.logger:
-                        self.logger.info(f"[{name}] No reboot required, skipping")
-                    continue
-
-                if status in ("reboot_required", "restart_services", "reboot_and_restart"):
-                    if self.logger:
-                        self.logger.info(f"[{name}] Rebooting host due to status: {status}")
-                    boot = "reboot_now"
-                    bcmd = cmds.get(boot)
-                    status = self._run_step(session, host, boot, bcmd)
-                    continue
-
-            # refresh: success/error handled inside _run_step
-            if step == "refresh":
                 continue
+
+            # -----------------------------
+            # UPDATE STEP
+            # -----------------------------
+            if step == "update":
+                if skip_updates:
+                    continue
+                self._handle_update_step(rc, host_summary)
+                continue
+
+            # -----------------------------
+            # REBOOT STEP
+            # -----------------------------
+            if step == "reboot":
+                self._handle_reboot_step(rc, host, cmds, session, name, host_summary)
+                continue
+
+            # refresh/clean/etc. naturally continue
+            continue
+
+        # -----------------------------
+        # Finalize summary
+        # -----------------------------
+        self._finalize_summary(host_summary)
+
+        # -----------------------------
+        # Write summary file
+        # -----------------------------
+        self._write_summary(host_summary, name)
+
         if self.logger:
             self.logger.info(f"=== Completed updates for {name} ===")
+            
+        return host_summary
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -147,6 +189,48 @@ class HostExecutor:
                 self.logger.warning(f"[{name}] stderr: {err.strip()}")
 
         # ------------------------------------------------------
+        # Repo health detection (only during 'check' step)
+        # ------------------------------------------------------
+        repo_broken = False
+        if step == "check" and err:
+            REPO_FAILURE_PATTERNS = (
+                "Failed to download metadata",
+                "Cannot download repomd.xml",
+                "All mirrors were tried",
+                "Status code: 404",
+                "repodata/repomd.xml",
+                "No such file or directory: repodata",
+                "Error: repomd.xml",
+                "Cannot prepare internal mirrorlist",
+                "No URLs in mirrorlist",
+                "There are no enabled repositories",   # NEW
+            )
+
+            lowered = err.lower()
+            if any(p.lower() in lowered for p in REPO_FAILURE_PATTERNS):
+                repo_broken = True
+                if self.logger:
+                    self.logger.lifecycle(
+                        "REPO_HEALTH_FAIL",
+                        f"[{name}] Repository metadata appears broken"
+                    )
+
+        # Define repo_status AFTER repo_broken is known
+        repo_status = "broken" if repo_broken else "healthy"
+        # If the repository is broken, skip exit-code handling entirely
+        if step == "check" and repo_broken:
+            if self.logger:
+                self.logger.debug(f"[{name}] Skipping exit-code rules due to broken repo")
+            return {
+                "status": "repo_broken",
+                "exit_code": exit_code,
+                "output": out,
+                "parsed": None,
+                "repo_broken": True,
+                "repo_status": "broken",
+            }
+
+        # ------------------------------------------------------
         # Exit-code handling
         # ------------------------------------------------------
         rules = host.get("exit_codes", {}).get(step)
@@ -188,7 +272,9 @@ class HostExecutor:
             "status": status,
             "exit_code": exit_code,
             "output": out,
-            "parsed": parsed if step == "check" else None
+            "parsed": parsed if step == "check" else None,
+            "repo_broken": repo_broken if step == "check" else False,
+            "repo_status": repo_status if step == "check" else None,
         }
 
     def _map_systemd_result(self, result) -> dict:
@@ -228,3 +314,80 @@ class HostExecutor:
             mapped["status"] = "failed"
 
         return mapped
+
+    def _record_event(self, summary: dict, event: str):
+        summary["lifecycle_events"].append(event)
+        if self.logger:
+            self.logger.lifecycle(event)
+
+    def _handle_check_step(self, rc, host_summary, name):
+        if rc is None:
+            return "continue"
+
+        host_summary["repo_status"] = rc.get("repo_status")
+
+        if rc.get("repo_broken"):
+            self._record_event(host_summary, "REPO_HEALTH_FAIL")
+            if not self.force:
+                self._record_event(host_summary, "SKIP_REPO_BROKEN")
+                host_summary["update_status"] = "skipped"
+                host_summary["lifecycle_status"] = "skipped"
+                return "skip_updates"
+            else:
+                self._record_event(host_summary, "FORCE_CONTINUE_REPO_BROKEN")
+
+        status = rc.get("status")
+
+        if status == "up_to_date":
+            host_summary["update_status"] = "up_to_date"
+            host_summary["lifecycle_status"] = "completed"
+            self._record_event(host_summary, "UP_TO_DATE")
+            return "skip_updates"
+
+        if status in ("patches_available", "updates_available"):
+            host_summary["update_status"] = status
+            self._record_event(host_summary, "UPDATES_AVAILABLE")
+            return "continue"
+
+        raise RuntimeError(f"[{name}] Unexpected check status: {status}")
+
+    def _handle_update_step(self, rc, host_summary):
+        if rc and rc.get("exit_code") == 0:
+            host_summary["update_status"] = "updates_applied"
+            self._record_event(host_summary, "UPDATES_APPLIED")
+        else:
+            host_summary["update_status"] = "failed"
+            host_summary["lifecycle_status"] = "failed"
+            self._record_event(host_summary, "UPDATE_FAILED")
+
+    def _handle_reboot_step(self, rc, host, cmds, session, name, host_summary):
+        status = rc.get("status") if rc else None
+
+        if status == "no_reboot":
+            if self.logger:
+                self.logger.info(f"[{name}] No reboot required, skipping")
+            return
+
+        if status in ("reboot_required", "restart_services", "reboot_and_restart"):
+            if self.logger:
+                self.logger.info(f"[{name}] Rebooting host due to status: {status}")
+            boot = "reboot_now"
+            bcmd = cmds.get(boot)
+            self._run_step(session, host, boot, bcmd)
+            host_summary["reboot_status"] = status
+
+    def _finalize_summary(self, host_summary):
+        end = datetime.now()
+        host_summary["timestamps"]["completed"] = end.isoformat(timespec="seconds")
+        start = datetime.fromisoformat(host_summary["timestamps"]["started"])
+        host_summary["timestamps"]["duration_seconds"] = (end - start).seconds
+
+        if host_summary["lifecycle_status"] == "in_progress":
+            host_summary["lifecycle_status"] = "completed"
+
+    def _write_summary(self, host_summary, name):
+        summary_path = Path(self.paths["SUMMARY_HOST_DIR"]) / f"{name}.json"
+        if self.logger:
+            self.logger.info(f"Writing summary to: {summary_path}")
+        with open(summary_path, "w") as f:
+            json.dump(host_summary, f, indent=2)
