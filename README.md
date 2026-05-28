@@ -7,43 +7,39 @@
 ![Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/RunUpdates?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-RunUpdates is a deterministic, operator‑grade update orchestrator for Linux hosts.  
+RunUpdates is a deterministic, operator‑grade update orchestrator for Linux hosts.
 It provides reproducible sequencing, audit‑transparent execution, and a clean, YAML‑driven model for managing package updates across heterogeneous environments.
 
 RunUpdates is designed for engineers who want predictable behavior, clear logging, and a workflow that scales from a single workstation to a full fleet.
 
----
+## ✨ Features
 
-# ✨ Features
-
-- **Deterministic execution pipeline**  
+* Deterministic execution pipeline  
   refresh → check → update? → clean → reboot?
 
-- **Inventory‑driven orchestration**  
-  Families → Distros → Hosts with inheritance, flattening, and strict validation
+* Inventory‑driven orchestration  
+  OS (family) → Distro → Hosts with inheritance, flattening, and strict validation
 
-- **Local + remote execution**  
-  - Local execution via `sudo_run`  
-  - Remote execution via `SSHSession` (keyfile preferred, password fallback)
+* Local + remote execution
+  * Local execution via sudo_run
+  * Remote execution via SSHSession (keyfile preferred, password fallback)
 
-- **Declarative distro model**  
+* Declarative distro model  
   Commands, exit‑codes, and reboot indicators defined per distro
 
-- **Operator‑grade logging**  
+* Operator‑grade logging  
   Structured, timestamped, redacted, and suitable for audit trails
 
-- **Flexible host selection**  
-  `--family`, `--distro`, `--host`, or full‑inventory runs
+* Flexible host selection  
+  --family, --distro, --host, or full‑inventory runs
 
-- **Dry‑run mode**  
+* Dry‑run mode  
   Preview commands without executing them
 
-- Machine‑readable summaries (planned)  
-  Per‑host JSON summaries will be added in a future release.
+* Machine‑readable summaries (implemented)  
+  Per‑host JSON summaries and a final aggregated summary are generated for every run.
 
----
-
-# 📦 Installation
+## 📦 Installation
 
 ```bash
 git clone https://github.com/Linktech-Engineering-LLC/RunUpdates.git
@@ -52,84 +48,85 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
 RunUpdates is now ready to use.
 
 ## 🧩 Inventory Model
+
 RunUpdates uses a structured YAML inventory that defines:
 
-* distro families
+* operating system families
+* distros
 * package manager commands
 * exit‑code interpretation
 * host lists
 * connection parameters
-* raw_yaml is used for list operations
-* normalized inventory is used for orchestration
+* vault‑merged secrets
+* raw YAML (for list operations)
+* normalized inventory (for orchestration)
 
-**Example (openSUSE)**
+### Inventory Hierarchy
 
-**Note:** All values below (ports, addresses, hostnames) are placeholders. Replace them with your actual environment.
+Code
+```
+family (OS) → distro → hosts
+```
+
+Examples of families:
+
+* linux
+* windows
+* macos
+
+Examples of distros under linux:
+
+* opensuse
+* debian
+* redhat
+
+Note: In the current implementation, both openSUSE Leap and Tumbleweed hosts are grouped under the [opensuse] distro because they share the same command model.
+If their update semantics diverge, they can be split in {hosts.yml] without code changes.
+
+Example (placeholder values)
 
 ```yaml
 linux:
   opensuse:
     packages:
+      refresh: "zypper refresh"
       check: "zypper patch-check --with-optional"
-      refresh: "zypper refresh" 
-      update: "zypper --non-interactive up --auto-agree-with-licenses --recommends --replacefiles --allow-vendor-change"
+      update: "zypper --non-interactive up --auto-agree-with-licenses"
       clean: "zypper clean"
-      orphans: "zypper packages --orphaned"
-      list: "zypper list-updates --all"
       reboot: "zypper needs-rebooting"
-      reboot_now: "systemctl reboot || shutdown -r now"
-      exit_codes:
-        refresh:
-          success: [0]
-          error: ["*"]
 
-        check:
-          up_to_date: [0]
-          patches_available: [100, 101]
-          error: ["*"]
+    exit_codes:
+      check:
+        up_to_date: [0]
+        patches_available: [100, 101]
+        error: ["*"]
 
-        update:
-          success: [0]
-          reboot_required: [102, 104]
-          restart_services: [103]
-          error: ["*"]
-
-        reboot:
-          no_reboot: [0]
-          reboot_required: [102]
-          restart_services: [103]
-          reboot_and_restart: [104]
-          error: ["*"]
-
-    port: nnnn # Non-Standard Port used for ssh
+    port: 2222
 
     hosts:
-      sample_host:
+      suse-node-01:
         enabled: true
-        address: [nnn.nnn.nnn.nnn, nnn.nnn.nnn.nnn]
+        address: ["192.0.2.10"]
 ```
 
-### Inventory hierarchy
+Address Model
+address is **always a list**, even when only one address is present.
 
-* **Family** (e.g., linux)
-* **Distro** (e.g., opensuse)
-* **Hosts** (e.g., Lab-Suse-01)
+This ensures:
 
-RunUpdatesInventoryLoader performs inheritance merging and normalization before orchestration begins.
+* consistent normalization
+* predictable iteration
+* multi‑address failover support
 
 ## 🔧 Secrets Model
 
 Secrets are loaded from a vault file or environment variables.
-RunUpdates injects secrets into PythonTools at startup.
 
-* secrets are passed explicitly
-* no global state
-* no implicit injection
-
-### Required fields
+Required fields
 
 ```yaml
 username: "ssh username"
@@ -137,16 +134,17 @@ password: "optional ssh + sudo password"
 keyfile: "/path/to/private/key"
 ```
 
-### Authentication model
+## Authentication Model
 
 * **username** → SSH username
 * **keyfile** → primary SSH authentication
 * **password** → fallback SSH authentication + sudo password
 
-At least one authentication method must be available.
+Secrets are:
 
-RunUpdates injects secrets into PythonTools at startup.
-Secrets are never logged or written to disk.
+* merged into normalized host objects
+* never logged
+* never written to disk
 
 ## 🚀 Usage
 
@@ -176,7 +174,7 @@ runupdates --family linux --distro opensuse
 Run against a single host:
 
 ```bash
-runupdates --host Lab-Suse-01
+runupdates --host suse-node-01
 ```
 
 Dry‑run mode:
@@ -187,76 +185,101 @@ runupdates --dry-run
 
 ## 🛠 Execution Flow
 
-Each host runs the following steps in order:
+Each host runs the following steps:
 
 1. refresh
 2. check
-  * backend‑specific parsing (zypper/dnf/apt)
-  * Interprets exit codes according to the inventory schema
-  * Output parsing for patch counts is planned for the next release
+  * exit‑code classification
+  * backend‑specific parsing (future)
 3. update (only if needed)
-4. clean (always)
+4. clean
 5. reboot detection
 
-Failures do not stop the overall run.
-
-Each step is logged with:
+Each step records:
 
 * exit code
 * stdout/stderr
-* classification (success/warning/error/fatal)
+* classification
+* timestamps
 
-Failures do not stop the overall run.
+Failures do **not** stop the overall run.
 
-For full details, see:
-![📄 Execution](docs/Execution_Flow.md)
+### Per‑Host Summaries (Implemented)
+
+Each host produces a JSON file:
+
+Code
+```
+<hostname>.json
+```
+
+Containing:
+
+* lifecycle status
+* update status
+* repo health
+* reboot requirement
+* exit codes
+* stdout/stderr
+* timestamps
+* lifecycle events
+
+### Final Summary (Implemented)
+
+A final summary.json includes:
+
+* run start/end
+* duration
+* totals (completed, failed, skipped, repo_broken, reboot_required, etc.)
+* per‑host status map
 
 ## 🧱 Architecture Overview
 
-text
+Code
+```
 main.py
  └── UpdateOrchestrator
-      ├── HostSelector (CLI filtering)
+      ├── HostSelector
       ├── HostConnector
-      │     ├── LocalSession (sudo_run)
-      │     └── SSHSession
-      └── HostExecutor (runs distro-defined pipeline)
+      │     ├── sudo_run (local)
+      │     └── SSHSession (remote)
+      ├── HostExecutor
+      └── SummaryWriter
 
-      RunUpdatesInventoryLoader
-      ├── YAML loading
-      ├── schema validation
-      ├── inheritance merging
-      └── normalization (flattening)
+RunUpdatesInventoryLoader
+ ├── YAML loading
+ ├── schema validation
+ ├── inheritance merging
+ ├── vault merging
+ └── normalization
+```
 
 ### Responsibilities
 
-* **RunUpdatesInventoryLoader** → loads, validates, and normalizes inventory
-* **HostSelector** → determines which hosts should run
+* **RunUpdatesInventoryLoader** → loads, validates, normalizes inventory
+* **HostSelector** → applies CLI filters
 * **HostConnector** → selects local vs remote execution
 * **HostExecutor** → runs the distro‑defined pipeline
-* **PythonTools** → provides execution primitives and session layer
+* **PythonTools** → execution primitives
 
-For full architecture details:
-![📄 ARCHITECTURE](ARCHITECTURE.md)
+Summary generation is integrated into the HostExecutor (per‑host summaries) and the UpdateOrchestrator (final summary).
 
 ## 🧪 Error Classification
 
-RunUpdates uses a unified, distro‑agnostic classification model:
+RunUpdates uses a unified classification model:
 
 * success
 * warning
 * error
 * fatal
 
-Mapped from exit codes and PythonTools exceptions.
+Mapped from:
 
-Full classification rules:
-
-![📄 Error_Classification](docs/Error_Classification.md)
+* exit codes
+* SSH failures
+* PythonTools exceptions
 
 ## 🔒 Security Model
-
-RunUpdates is designed with a minimal attack surface:
 
 * no dynamic code execution
 * no YAML‑driven logic paths
@@ -265,38 +288,82 @@ RunUpdates is designed with a minimal attack surface:
 * deterministic logging
 * strict inventory validation
 
-Full security policy:
-![📄 SECURITY](SECURITY.md)
+Secrets may be provided via:
+
+* CLI arguments
+* environment variables
+* an encrypted vault file
+
+Other tools in the Linktech Engineering suite may or may not use vaults.
+For example, **NMS_Tools does not require vault access**.
+
+### Environment Variables (Ansible‑Style Naming)
+
+RunUpdates supports environment variables for vault configuration using the pattern:
+
+Code
+```
+<APPLICATION_NAME>_<VARIABLE>
+```
+
+For RunUpdates, the following variables are recognized:
+
+[RUNUPDATES_VAULT_PATH]
+
+Path to the encrypted vault file.
+
+Example:
+
+```bash
+export RUNUPDATES_VAULT_PATH="$HOME/ansible/vault.yml"
+```
+
+[RUNUPDATES_VAULT_PASSWORD_FILE]
+
+Path to the file containing the vault password.
+
+Example:
+
+```bash
+export RUNUPDATES_VAULT_PASSWORD_FILE="$HOME/.ansible/password"
+```
+
+Resolution Order
+RunUpdates resolves vault configuration in this order:
+
+1. CLI arguments  
+  ([--vault-path], [--vault-password-file], [--vault-password])
+
+2. Environment variables  
+  ([RUNUPDATES_VAULT_PATH], [RUNUPDATES_VAULT_PASSWORD_FILE])
+
+3. Defaults  
+  (none today — missing values cause a validation error)
+
+This mirrors the Ansible model:
+
+* CLI overrides environment
+* Environment overrides defaults
+* Missing values fail fast
+
+### Why this matters
+
+* Keeps secrets out of the inventory
+* Allows per‑user or per‑machine configuration
+* Works cleanly with systemd units, cron jobs, and CI pipelines
+* Matches the naming convention used across your entire tool suite
 
 ## 🛣 Roadmap
 
-The next release will introduce:
+Upcoming enhancements:
 
-* backend‑specific parsing for check output (zypper/dnf/apt)
-* structured JSON results for the check operation
-* per‑host JSON summaries
+* structured check parsing (zypper/dnf/apt)
 * improved reboot classification
 * expanded distro support
+* inventory diffing
+* dashboard‑ready summary format
 
-### PythonTools Integration
-
-RunUpdates is built on top of **PythonTools**, a shared execution substrate used across the Linktech Engineering Tools Suite.
-PythonTools provides deterministic, operator‑grade primitives for command execution, session management, and structured logging.
-
-PythonTools supplies:
-
-* sudo_run for privileged local execution
-* local_command for non‑privileged local execution
-* SSHSession for remote execution
-* structured logging injection
-* secrets injection
-* consistent return structures
-* reusable helpers for orchestration workflows
-
-PythonTools is now a standalone micro‑library maintained alongside RunUpdates, NMS_Tools, BotScanner, TimerDeck, and future tools.
-RunUpdates relies on PythonTools for all execution‑layer behavior, ensuring consistent, reproducible results across local and remote hosts.
-
-## 🤝 Contributing
+## 🤝 [Contributing](CONTRIBUTING.md)
 
 Pull requests are welcome.
 
@@ -304,37 +371,16 @@ Please ensure:
 
 * deterministic behavior
 * no breaking changes to the inventory schema
-* clear, structured logging
 * placeholder‑only examples
 * documentation updates for new features
 
-Full guidelines:
-![📄 CONTRIBUTING](CONTRIBUTING.md)
-
-## 📄 License
+## 📄 [License](LICENSE)
 MIT License — see LICENSE for details.
 
 ## 🔗 Related Projects
 
-RunUpdates is part of the Linktech Engineering Tools Suite.  
-You may also find these projects useful:
-
-- **NMS_Tools**  
-  A suite of deterministic Nagios-compatible monitoring tools with structured logging and operator‑grade output.  
-  https://github.com/Linktech-Engineering-LLC/NMS_Tools
-
-- **VSCode-Updater**  
-  A cross‑platform, operator‑grade updater for Visual Studio Code with deterministic logging and reproducible workflows.  
-  https://github.com/Linktech-Engineering-LLC/VSCode-Updater
-
-- **BotScanner**  
-  A lightweight, deterministic scanning tool for identifying automated traffic patterns and bot signatures.  
-  https://github.com/Linktech-Engineering-LLC/BotScanner
-
-- **licensegen**  
-  A simple, reproducible license generator supporting SPDX identifiers and clean header injection.  
-  https://github.com/Linktech-Engineering-LLC/licensegen
-
-- **rust_logger**  
-  A minimal, deterministic logging library for Rust projects with operator‑grade formatting.  
-  https://github.com/Linktech-Engineering-LLC/rust_logger
+* [NMS_Tools](https://github.com/Linktech-Engineering-LLC/NMS_Tools)
+* [VSCode-Updater](https://github.com/Linktech-Engineering-LLC/VSCode-Updater)
+* [BotScanner-Community](https://github.com/Linktech-Engineering-LLC/BotScanner-Community)
+* [licensegen](https://github.com/Linktech-Engineering-LLC/licensegen)
+* [rust-logger](https://github.com/Linktech-Engineering-LLC/rust-logger)

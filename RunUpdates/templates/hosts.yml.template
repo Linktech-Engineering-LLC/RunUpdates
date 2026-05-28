@@ -1,0 +1,60 @@
+# RunUpdates Inventory Template
+# -----------------------------
+# This file defines all hosts, families, and distros managed by RunUpdates.
+# All values here are placeholders. Replace them with your real environment.
+#
+# IMPORTANT:
+# - No usernames belong in this file.
+# - No passwords or SSH keys belong in this file.
+# - All credentials must be stored in the vault.
+# - Overrideable metadata (like port) must be placed under `vars`.
+
+linux:
+    vars:
+        port: 2222
+  # ---------------------------------------------------------
+  # Debian-family (Debian, Ubuntu, Mint, etc.)
+  # ---------------------------------------------------------
+  debian:
+    defaults:
+      vars:
+        port: 22
+        # Optional: if these hosts are VMs, specify the hypervisor
+        # vm_host: "HypervisorName"
+
+    hosts:
+      sample-debian:
+        address:
+          - "192.0.2.10"
+        # Optional host-level overrides:
+        # vars:
+        #   port: 2222
+        #   vm_host: "HypervisorName"
+
+  # ---------------------------------------------------------
+  # openSUSE-family (Leap, Tumbleweed)
+  # ---------------------------------------------------------
+  opensuse:
+    defaults:
+      vars:
+        port: 22
+
+    hosts:
+      sample-opensuse:
+        address:
+          - "192.0.2.20"
+
+  # ---------------------------------------------------------
+  # RedHat-family (RHEL, CentOS, Rocky, Alma, Fedora)
+  # ---------------------------------------------------------
+  redhat:
+    defaults:
+      vars:
+        port: 22
+
+    hosts:
+      sample-redhat:
+        address:
+          - "192.0.2.30"
+
+# End of inventory

@@ -33,17 +33,23 @@ main.py
 | HostExecutor |	Runs the deterministic update pipeline for each host |
 | PythonTools |	Provides execution primitives, session layer, and logging injection |
 
+### SSHSession Behavior
+
+SSHSession implements a two‑stage authentication model:
+1. Keyfile authentication (preferred)
+2. Password authentication (fallback) using sudo_user + sudo_pass
+
+This ensures RunUpdates can operate even if key‑based authentication is unavailable.
+
+
 ## ⚙️ 2. Execution Model
 
 RunUpdates uses a unified execution model built on PythonTools.
 
 ### Local Execution
-
 Local commands run through:
 
-```code
-sudo_run(command)
-```
+```sudo_run(command)```
 
 Characteristics:
 
@@ -53,31 +59,45 @@ Characteristics:
 * No LocalSession class is used
 
 ### Remote Execution
-
 Remote commands run through:
 
-```code
-SSHSession.run(command)
-```
+```SSHSession.run(command)```
 
-Authentication model:
+### Authentication Model
+SSHSession uses a two‑stage strategy:
 
-1. keyfile (preferred)
-2. password (fallback)
+1. Keyfile Authentication (primary)
 
-SSHSession is responsible for:
+If [keyfile] exists and is readable:
+* SSHSession authenticates using the private key
+* SSH user is implicitly root
+* No password is used
 
-* connection lifecycle
-* command execution
-* stdout/stderr capture
-* exit‑code retrieval
-* error normalization
+2. Password Authentication (fallback)
+
+If keyfile authentication is unavailable:
+* SSHSession authenticates using:
+  Code
+  ```
+  ssh_user = sudo_user
+  ssh_password = sudo_pass
+  ```
+* This allows RunUpdates to operate even without key‑based auth
+
+### Sudo Behavior
+
+If the SSH user is not root:
+* Commands requiring privilege escalation use:
+  Code
+  ```
+  sudo -S <command>
+  ```
+* sudo_pass is used for stdin‑based sudo authentication
 
 ### Unified Return Structure
 
 Both local and remote execution return:
-
-```python
+```Python
 {
   "stdout": "...",
   "stderr": "...",
@@ -85,8 +105,6 @@ Both local and remote execution return:
   "ok": True/False
 }
 ```
-
-This allows HostExecutor to remain distro‑agnostic.
 
 ## 📦 3. Inventory & YAML Model
 
@@ -100,7 +118,8 @@ RunUpdates uses a declarative YAML inventory that defines:
 
 ### Inventory Hierarchy
 
-```Code
+Code
+```
 family
  └── distro
        ├── packages
@@ -180,21 +199,32 @@ This ensures predictable, audit‑friendly behavior.
 
 ## 🔐 6. Secrets Model
 
-Secrets are injected at startup and include:
+RunUpdates receives its secrets from an external vault.
+The RunUpdates section of the vault contains:
 
-```yaml
-username: "ssh username"
-password: "optional ssh + sudo password"
-keyfile: "/path/to/private/key"
+```Yaml
+runupdates:
+  keyfile: "~/.ssh/runupdates"
+  sudo_user: "root"
+  sudo_pass: "CHANGE_ME"
 ```
 
-Rules:
+### Meaning of fields
 
-* At least one authentication method must be available
-* Password is used for both SSH fallback and sudo
-* Secrets are never logged
+| Field | Purpose |
+| --- | --- |
+| **keyfile** | Primary SSH authentication method. If present and readable, SSHSession uses key‑based authentication. |
+| **sudo_user** | SSH fallback user *and* privilege‑escalation identity. Used only if keyfile authentication is unavailable. |
+| **sudo_pass** | Password used for both SSH fallback authentication and sudo privilege escalation. |
 
-Secrets are injected into PythonTools, not stored internally
+### Rules:
+
+* If [keyfile] exists → SSH uses keyfile auth as root.
+* If [keyfile] is missing → SSH uses [sudo_user] + [sudo_pass].
+* [sudo_pass] is also used for [sudo -S]
+* Secrets are never logged.
+* Secrets are injected into PythonTools at startup.
+
 
 ## 🧰 7. PythonTools Integration
 
@@ -206,8 +236,6 @@ PythonTools provides:
 * injected logging
 * injected secrets
 * reusable helpers (in progress)
-
-PythonTools is currently internal to RunUpdates but will eventually be extracted into a standalone Linktech Engineering library.
 
 ### Design Constraints
 
@@ -241,7 +269,6 @@ This ensures consistent behavior across all tools in the suite.
 
 ## 🛠 9. Future Work
 
-* Extract PythonTools into standalone repo
 * Add secrets injection to PythonTools
 * Add reusable helpers to PythonTools
 * Expand distro support

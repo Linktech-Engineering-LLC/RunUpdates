@@ -5,16 +5,16 @@ The goal is to provide deterministic, operator‑grade behavior across all suppo
 
 RunUpdates uses a simple, explicit classification model:
 
-- **success**
-- **warning**
-- **error**
-- **fatal**
+* **success**
+* **warning**
+* **error**
+* **fatal**
 
 These classifications appear in:
 
-- operator logs  
-- per‑host summaries  
-- aggregated results  
+* operator logs  
+* per‑host summaries  
+* aggregated results  
 
 They never contain sensitive data.
 
@@ -24,11 +24,11 @@ They never contain sensitive data.
 
 Error classification provides:
 
-- consistent interpretation across distros  
-- predictable operator behavior  
-- stable automation hooks  
-- clear reporting in summaries  
-- deterministic logging  
+* consistent interpretation across distros  
+* predictable operator behavior  
+* stable automation hooks  
+* clear reporting in summaries  
+* deterministic logging  
 
 RunUpdates does **not** rely on distro‑specific semantics alone.  
 Instead, it maps exit codes into a unified model.
@@ -42,13 +42,13 @@ Indicates that the command completed without errors.
 
 Examples:
 
-- `zypper lu` returned 0  
-- `apt upgrade -y` returned 0  
-- `dnf upgrade -y` returned 0  
+* <zypper lu> returned 0  
+* <apt upgrade -y> returned 0  
+* <dnf upgrade -y> returned 0  
 
 Recorded as:
 
-`"classification": "success"`
+<classification: success>
 
 
 ---
@@ -58,13 +58,13 @@ Indicates a non‑fatal issue that did not prevent execution.
 
 Examples:
 
-- package manager returned a non‑zero code but still produced usable output  
-- a list command returned partial results  
-- a reboot is required (not an error, but noteworthy)  
+* package manager returned a non‑zero code but still produced usable output  
+* a list command returned partial results  
+* a reboot is required (not an error, but noteworthy)  
 
 Recorded as:
 
-`"classification": "warning"`
+<classification: warning>
 
 
 Warnings do **not** stop execution.
@@ -76,21 +76,21 @@ Indicates a failure that affected the command but did not stop the host’s over
 
 Examples:
 
-- update command failed  
-- list command failed  
-- SSH command returned a non‑zero exit code  
-- stderr contained actionable errors  
+* update command failed  
+* list command failed  
+* SSH command returned a non‑zero exit code  
+* stderr contained actionable errors  
 
 Recorded as:
 
-`"classification": "error"`
+<classification: error>
 
 
 Execution continues to:
 
-- post‑update list  
-- reboot detection  
-- summary generation  
+* post‑update list  
+* reboot detection  
+* summary generation  
 
 ---
 
@@ -99,11 +99,11 @@ Indicates a failure that prevents further execution for the host.
 
 Examples:
 
-- SSH session could not be created  
-- authentication failed  
-- inventory entry was invalid  
-- command could not be executed at all  
-- PythonTools raised an unrecoverable exception  
+* SSH session could not be created  
+* authentication failed  
+* inventory entry was invalid  
+* command could not be executed at all  
+* PythonTools raised an unrecoverable exception  
 
 Recorded as:
 
@@ -111,6 +111,7 @@ Recorded as:
 
 
 A fatal classification ends processing for that host.
+Other hosts are unaffected.
 
 ---
 
@@ -120,10 +121,10 @@ RunUpdates uses a deterministic mapping:
 
 | Exit Code | Classification | Meaning |
 |-----------|----------------|---------|
-| `0`       | success        | Command completed normally |
-| `1–99`    | error          | Command failed but execution may continue |
-| `100–199` | warning        | Non‑fatal issues (distro‑specific) |
-| `200+`    | fatal          | Unrecoverable failure |
+| [0]       | success        | Command completed normally |
+| [1–99]    | error          | Command failed but execution may continue |
+| [100–199] | warning        | Non‑fatal issues (distro‑specific) |
+| [200+]    | fatal          | Unrecoverable failure |
 
 This mapping is intentionally simple and distro‑agnostic.
 
@@ -156,8 +157,7 @@ RunUpdates then applies its classification model on top of this.
 
 These are always mapped to:
 
-`"classification": "fatal"`
-
+<classification: fatal>
 
 ---
 
@@ -174,14 +174,15 @@ Execution continues, but the host is marked as having failed operations.
 
 ## 5.4 fatal
 Execution stops for that host immediately.
-
-Other hosts are unaffected.
+Other hosts continue unaffected.
 
 ---
 
 # 6. Logging Behavior
 
 Each command produces a log entry:
+
+code
 
 ```
 [2025-05-01 14:03:22] COMMAND: zypper lu
@@ -192,18 +193,18 @@ Each command produces a log entry:
 
 Logs contain:
 
-- timestamp  
-- command  
-- exit code  
-- classification  
-- stderr (redacted if needed)  
+* timestamp  
+* command  
+* exit code  
+* classification  
+* stderr (redacted if needed)  
 
 Logs never contain:
 
-- passwords  
-- SSH keys  
-- vault secrets  
-- sensitive inventory data  
+* passwords  
+* SSH keys  
+* vault secrets  
+* sensitive inventory data  
 
 ---
 
@@ -211,11 +212,14 @@ Logs never contain:
 
 Each host summary includes:
 
+code
+
+'''
 "exit_code": 4,
 "classification": "warning",
 "errors": ["Reboot required"],
 "reboot_required": true
-
+'''
 
 Summaries are machine‑readable and safe for long‑term retention.
 
@@ -225,31 +229,43 @@ Summaries are machine‑readable and safe for long‑term retention.
 
 ## 8.1 Successful update
 
+code
+
+```
 exit_code: 0
 classification: success
 reboot_required: false
-
+```
 
 ## 8.2 Update succeeded but reboot required
 
+code
+
+```
 exit_code: 103
 classification: warning
 reboot_required: true
-
+```
 
 ## 8.3 Update failed
 
+code
+
+```
 exit_code: 1
 classification: error
 reboot_required: false
-
+```
 
 ## 8.4 SSH failure
 
+code
+
+```
 exit_code: null
 classification: fatal
 error: "SSH connection failed"
-
+```
 
 ---
 
@@ -257,10 +273,10 @@ error: "SSH connection failed"
 
 RunUpdates uses a deterministic, distro‑agnostic error classification model that ensures:
 
-- predictable operator behavior  
-- consistent logging  
-- clear summaries  
-- stable automation hooks  
-- safe, audit‑friendly output  
+* predictable operator behavior  
+* consistent logging  
+* clear summaries  
+* stable automation hooks  
+* safe, audit‑friendly output  
 
 This document defines the authoritative classification rules for all RunUpdates operations.

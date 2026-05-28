@@ -1,0 +1,29 @@
+# RunUpdates Vault Template
+# -------------------------
+# This file contains secrets and credentials used by RunUpdates.
+# DO NOT commit real secrets to version control.
+#
+# Use environment variables to load this file securely:
+#
+#   RUNUPDATES_VAULT_PATH=/path/to/vault.yml
+#   RUNUPDATES_VAULT_PASSWORD_FILE=/path/to/password.txt
+#
+# The vault password file must contain ONLY the password.
+#
+# IMPORTANT:
+# - All credentials belong here, not in hosts.yml.
+# - Users, passwords, SSH keys, and sudo credentials are merged into hosts.
+
+runupdates:
+  # SSH login user (root in your environment)
+  sudo_user: "root"
+
+  # SSH private key used for all hosts
+  # "~" is allowed and will be expanded
+  keyfile: "~/.ssh/runupdates"
+
+  # Sudo password used for all hosts
+  sudo_pass: "CHANGE_ME"
+
+  # Present but unused by current code:
+  # sudo_user: "root"
