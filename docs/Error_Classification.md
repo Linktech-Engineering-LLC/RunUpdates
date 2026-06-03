@@ -48,8 +48,7 @@ Examples:
 
 Recorded as:
 
-<classification: success>
-
+"classification": "success"
 
 ---
 
@@ -64,7 +63,7 @@ Examples:
 
 Recorded as:
 
-<classification: warning>
+"classification": "warning"
 
 
 Warnings do **not** stop execution.
@@ -83,12 +82,12 @@ Examples:
 
 Recorded as:
 
-<classification: error>
+"classification": "error"
 
 
 Execution continues to:
 
-* post‑update list  
+* clean  
 * reboot detection  
 * summary generation  
 
@@ -107,7 +106,7 @@ Examples:
 
 Recorded as:
 
-`"classification": "fatal"`
+"classification": "fatal"`
 
 
 A fatal classification ends processing for that host.
@@ -157,7 +156,7 @@ RunUpdates then applies its classification model on top of this.
 
 These are always mapped to:
 
-<classification: fatal>
+"classification": "fatal"
 
 ---
 
@@ -182,13 +181,11 @@ Other hosts continue unaffected.
 
 Each command produces a log entry:
 
-code
-
-```
+{
 [2025-05-01 14:03:22] COMMAND: zypper lu
 [2025-05-01 14:03:23] EXIT: 4
 [2025-05-01 14:03:23] CLASSIFICATION: warning
-```
+}
 
 
 Logs contain:
@@ -212,14 +209,12 @@ Logs never contain:
 
 Each host summary includes:
 
-code
-
-'''
+{
 "exit_code": 4,
 "classification": "warning",
 "errors": ["Reboot required"],
 "reboot_required": true
-'''
+}
 
 Summaries are machine‑readable and safe for long‑term retention.
 
@@ -229,43 +224,35 @@ Summaries are machine‑readable and safe for long‑term retention.
 
 ## 8.1 Successful update
 
-code
-
-```
+{
 exit_code: 0
 classification: success
 reboot_required: false
-```
+}
 
 ## 8.2 Update succeeded but reboot required
 
-code
-
-```
+{
 exit_code: 103
 classification: warning
 reboot_required: true
-```
+}
 
 ## 8.3 Update failed
 
-code
-
-```
+{
 exit_code: 1
 classification: error
 reboot_required: false
-```
+}
 
 ## 8.4 SSH failure
 
-code
-
-```
+{
 exit_code: null
 classification: fatal
 error: "SSH connection failed"
-```
+}
 
 ---
 

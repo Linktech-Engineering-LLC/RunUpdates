@@ -175,9 +175,6 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         commands = distro_vars.get("commands", {}) or {}
         exit_codes = distro_vars.get("exit_codes", {}) or {}
 
-        # Host-level vars
-        host_vars = host_node.get("vars", {})
-
         # Host-level overrides
         host_port = (
             host_node.get("port")

@@ -15,7 +15,7 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from RunUpdates.logging.factory import LoggerFactory
+from PythonTools.log_helpers.factory import LoggerFactory
 
 @pytest.fixture
 def temp_log_dir():

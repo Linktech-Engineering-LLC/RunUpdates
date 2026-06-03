@@ -16,7 +16,7 @@
 import socket
 import time
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional
 from PythonTools.sessions.ssh_sessions import SSHSession
 
 DEFAULT_SSH_PORT = 22

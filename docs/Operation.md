@@ -68,7 +68,7 @@ Triggered when:
 
 Local commands use:
 
-```Code
+```text
 sudo_run(command)
 ```
 
@@ -81,7 +81,7 @@ Triggered when:
 
 Remote commands use:
 
-```Code
+```text
 SSHSession(address, port, username, keyfile, password)
 ```
 
@@ -113,6 +113,15 @@ packages:
   clean: ...
   reboot: ...
 ```
+
+### Repo Health Check (Implemented)
+
+After the check and refresh stages, RunUpdates analyzes stderr for repository metadata failures.
+* If repo metadata cannot be retrieved:
+* the host is marked repo_broken
+* update is skipped unless --force is used
+* the error is logged
+* the summary records the repo health state
 
 ### Execution Rules
 

@@ -29,8 +29,8 @@ A full RunUpdates execution follows this sequence:
 5. Select hosts
 6. Iterate through hosts
 7. Create session (local via sudo_run, or SSH)
-8. refresh
-9. check
+8. check
+9. refresh
 10. update (only if needed)
 11. clean
 12. reboot detection
@@ -128,7 +128,7 @@ If session creation fails:
 
 The executor runs the deterministic lifecycle:
 
-**refresh → check → update? → clean → reboot detection**
+**check → refresh → update? → clean → reboot detection**
 
 Each stage logs:
 * command

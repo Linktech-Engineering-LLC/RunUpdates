@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-04-19
+ Modified: 2026-05-31
  File: RunUpdates/operations/selector.py
  Version: 1.0.0
  Description: Determines whether a host should be processed

@@ -97,7 +97,9 @@ ssh-add ~/.ssh/id_rsa
 **Fix:**
 * Update /etc/sudoers:
 
-[Defaults:<user> !requiretty]
+```text
+Defaults:<user> !requiretty
+```
 
 ## 4. Vault and Secrets Issues
 

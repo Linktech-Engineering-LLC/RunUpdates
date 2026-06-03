@@ -61,7 +61,7 @@ linux:
     hosts:
       suse-node-01:
         enabled: true
-        address: 192.0.2.10
+        address: [ 192.0.2.10 ]
 ```
 
 All examples in this document use **placeholder hostnames and RFC‑5737 test IPs**.
@@ -196,7 +196,7 @@ Example normalized host:
   "distro": "opensuse",
   "host": "suse-node-01",
   "enabled": true,
-  "address": "192.0.2.10",
+  "address": [ "192.0.2.10" ],
   "port": 2222,
   "username": "root",
   "keyfile": "/home/user/.ssh/id_rsa",

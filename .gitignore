@@ -9,8 +9,11 @@ __pycache__/
 .vscode/
 .pytest_cache/
 Logs/
+logs/
 var/
 etc/
 ignore-list.txt
 RunUpdates.egg-info/
 *.code-workspace
+archive
+release

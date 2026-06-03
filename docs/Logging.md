@@ -95,19 +95,19 @@ Every command executed by RunUpdates is logged with:
 
 ### Command Start
 
-```Code
+```text
 [2026-04-19 14:55:12] [host=Lab-Suse-01] [step=check] START: zypper refresh && zypper patch-check --with-optional
 ```
 
 ### Command End
 
-```Code
+```text
 [2026-04-19 14:55:13] [host=Lab-Suse-01] [step=check] END: exit_code=101 classification=patches_available
 ```
 
 ### Command Error
 
-```Code
+```text
 [2026-04-19 14:55:13] [host=Lab-Suse-01] [step=check] ERROR: exit_code=255 stderr="SSH connection failed"
 ```
 
@@ -115,7 +115,7 @@ Every command executed by RunUpdates is logged with:
 
 * timestamp
 * host
-* step (check/refresh/update/clean/reboot)
+* step (check/refresh/update/postcheck/clean/reboot)
 * command string
 * exit code
 * stdout (Stdout is truncated to prevent log bloat and ensure logs remain readable and diff‑friendly.)
@@ -126,8 +126,7 @@ This ensures complete auditability.
 
 ### Note on Summaries
 
-Per‑host summaries are planned, but not yet implemented.
-Operator logs are currently the authoritative record of execution.
+Per‑host summaries are implemented and written after each host completes its lifecycle.Operator logs are currently the authoritative record of execution.
 
 ## 🔐 6. Redaction Rules
 
@@ -181,25 +180,25 @@ Errors are logged deterministically:
 
 ### Connection Errors
 
-```Code
+```text
 ERROR: SSH connection failed (timeout)
 ```
 
 ### Command Errors
 
-```Code
+```text
 ERROR: exit_code=1 stderr="zypper: repository not found"
 ```
 
 ### Inventory Errors
 
-```Code
+```text
 ERROR: Missing required field: packages.update
 ```
 
 ### Secrets Errors
 
-```Code
+```text
 ERROR: No valid authentication method available
 ```
 
@@ -209,9 +208,7 @@ Errors never stop the pipeline unless they occur before execution begins.
 
 RunUpdates writes logs to a stable, non‑timestamped log file:
 
-Code
-
-```Code
+```text
 logs/
   runupdates.log
 ```

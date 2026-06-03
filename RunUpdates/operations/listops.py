@@ -41,16 +41,16 @@ class ListOperations:
     # --------------------------------------------------------------
     # Families
     # --------------------------------------------------------------
-    def list_families(self) -> str:
+    def list_families(self) -> list:
         families = list(self.inventory.keys())
         if self.logger:
             self.logger.debug(f"Families: {families}")
-        return self._dump(families)
+        return families
 
     # --------------------------------------------------------------
     # Distros
     # --------------------------------------------------------------
-    def list_distros(self, family: str | None) -> str:
+    def list_distros(self, family: str | None):
         if family:
             if family not in self.inventory:
                 raise ValueError(f"Family '{family}' not found")
@@ -58,7 +58,7 @@ class ListOperations:
                 d for d in self.inventory[family].keys()
                 if d not in RESERVED_KEYS
             ]
-            return self._dump(distros)
+            return distros
 
         # No family specified → list all distros grouped by family
         result = {
@@ -69,12 +69,12 @@ class ListOperations:
             for fam, node in self.inventory.items()
             if isinstance(node, dict)
         }
-        return self._dump(result)
+        return result
 
     # --------------------------------------------------------------
     # Hosts
     # --------------------------------------------------------------
-    def list_hosts(self, family: str | None, distro: str | None) -> str:
+    def list_hosts(self, family: str | None, distro: str | None):
         # Case 1: family + distro → list hosts under that distro
         if family and distro:
             fam_node = self.inventory.get(family)
@@ -86,7 +86,7 @@ class ListOperations:
                 raise ValueError(f"Distro '{distro}' not found under '{family}'")
 
             hosts = list((dist_node.get("hosts") or {}).keys())
-            return self._dump(hosts)
+            return hosts
 
         # Case 2: family only → list all hosts under all distros in that family
         if family:
@@ -102,7 +102,7 @@ class ListOperations:
                 for h in hosts:
                     result.append(f"{family}.{dist}.{h}")
 
-            return self._dump(result)
+            return result
 
         # Case 3: no family/distro → list ALL hosts fully-qualified
         result = []
@@ -114,21 +114,21 @@ class ListOperations:
                 for h in hosts:
                     result.append(f"{fam}.{dist}.{h}")
 
-        return self._dump(result)
+        return result
 
     # --------------------------------------------------------------
     # Full inventory dump
     # --------------------------------------------------------------
-    def list_inventory(self) -> str:
+    def list_inventory(self) -> dict:
         """Dump the entire inventory as JSON."""
-        return self._dump(self.inventory)
+        return self.inventory
 
     def show_metadata(
         self,
         family: Optional[str],
         distro: Optional[str],
         host: Optional[str]
-    ) -> str:
+    ) -> dict:
         result = {}
 
         # No family → show metadata for all families
@@ -136,7 +136,7 @@ class ListOperations:
             for fam, fam_node in self.inventory.items():
                 if "vars" in fam_node:
                     result[fam] = {"vars": fam_node["vars"]}
-            return self._dump(result)
+            return result
 
         # Family only → show family-level metadata
         fam_node = self.inventory.get(family)
@@ -154,4 +154,4 @@ class ListOperations:
             if "vars" in dist_node:
                 result["distro_vars"] = dist_node["vars"]
 
-        return self._dump(result)
+        return result

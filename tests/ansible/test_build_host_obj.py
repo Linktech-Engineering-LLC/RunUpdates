@@ -27,17 +27,17 @@ linux:
   debian:
     vars:
       port: 2222
-    commands:
-      update: "apt update"
-      upgrade: "apt upgrade"
-    exit_codes:
-      ok: 0
-      changed: 100
-    lifecycle:
-      - pre
-      - post
-    systemd: true
-    systemd_mode: wait
+      commands:
+        update: "apt update"
+        upgrade: "apt upgrade"
+      exit_codes:
+        ok: 0
+        changed: 100
+      lifecycle:
+        - pre
+        - post
+      systemd: true
+      systemd_mode: wait
     hosts:
       deb-01:
         address: 10.0.0.1

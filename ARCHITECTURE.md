@@ -39,6 +39,8 @@ It produces two representations:
 * raw_yaml — used for list operations
 * normalized — used for orchestration
 
+**Note**: The schema structure and validation flow are stable, but the schema files themselves will continue to expand as distro models and check‑parsing features mature.
+
 #### Key Behaviors
 
 * address is always normalized to a list
@@ -186,10 +188,10 @@ Each host follows the same deterministic sequence:
 2. check
 3. exit‑code interpretation
   * backend‑specific parsing (future)
-  * update (only if needed)
-4. clean
-5. reboot detection
-6. per‑host summary
+4. update (only if needed)
+5. clean
+6. reboot detection
+7. per‑host summary
 
 ### Not Yet Implemented (Future)
 
@@ -237,6 +239,7 @@ The loader merges:
 RunUpdates uses PythonTools as its execution substrate:
 * [sudo_run] for privileged local execution
 * [local_command] for non‑privileged local execution
+  * local_command is available in PythonTools but is not used by RunUpdates today.
 * [SSHSession] for remote execution
 * structured logging injection
 * secrets injection

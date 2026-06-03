@@ -1,4 +1,4 @@
-# RunUpdates — Inventory Schema Reference (`hosts.yml`)
+# RunUpdates — Inventory Schema Reference ([hosts.yml])
 
 This document defines the formal schema for the RunUpdates inventory file.
 The schema is considered **stable**. Any changes require:
@@ -13,55 +13,55 @@ There are **no implicit defaults** and no hidden behavior.
 
 ---
 
-# 1. Top‑Level Structure
+## 1. Top‑Level Structure
 
 The inventory is a hierarchical YAML document:
 
+```yaml
 linux:
-<family>:
-<distro>:
-hosts:
-- <host entry>
-
+  <family>:
+    <distro>:
+      hosts:
+        - <host entry>
+```
 
 Hierarchy:
 
 linux → family → distro → hosts
 
-
 Each level is explicit and required.
 
 ---
 
-# 2. Families
+## 2. Families
 
 A **family** groups related distributions.
 
 Examples:
 
-- `debian-family`
-- `redhat-family`
-- `opensuse-family` (future)
-- `arch-family` (future)
+* [debian-family]
+* [redhat-family]
+* [opensuse-family] (future)
+* [arch-family] (future)
 
 Families contain one or more **distro blocks**.
 
 Family names must:
 
-- be lowercase
-- use hyphens, not underscores
-- be unique within `linux`
+* be lowercase
+* use hyphens, not underscores
+* be unique within [linux]
 
 ---
 
-# 3. Distro Blocks
+## 3. Distro Blocks
 
 A distro block defines:
 
-- the distro name
-- the hosts belonging to that distro
-- optional package blocks (future)
-- optional repo/key definitions (future)
+* the distro name
+* the hosts belonging to that distro
+* optional package blocks (future)
+* optional repo/key definitions (future)
 
 Example:
 
@@ -76,40 +76,40 @@ linux:
           enabled: true
 ```
 
-## 3.1 Required Fields
+### 3.1 Required Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
-| ``hosts`` | list | List of host entries |
+| [hosts] | list | List of host entries |
 
-## 3.2 Optional Fields (Future)
+### 3.2 Optional Fields (Future)
 
 | Field | Type | Description |
 | --- | --- | --- |
-| ``packages`` | map | Shared package lists for the distro |
-| ``repos`` | list | Repository definitions |
-| ``keys`` | list | GPG key import definitions |
+| [packages] | map | Shared package lists for the distro |
+| [repos] | list | Repository definitions |
+| [keys] | list | GPG key import definitions |
 
-# 4. Host Entries
+## 4. Host Entries
 Each host entry represents a single machine.
 
-## 4.1 Required Fields
+### 4.1 Required Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
-| ``address`` | string | IP or hostname (placeholder only in examples) |
-| ``port`` | integer | SSH port |
-| ``user`` | string | SSH username |
-| ``enabled`` | boolean | Whether this host participates in execution |
+| [address] | string | IP or hostname (placeholder only in examples) |
+| [port] | integer | SSH port |
+| [user] | string | SSH username |
+| [enabled] | boolean | Whether this host participates in execution |
 
-## 4.2 Optional Fields
+### 4.2 Optional Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
-| ``tags`` | list | Future: grouping and selection |
-| ``comment`` | string | Human‑readable notes |
+| [tags] | list | Future: grouping and selection |
+| [comment] | string | Human‑readable notes |
 
-## 4.3 Field Rules
+### 4.3 Field Rules
 
 * address must not be empty
 * port must be a valid integer (1–65535)
@@ -118,7 +118,7 @@ Each host entry represents a single machine.
 * no defaults are assumed
 * no fields are auto‑generated
 
-## 4.4 Example Host Entry
+### 4.4 Example Host Entry
 
 ```yaml
 - address: nnn.nnn.nnn.nnn
@@ -131,7 +131,7 @@ Each host entry represents a single machine.
   enabled: true
 ```
 
-# 5. Reserved Future Fields
+## 5. Reserved Future Fields
 
 To avoid namespace collisions, the following keys are reserved:
 
@@ -145,32 +145,32 @@ To avoid namespace collisions, the following keys are reserved:
 
 These may be introduced in future versions.
 
-# 6. Validation Rules
+## 6. Validation Rules
 
 RunUpdates performs strict validation:
 
-## 6.1 Structural Validation
+### 6.1 Structural Validation
 
 * linux must exist
 * each family must contain at least one distro
 * each distro must contain a hosts list
 * each host must contain all required fields
 
-## 6.2 Type Validation
+### 6.2 Type Validation
 
 * strings must be strings
 * integers must be integers
 * booleans must be booleans
 * lists must be lists
 
-## 6.3 Semantic Validation
+### 6.3 Semantic Validation
 
 * enabled must be explicitly set
 * no duplicate host entries
 * no empty family or distro names
 * no unknown top‑level keys
 
-## 6.4 Security Validation
+### 6.4 Security Validation
 
 RunUpdates rejects inventories containing:
 
@@ -179,7 +179,7 @@ RunUpdates rejects inventories containing:
 * inline secrets
 * environment variables containing secrets
 
-# 7. Example Inventory (Safe Placeholders)
+## 7. Example Inventory (Safe Placeholders)
 
 ```yaml
 linux:
@@ -201,7 +201,7 @@ linux:
 ```
 This example demonstrates structure only — no real values.
 
-# 8. Schema Versioning (Future)
+## 8. Schema Versioning (Future)
 
 A future version of RunUpdates will introduce:
 
@@ -215,7 +215,7 @@ Rules:
 * RunUpdates will refuse to run mismatched versions
 * migration notes will accompany each bump
 
-9. Summary
+## 9. Summary
 
 The RunUpdates inventory schema is:
 

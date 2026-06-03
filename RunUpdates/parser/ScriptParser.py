@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-27
+ Modified: 2026-05-31
  File: RunUpdates/parser/ScriptParser.py
  Version: 1.0.1
  Description: 
@@ -13,225 +13,185 @@
             Uses PythonTools BaseScriptParser + InventoryBaseParser
             Defines only RunUpdates-specific switches and validation.
 """
+import sys
 
-from pathlib import Path
-import os
-
-from PythonTools.parser.InventoryBaseParser import InventoryBaseParser
-from PythonTools.parser.errors import CheckArgError
-from PythonTools.logging.helpers import resolve_paths
-
-# RunUpdates-specific constants
+from PythonTools.parser.BaseScriptParser import BaseScriptParser
 from RunUpdates.core.constants import (
     PROJECT_NAME,
     PROJECT_VERSION,
     LINUX_VERSION,
-    INVENTORY_ENV,
-    VAULT_PATH_ENV,
-    VAULT_PASSWORD_ENV,
-    DEFAULT_INVENTORY_PATH,
-    DEFAULT_LOG_DIR,
 )
-
-# RunUpdates-specific helpers
 from RunUpdates.utils.common import (
-    resolve_inventory_path,
-    resolve_vault_path,
-    resolve_vault_password_file,
-    validate_family_distro_host,
+    resolve_paths,
 )
-
 
 DESCRIPTION = (
     f"{PROJECT_NAME} version {PROJECT_VERSION} "
     "Manages System Patches and/or Updates"
 )
+DEFAULT_SUBCOMMAND = "update"
+SUBCOMMANDS = {"update", "inventory", "summary"}
+
+def _auto_insert_default_subcommand():
+    # If user asked for help, do NOT insert default subcommand
+    if "-h" in sys.argv or "--help" in sys.argv:
+        return
+    # No args at all → insert default
+    if len(sys.argv) == 1:
+        sys.argv.insert(1, DEFAULT_SUBCOMMAND)
+        return
+
+    first = sys.argv[1]
+
+    # If first arg is a known subcommand → do nothing
+    if first in SUBCOMMANDS:
+        return
+
+    # If first arg is a flag → insert default subcommand
+    if first.startswith("-"):
+        sys.argv.insert(1, DEFAULT_SUBCOMMAND)
+        return
+
+    # Otherwise: user typed something unexpected → let argparse handle it
 
 
-class ScriptParser(InventoryBaseParser):
+class ScriptParser(BaseScriptParser):
     """
     RunUpdates CLI parser.
-    Inherits:
-      - core switches
-      - logging switches
-      - vault switches
-      - inventory loading
-    Adds:
-      - family/distro/host switches
-      - update switches
-      - RunUpdates-specific validation
+    Defines subcommands:
+      - inventory
+      - update
+      - summary
     """
 
     def __init__(self):
-        self.paths = resolve_paths(__file__)
         super().__init__(
             prog=PROJECT_NAME,
             description=DESCRIPTION,
             version_string=f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}",
-            default_log_dir=self.paths["LOG_DIR"],
-            default_config_dir=self.paths["CONFIG_DIR"],
-            default_schema_dir=self.paths["SCHEMA_DIR"]
         )
-        self._defaults = self.paths
-        self.subparsers = self.parser.add_subparsers(dest="command")
 
-        self._add_runupdates_inventory_args()
-        self._add_update_args()
-        self._add_summary_args()
+        # IMPORTANT:
+        # Use the BaseScriptParser parser as the parent for all subcommands.
+        self.parent = self.global_parent
+        self.VERSION_STRING = f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}"
+        # Subcommands
+        self._add_help_subcommand()
+        self._add_inventory_subcommand()
+        self._add_update_subcommand()
+        self._add_summary_subcommand()
+
+    def _add_help_subcommand(self):
+        help_parser = self.subparsers.add_parser(
+            "help",
+            parents=[self.global_parent],
+            add_help=False,
+            help="Show help for a subcommand",
+        )
+
+        help_parser.add_argument(
+            "topic",
+            nargs="?",
+            help="Subcommand to show help for (inventory, update, summary)"
+        )
 
     # --------------------------------------------------------
-    # RunUpdates Inventory Options
+    # inventory subcommand
     # --------------------------------------------------------
-    def _add_runupdates_inventory_args(self):
-        inv = self.parser.add_argument_group("RunUpdates Inventory Options")
-
-        group = inv.add_mutually_exclusive_group()
-
-        group.add_argument("--list-families", action="store_true",
-                           help="List all inventory families as JSON")
-
-        group.add_argument("--list-distros", action="store_true",
-                           help="List all distros for the selected family as JSON")
-
-        group.add_argument("--list-hosts", action="store_true",
-                           help="List all hosts for the selected family/distro as JSON")
-
-        group.add_argument("--list-inventory", action="store_true",
-                           help="Dump the full inventory block for the selected family/distro as JSON")
-        group.add_argument(
-            "--show-metadata",
-            action="store_true",
-            help="Show metadata (vars) for the selected family/distro"
+    def _add_inventory_subcommand(self):
+        inv = self.subparsers.add_parser(
+            "inventory",
+            parents=[self.global_parent],
+            add_help=True,
+            help="Inspect inventory families, distros, hosts, and metadata",
         )
 
-    # -------------------------------------------------------
-    # Summary Options
-    # -------------------------------------------------------
-    def _add_summary_args(self):
-        summary = self.subparsers.add_parser("summary", help="Show run summary information")
-        summary.add_argument("--latest", action="store_true", help="Show the most recent run summary")
-        summary.add_argument("--list", action="store_true", help="List all run summaries")
-        summary.add_argument("--host", metavar="HOSTNAME", help="Show summary for a specific host")
+        grp = inv.add_argument_group("Inventory Listing Options")
+
+        grp.add_argument("--list-families", action="store_true",
+                         help="List all inventory families as JSON")
+
+        grp.add_argument("--list-distros", action="store_true",
+                         help="List all distros for the selected family as JSON")
+
+        grp.add_argument("--list-hosts", action="store_true",
+                         help="List all hosts for the selected family/distro as JSON")
+
+        grp.add_argument("--list-inventory", action="store_true",
+                         help="Dump the full inventory block for the selected family/distro as JSON")
+
+        grp.add_argument("--show-metadata", action="store_true",
+                         help="Show metadata (vars) for the selected family/distro")
+
+        # Shared selection flags
+        sel = inv.add_argument_group("Selection Options")
+        sel.add_argument("--family", help="Target family")
+        sel.add_argument("--distro", help="Target distro")
+        sel.add_argument("--host", help="Target host")
+        
+        self.inventory_parser = inv
 
     # --------------------------------------------------------
-    # Update Options
+    # update subcommand
     # --------------------------------------------------------
-    def _add_update_args(self):
-        upd = self.parser.add_argument_group("Update Options")
-
-        upd.add_argument(
-            "--family",
-            choices=["linux"],
-            default="linux",
-            help="Target operating system family",
+    def _add_update_subcommand(self):
+        upd = self.subparsers.add_parser(
+            "update",
+            parents=[self.global_parent],
+            add_help=True,
+            help="Run updates on selected hosts",
         )
 
-        upd.add_argument(
-            "--distro",
-            required=False,
-            help="Target Linux distribution",
+        sel = upd.add_argument_group("Target Selection")
+        sel.add_argument("--family", choices=["linux"], default="linux")
+        sel.add_argument("--distro")
+        sel.add_argument("-H", "--host")
+
+        execgrp = upd.add_argument_group("Execution Options")
+        execgrp.add_argument("--force", action="store_true",
+                             help="Force update even if checks fail")
+        execgrp.add_argument("--mode",
+                             choices=["sequential", "parallel", "distro-parallel"],
+                             default="sequential",
+                             help="Execution mode for orchestrator")
+
+        self.update_parser = upd
+    # --------------------------------------------------------
+    # summary subcommand
+    # --------------------------------------------------------
+    def _add_summary_subcommand(self):
+        summary = self.subparsers.add_parser(
+            "summary",
+            parents=[self.global_parent],
+            add_help=True,
+            help="Show run summary information",
         )
 
-        upd.add_argument(
-            "-H", "--host",
-            required=False,
-            help="Target host to update",
-        )
+        grp = summary.add_argument_group("Summary Options")
+        grp.add_argument("--latest", action="store_true",
+                         help="Show the most recent run summary")
+        grp.add_argument("--list", action="store_true",
+                         help="List all run summaries")
+        grp.add_argument("--host", metavar="HOSTNAME",
+                         help="Show summary for a specific host")
 
-        upd.add_argument(
-            "--force",
-            action="store_true",
-            help="Force update even if checks fail",
-        )
-        upd.add_argument(
-            "--mode",
-            choices=["sequential", "parallel", "distro-parallel"],
-            default="sequential",
-            help="Execution mode for orchestrator (default: sequential)"            
-        )
-
+        self.summary_parser = summary
     # --------------------------------------------------------
     # Validation
     # --------------------------------------------------------
-    def _validate(self):
+    def validate(self):
         super()._validate()
 
-        args = self.args
-
-        # Resolve vault paths using RunUpdates logic
-        args.vault_path = resolve_vault_path(args.vault_path)
-        args.vault_password_file = resolve_vault_password_file(args.vault_password_file)
-
-        # Vault path required
-        if not args.vault_path and VAULT_PATH_ENV not in os.environ:
-            raise CheckArgError(
-                f"Missing required --vault-path or ${VAULT_PATH_ENV}"
-            )
-
-        # Vault password file required
-        if not args.vault_password_file and VAULT_PASSWORD_ENV not in os.environ:
-            raise CheckArgError(
-                f"Missing required --vault-password-file or ${VAULT_PASSWORD_ENV}"
-            )
-
-        # Inventory resolution (RunUpdates-specific)
-        args.inventory = resolve_inventory_path(args.inventory)
-
-        if not Path(args.inventory).exists():
-            raise CheckArgError(f"Inventory file not found: {args.inventory}")
-
-        # Validate family/distro/host relationships
-        validate_family_distro_host(
-            inventory_data=self.inventory_data,
-            family=args.family,
-            distro=args.distro,
-            host=args.host,
-        )
+    # --------------------------------------------------------
+    # Parse wrapper
+    # --------------------------------------------------------
     def parse(self):
-        # 1. Pre-resolve inventory BEFORE parent parse
-        #    so InventoryBaseParser sees a valid path
-        pre_resolved_inventory = resolve_inventory_path(None)
+        _auto_insert_default_subcommand()
 
-        # 2. Call parent parse (InventoryBaseParser.parse)
         args = super().parse()
 
-        # ------------------------------------------------------------
-        # 3. Merge CLI overrides with environment defaults
-        # ------------------------------------------------------------
-        # LOG_DIR
-        args.LOG_DIR = Path(args.log_dir or self._defaults["LOG_DIR"])
-
-        # CONFIG_DIR
-        args.CONFIG_DIR = Path(args.config_dir or self._defaults["CONFIG_DIR"])
-
-        # SCHEMA_DIR
-        args.SCHEMA_DIR = Path(args.schema_dir or self._defaults["SCHEMA_DIR"])
-
-        # ------------------------------------------------------------
-        # 4. Inventory resolution (your existing logic)
-        # ------------------------------------------------------------
-        if not args.inventory:
-            args.inventory = pre_resolved_inventory
-
-            # Now that inventory is known, load it
-            self.inventory_path = Path(args.inventory).expanduser()
-            self.inventory_data = self._load_inventory_yaml()
-
-        # ------------------------------------------------------------
-        # 5. Run RunUpdates-specific validation
-        # ------------------------------------------------------------
-        self._validate()
-
-        # ------------------------------------------------------------
-        # 6. Pass through project metadata
-        # ------------------------------------------------------------
-        args.PROJECT_NAME = self._defaults["PROJECT_NAME"]
-        args.ENVIRONMENT = self._defaults["ENVIRONMENT"]
+        # Unified resolver
+        self.paths = resolve_paths(args)
 
         return args
 
-    # --------------------------------------------------------
-    # Accessor
-    # --------------------------------------------------------
-    def get_args(self):
-        return self.args

@@ -6,19 +6,17 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-05-27
+ Modified: 2026-05-31
  File: RunUpdates/operations/executor.py
  Version: 1.0.0
  Description: Executes update commands on a host using a session object.
 """
 # System Libraries
 from typing import Optional
-from pathlib import Path
 import json
 from datetime import datetime
 # Project Libraries
 from PythonTools.net.tools import sudo_run
-from PythonTools.sessions.ssh_sessions import SSHSession
 from PythonTools.sessions.systemd_runner import SystemdRunner
 from PythonTools.utils.common import classify_exit_code
 from PythonTools.utils.parsers import Parser
@@ -31,12 +29,14 @@ class HostExecutor:
         - SSHConnectionInfo(...)
     """
 
-    def __init__(self, secrets: dict, args: dict, paths: dict, logger=None, dry_run: bool = False, force: bool = False):
-        self.secrets = secrets
+    def __init__(self, context, logger=None):
+        self.context = context
+        self.args = context["args"]
+        self.paths = context["paths"]
+        self.secrets = context.get("secrets", {})
         self.logger = logger
-        self.dry_run = args.dry_run
-        self.force = args.force
-        self.paths = paths
+        self.dry_run = getattr(self.args, "dry_run", False)
+        self.force = getattr(self.args, "force", False)
 
     # ------------------------------------------------------------------
     # Public API
@@ -386,7 +386,8 @@ class HostExecutor:
             host_summary["lifecycle_status"] = "completed"
 
     def _write_summary(self, host_summary, name):
-        summary_path = Path(self.paths["SUMMARY_HOST_DIR"]) / f"{name}.json"
+        summary_path = self.paths.SUMMARY_HOST_DIR / f"{name}.json"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
         if self.logger:
             self.logger.info(f"Writing summary to: {summary_path}")
         with open(summary_path, "w") as f:

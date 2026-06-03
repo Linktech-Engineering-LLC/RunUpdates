@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "RunUpdates"
-version = "0.2.0"
+version = "1.0.0"
 description = "Multi-distro update orchestrator with SSH, inventory, and vault integration."
 authors = [
     { name = "Leon McClatchey", email = "leon@linktech.engineering" }

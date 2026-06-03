@@ -12,65 +12,103 @@ It provides reproducible sequencing, audit‑transparent execution, and a clean,
 
 RunUpdates is designed for engineers who want predictable behavior, clear logging, and a workflow that scales from a single workstation to a full fleet.
 
-## ✨ Features
+## ✨ Core Features
+### Deterministic execution pipeline
+`refresh → check → update? → clean → reboot?`
+Every step is logged, timestamped, and classified.
 
-* Deterministic execution pipeline  
-  refresh → check → update? → clean → reboot?
+### Inventory‑driven orchestration
 
-* Inventory‑driven orchestration  
-  OS (family) → Distro → Hosts with inheritance, flattening, and strict validation
+A structured YAML inventory defines:
+* OS families
+* distros
+* commands
+* exit‑code interpretation
+* lifecycle steps
+* host lists
+* connection parameters
 
-* Local + remote execution
-  * Local execution via sudo_run
-  * Remote execution via SSHSession (keyfile preferred, password fallback)
+Inventory is validated, normalized, and flattened before execution.
 
-* Declarative distro model  
-  Commands, exit‑codes, and reboot indicators defined per distro
+### Local + remote execution
 
-* Operator‑grade logging  
-  Structured, timestamped, redacted, and suitable for audit trails
+* Local execution via sudo_run
+* Remote execution via SSH (keyfile preferred, password fallback)
 
-* Flexible host selection  
-  --family, --distro, --host, or full‑inventory runs
+### Declarative distro model
 
-* Dry‑run mode  
-  Preview commands without executing them
+Each distro defines its own commands, lifecycle, and exit‑code semantics.
 
-* Machine‑readable summaries (implemented)  
-  Per‑host JSON summaries and a final aggregated summary are generated for every run.
+### Operator‑grade logging
 
-## 📦 Installation
+Structured, timestamped, redacted logs suitable for audit trails.
+
+### Machine‑readable summaries
+
+Per‑host JSON summaries and a final aggregated summary.
+
+### Unified path resolution
+All paths (config, schema, inventory, logs, summaries) follow a strict priority:
+
+1. CLI override
+2. Environment variable
+3. Development‑mode defaults
+4. Installed‑mode defaults
+5. Frozen‑bundle defaults
+
+Environment paths support ~ expansion and normalization.
+
+## 📦 Installation (Source)
+
+RunUpdates depends on the PythonTools package.
+Both must be installed in the same environment.
+
+### 1. Clone and install PythonTools
+
+```bash
+git clone https://github.com/Linktech-Engineering-LLC/PythonTools.git
+cd PythonTools
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+### 2. Clone and install RunUpdates (same venv)
 
 ```bash
 git clone https://github.com/Linktech-Engineering-LLC/RunUpdates.git
 cd RunUpdates
-python3 -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 RunUpdates is now ready to use.
 
+### Development Workflow
+
+If you are actively modifying both repositories:
+* Keep both repos checked out locally
+* Install both in editable mode (pip install -e .)
+* RunUpdates will immediately see changes made in PythonTools
+
+This mirrors the intended architecture:
+
+**RunUpdates is a consumer of PythonTools, not a bundler of it.**
+
 ## 🧩 Inventory Model
 
-RunUpdates uses a structured YAML inventory that defines:
+RunUpdates uses a structured YAML inventory defining:
 
 * operating system families
 * distros
-* package manager commands
+* commands
 * exit‑code interpretation
+* lifecycle steps
 * host lists
 * connection parameters
-* vault‑merged secrets
-* raw YAML (for list operations)
-* normalized inventory (for orchestration)
+* secrets merged from vault/environment
 
 ### Inventory Hierarchy
 
-Code
-```
-family (OS) → distro → hosts
-```
+`family (OS) → distro → hosts`
 
 Examples of families:
 
@@ -84,10 +122,7 @@ Examples of distros under linux:
 * debian
 * redhat
 
-Note: In the current implementation, both openSUSE Leap and Tumbleweed hosts are grouped under the [opensuse] distro because they share the same command model.
-If their update semantics diverge, they can be split in {hosts.yml] without code changes.
-
-Example (placeholder values)
+#### Example
 
 ```yaml
 linux:
@@ -113,8 +148,8 @@ linux:
         address: ["192.0.2.10"]
 ```
 
-Address Model
-address is **always a list**, even when only one address is present.
+#### Address Model
+`address` is **always a list**, even when only one address is present.
 
 This ensures:
 
@@ -189,8 +224,6 @@ Each host runs the following steps:
 
 1. refresh
 2. check
-  * exit‑code classification
-  * backend‑specific parsing (future)
 3. update (only if needed)
 4. clean
 5. reboot detection
@@ -204,14 +237,13 @@ Each step records:
 
 Failures do **not** stop the overall run.
 
-### Per‑Host Summaries (Implemented)
+## 📊 Summaries
 
-Each host produces a JSON file:
+### Per‑Host Summary
 
-Code
-```
-<hostname>.json
-```
+Each host produces:
+
+`<hostname>.json`
 
 Containing:
 
@@ -222,11 +254,10 @@ Containing:
 * exit codes
 * stdout/stderr
 * timestamps
-* lifecycle events
 
-### Final Summary (Implemented)
+### Final Summary
 
-A final summary.json includes:
+`summary.json` includes:
 
 * run start/end
 * duration
@@ -288,15 +319,6 @@ Mapped from:
 * deterministic logging
 * strict inventory validation
 
-Secrets may be provided via:
-
-* CLI arguments
-* environment variables
-* an encrypted vault file
-
-Other tools in the Linktech Engineering suite may or may not use vaults.
-For example, **NMS_Tools does not require vault access**.
-
 ### Environment Variables (Ansible‑Style Naming)
 
 RunUpdates supports environment variables for vault configuration using the pattern:
@@ -339,19 +361,6 @@ RunUpdates resolves vault configuration in this order:
 
 3. Defaults  
   (none today — missing values cause a validation error)
-
-This mirrors the Ansible model:
-
-* CLI overrides environment
-* Environment overrides defaults
-* Missing values fail fast
-
-### Why this matters
-
-* Keeps secrets out of the inventory
-* Allows per‑user or per‑machine configuration
-* Works cleanly with systemd units, cron jobs, and CI pipelines
-* Matches the naming convention used across your entire tool suite
 
 ## 🛣 Roadmap
 
