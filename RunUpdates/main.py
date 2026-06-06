@@ -14,9 +14,10 @@
 """
 
 import os
-from pathlib import Path
+import sys
 import yaml
 import json
+from pathlib import Path
 
 # PythonTools imports (generic only)
 from PythonTools.ansible.vault import VaultLoader, VaultError
@@ -27,14 +28,18 @@ from PythonTools.log_helpers.helpers import (
     build_log_cfg,
     register_custom_levels
 )
+from PythonTools.net.tools import pid_is_running
+from PythonTools.net.pidguard import PidGuard
 from PythonTools.utils.common import json_output
 # RunUpdates components
 from RunUpdates.operations.listops import ListOperations
 from RunUpdates.operations.orchestrator import UpdateOrchestrator
 from RunUpdates.parser import ScriptParser
 from RunUpdates.ansible.loader import RunUpdatesInventoryLoader
-from RunUpdates.core.constants import PROJECT_NAME
-
+from RunUpdates.core.constants import (
+    PROJECT_NAME, 
+    PID_FILE
+)
 
 # ------------------------------------------------------------
 # Safety checks
@@ -46,6 +51,7 @@ def assert_not_root():
 def assert_sudo_available(sudo_password):
     if sudo_password is None:
         raise RuntimeError("No sudo password available for non-root execution")
+
 # ------------------------------------------------------------
 # Logging initialization
 # ------------------------------------------------------------
@@ -250,87 +256,91 @@ def main():
     # 2. Initialize logging
     logging_ctx = initialize_logging(context)
     logger = logging_ctx["logger"]
+    guard = PidGuard(PID_FILE, logger)
+    guard.acquire()
+    try:
+        # 3. Load and validate inventory
+        raw_inventory = load_inventory_file(context["paths"].INVENTORY_PATH, logger)
 
-    # 3. Load and validate inventory
-    raw_inventory = load_inventory_file(context["paths"].INVENTORY_PATH, logger)
-
-    # Initialize schema-driven loader
-    loader = RunUpdatesInventoryLoader(
-        inventory_path=context["paths"].INVENTORY_PATH,
-        schema_path=context["paths"].SCHEMA_DIR / "hosts.schema.yml"
-    )
-    if args.command != "summary":
-        # Normalize inventory into host objects (filtered)
-        normalized_inventory = loader.normalize(
-            family = getattr(args, "family", None),
-            distro = getattr(args, "distro", None),
-            host = getattr(args, "host", None),
+        # Initialize schema-driven loader
+        loader = RunUpdatesInventoryLoader(
+            inventory_path=context["paths"].INVENTORY_PATH,
+            schema_path=context["paths"].SCHEMA_DIR / "hosts.schema.yml"
         )
-        
-    match args.command:
-        
-        case "inventory":
-            LISTING_FLAGS = (
-                "list_families",
-                "list_distros",
-                "list_hosts",
-                "list_inventory",
-                "show_metadata",
+        if args.command != "summary":
+            # Normalize inventory into host objects (filtered)
+            normalized_inventory = loader.normalize(
+                family = getattr(args, "family", None),
+                distro = getattr(args, "distro", None),
+                host = getattr(args, "host", None),
             )
-            # Determine if any listing flag is active
-            active_flag = next(
-                (flag for flag in LISTING_FLAGS if getattr(args, flag, False)),
-                None
-            )
+            
+        match args.command:
+            
+            case "inventory":
+                LISTING_FLAGS = (
+                    "list_families",
+                    "list_distros",
+                    "list_hosts",
+                    "list_inventory",
+                    "show_metadata",
+                )
+                # Determine if any listing flag is active
+                active_flag = next(
+                    (flag for flag in LISTING_FLAGS if getattr(args, flag, False)),
+                    None
+                )
 
-            # Handle listing BEFORE vault loading
-            listops = ListOperations(raw_inventory, logger)
-            match active_flag:
-                case "list_families":
-                    dsp = listops.list_families()
-                case "list_distros":
-                    dsp = listops.list_distros(args.family)
-                case "list_hosts":
-                    dsp = listops.list_hosts(args.family, args.distro)
-                case "list_inventory":
-                    dsp = listops.list_inventory()
-                case "show_metadata":
-                    dsp = listops.show_metadata(args.family, args.distro, args.host)
-                case _:
-                    dsp = listops.list_inventory()
-            if args.json:
-                print(json_output(dsp, force_color=args.color))
-            else:
-                print(json.dumps(dsp, indent=2))
-            return
-        case "update":
-            # Load secrets (only for update operations)
-            context["secrets"] = load_secrets(context)
-            assert_sudo_available(context.get("secrets", {}).get("sudo_pass"))
-            assert_not_root()
-            # Execute update orchestration
-            orchestrator = UpdateOrchestrator(
-                context,
-                hosts=normalized_inventory,
-                logger=logger
-            )
-            orchestrator.run()
-        case "summary":
-            # Summary does NOT have family/distro/host
-            handle_summary(
-                latest=args.latest,
-                list_all=args.list,
-                host=args.host,
-                summary_dir=context["paths"].SUMMARY_RUN_DIR,
-                logger=logger,
-            )
-        case _:
-            raise RuntimeError(f"Unknown command: {args.command}")
+                # Handle listing BEFORE vault loading
+                listops = ListOperations(raw_inventory, logger)
+                match active_flag:
+                    case "list_families":
+                        dsp = listops.list_families()
+                    case "list_distros":
+                        dsp = listops.list_distros(args.family)
+                    case "list_hosts":
+                        dsp = listops.list_hosts(args.family, args.distro)
+                    case "list_inventory":
+                        dsp = listops.list_inventory()
+                    case "show_metadata":
+                        dsp = listops.show_metadata(args.family, args.distro, args.host)
+                    case _:
+                        dsp = listops.list_inventory()
+                if args.json:
+                    print(json_output(dsp, force_color=args.color))
+                else:
+                    print(json.dumps(dsp, indent=2))
+                return
+            case "update":
+                # Load secrets (only for update operations)
+                context["secrets"] = load_secrets(context)
+                assert_sudo_available(context.get("secrets", {}).get("sudo_pass"))
+                assert_not_root()
+                # Execute update orchestration
+                orchestrator = UpdateOrchestrator(
+                    context,
+                    hosts=normalized_inventory,
+                    logger=logger
+                )
+                orchestrator.run()
+            case "summary":
+                # Summary does NOT have family/distro/host
+                handle_summary(
+                    latest=args.latest,
+                    list_all=args.list,
+                    host=args.host,
+                    summary_dir=context["paths"].SUMMARY_RUN_DIR,
+                    logger=logger,
+                )
+            case _:
+                raise RuntimeError(f"Unknown command: {args.command}")
 
 
 
-    # 9. Final banner
-    logger.banner("RunUpdates complete")
+        # 9. Final banner
+        logger.banner("RunUpdates complete")
+    finally:
+        guard.release()
 
 
 if __name__ == "__main__":

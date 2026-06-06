@@ -21,6 +21,18 @@ import sys
 # ------------------------------------------------------------
 # Project roots
 # ------------------------------------------------------------
+binary_path = Path(sys.argv[0]).resolve()
+
+# If running from source, binary_path is RunUpdates/main.py
+# If frozen, binary_path is RunUpdates/bin/RunUpdates
+
+INSTALL_ROOT = binary_path.parent.parent
+required_dirs = ["bin", "etc", "var"]
+
+for d in required_dirs:
+    if not (INSTALL_ROOT / d).exists():
+        raise RuntimeError(f"Invalid install root: {INSTALL_ROOT}")
+
 
 # Root of the RunUpdates package (…/RunUpdates/RunUpdates)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -58,10 +70,14 @@ VAULT_PASSWORD_ENV = f"{ENV_PREFIX}_VAULT_PASSWORD_FILE"
 # Default paths (RunUpdates-specific)
 # ------------------------------------------------------------
 
-DEFAULT_CONFIG_DIR = PACKAGE_ROOT / "etc"
-DEFAULT_LOG_DIR = PACKAGE_ROOT / "var" / "log"
+DEFAULT_CONFIG_DIR = INSTALL_ROOT / "etc"
+DEFAULT_LOG_DIR = INSTALL_ROOT / "var" / "log"
 DEFAULT_SUMMARY_DIR = PACKAGE_ROOT / "var" / "summary"
 DEFAULT_INVENTORY_PATH = DEFAULT_CONFIG_DIR / "hosts.yml"
+DEFAULT_RUN_PATH = INSTALL_ROOT / "var" / "run"
+DEFAULT_BIN_PATH = INSTALL_ROOT / "bin"
+
+PID_FILE = DEFAULT_RUN_PATH / f"{PROJECT_NAME.lower()}.pid"
 
 # ------------------------------------------------------------
 # CLI defaults

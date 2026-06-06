@@ -294,7 +294,12 @@ def finalize_release(project_path: Path, meta: dict, args, log_file: Path):
 # ------------------------------------------------------------
 def get_arguments():
     parser = argparse.ArgumentParser(description="Reusable build script for Python projects.")
-    parser.add_argument("project_path")
+    parser.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Path to project (defaults to current directory)"
+    )
     parser.add_argument("--clean-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--include-toml", action="store_true")
