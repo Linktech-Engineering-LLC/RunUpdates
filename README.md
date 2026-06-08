@@ -443,8 +443,8 @@ Please ensure:
 * placeholder‑only examples
 * documentation updates for new features
 
-📄 License
-MIT License — see LICENSE for details.
+## 📄 License
+MIT License — see [LICENSE](LICENSE) for details.
 
 ## 🔗 Related Projects
 
