@@ -30,12 +30,11 @@ from RunUpdates.core.constants import (
     SCHEMA_ENV,
     VAULT_PATH_ENV,
     VAULT_PASSWORD_ENV,
-    PACKAGE_ROOT
+    PACKAGE_ROOT,
+    is_dev_mode
 )
 from .paths import Paths
 
-def is_dev_mode():
-    return not getattr(sys, "frozen", False)
 # -------------------------------------------------------------
 # Resolve Config & Schema folders
 # -------------------------------------------------------------

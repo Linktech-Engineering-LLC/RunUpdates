@@ -18,31 +18,53 @@ from pathlib import Path
 import platform
 import sys
 
+PROJECT_NAME = "RunUpdates"
+PROJECT_VERSION = "1.0.0"
 # ------------------------------------------------------------
 # Project roots
 # ------------------------------------------------------------
-binary_path = Path(sys.argv[0]).resolve()
 
-# If running from source, binary_path is RunUpdates/main.py
-# If frozen, binary_path is RunUpdates/bin/RunUpdates
+if getattr(sys, "frozen", False):
+    # FROZEN MODE
+    MODE = "FROZEN"
 
-INSTALL_ROOT = binary_path.parent.parent
-required_dirs = ["bin", "etc", "var"]
+    # Binary path: /opt/RunUpdates/bin/RunUpdates
+    binary_path = Path(sys.argv[0]).resolve()
 
-for d in required_dirs:
-    if not (INSTALL_ROOT / d).exists():
-        raise RuntimeError(f"Invalid install root: {INSTALL_ROOT}")
+    # INSTALL_ROOT: /opt/RunUpdates
+    INSTALL_ROOT = binary_path.parent.parent
 
+    # PACKAGE_ROOT: <_MEIPASS>/RunUpdates
+    MEIPASS_ROOT = Path(sys._MEIPASS)
+    PACKAGE_ROOT = MEIPASS_ROOT / PROJECT_NAME
 
-# Root of the RunUpdates package (…/RunUpdates/RunUpdates)
-PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+    # PROJECT_ROOT is the install root in frozen mode
+    PROJECT_ROOT = INSTALL_ROOT
 
-# Root of the RunUpdates repository (…/RunUpdates)
-PROJECT_ROOT = PACKAGE_ROOT.parent
+    # Validate frozen layout
+    required_dirs = ["bin", "etc", "var"]
+    for d in required_dirs:
+        if not (INSTALL_ROOT / d).exists():
+            raise RuntimeError(f"Invalid frozen install root: {INSTALL_ROOT}")
 
-PROJECT_NAME = "RunUpdates"
-PROJECT_VERSION = "1.0.0"
+else:
+    # NON-FROZEN: DEV or INSTALLED
+    # PACKAGE_ROOT: .../RunUpdates/RunUpdates
+    PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 
+    # PROJECT_ROOT: .../RunUpdates (repo root or site-packages parent)
+    PROJECT_ROOT = PACKAGE_ROOT.parent
+
+    def is_dev_mode() -> bool:
+        # Dev mode: repo checkout with etc/ and var/ next to package
+        return (PROJECT_ROOT / "etc").exists() and (PROJECT_ROOT / "var").exists()
+
+    if is_dev_mode():
+        MODE = "DEV"
+        INSTALL_ROOT = PROJECT_ROOT
+    else:
+        MODE = "INSTALLED"
+        INSTALL_ROOT = PACKAGE_ROOT    
 # ------------------------------------------------------------
 # System metadata
 # ------------------------------------------------------------

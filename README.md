@@ -7,60 +7,100 @@
 ![Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/RunUpdates?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-RunUpdates is a deterministic, operator‑grade update orchestrator for Linux hosts.
-It provides reproducible sequencing, audit‑transparent execution, and a clean, YAML‑driven model for managing package updates across heterogeneous environments.
+RunUpdates is a deterministic, operator‑grade update orchestrator that runs on Linux and manages updates for any platform whose lifecycle is defined in YAML.
 
-RunUpdates is designed for engineers who want predictable behavior, clear logging, and a workflow that scales from a single workstation to a full fleet.
+The orchestrator itself is Linux‑based, but the hosts it manages may be Linux, Windows, macOS, OS/2, or any other system with a command model defined in the inventory schema.
+
+RunUpdates emphasizes:
+
+* reproducible execution
+* strict validation
+* audit‑transparent logging
+* schema‑aligned configuration
+* machine‑readable summaries
+* predictable operator‑grade behavior
 
 ## ✨ Core Features
-### Deterministic execution pipeline
-`refresh → check → update? → clean → reboot?`
-Every step is logged, timestamped, and classified.
 
-### Inventory‑driven orchestration
+### Deterministic, universal execution pipeline
 
-A structured YAML inventory defines:
-* OS families
-* distros
-* commands
-* exit‑code interpretation
-* lifecycle steps
-* host lists
+A fixed, cross‑platform pipeline:
+
+`check → parse → refresh → update? → clean → reboot?`
+
+The pipeline is **not distro‑defined**.
+
+All hosts follow the same lifecycle, with commands supplied by the inventory.
+
+### YAML‑defined OS families and command models
+
+The inventory schema defines:
+
+* OS families (linux, windows, macos, etc.)
+* distros (sub‑families)
+* commands for each lifecycle step
+* stdout/exit‑code semantics
+* reboot detection
+* host definitions
+* secrets merging
 * connection parameters
 
-Inventory is validated, normalized, and flattened before execution.
+RunUpdates does not assume Linux hosts — it assumes **schema‑validated commands**.
 
-### Local + remote execution
+### Cross‑platform orchestration
 
 * Local execution via sudo_run
 * Remote execution via SSH (keyfile preferred, password fallback)
+* Any platform is supported if its lifecycle is defined in YAML
 
-### Declarative distro model
+### Universal stdout‑based update detection
 
-Each distro defines its own commands, lifecycle, and exit‑code semantics.
+RunUpdates includes a universal parser that detects:
+
+* updates available
+* updates performed
+* no updates needed
+* repo broken
+* reboot required
+
+This works across all distros and OS families.
+
+### Strict validation
+
+* schema validation
+* header audit mode
+* fix‑headers‑only mode
+* family/distro/host cross‑validation
+* host family mismatch detection
 
 ### Operator‑grade logging
 
-Structured, timestamped, redacted logs suitable for audit trails.
+* structured JSON logs
+* redacted secrets
+* timestamped lifecycle events
+* deterministic formatting
 
 ### Machine‑readable summaries
 
-Per‑host JSON summaries and a final aggregated summary.
+* per‑host JSON summaries
+* aggregated final summary
+* classification fields
+* reboot indicators
+* repo health
 
 ### Unified path resolution
-All paths (config, schema, inventory, logs, summaries) follow a strict priority:
+
+All paths (config, schema, inventory, logs, summaries) follow:
 
 1. CLI override
 2. Environment variable
 3. Development‑mode defaults
 4. Installed‑mode defaults
-5. Frozen‑bundle defaults
-
-Environment paths support ~ expansion and normalization.
+5. Frozen‑bundle defaults (.env auto‑generated)
 
 ## 📦 Installation (Source)
 
-RunUpdates depends on the PythonTools package.
+RunUpdates depends on **PythonTools**.
 Both must be installed in the same environment.
 
 ### 1. Clone and install PythonTools
@@ -72,6 +112,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
+
 ### 2. Clone and install RunUpdates (same venv)
 
 ```bash
@@ -84,63 +125,80 @@ RunUpdates is now ready to use.
 
 ### Development Workflow
 
-If you are actively modifying both repositories:
-* Keep both repos checked out locally
-* Install both in editable mode (pip install -e .)
-* RunUpdates will immediately see changes made in PythonTools
+If modifying both repositories:
 
-This mirrors the intended architecture:
+* keep both repos checked out
+* install both in editable mode
+* RunUpdates will immediately see changes in PythonTools
 
-**RunUpdates is a consumer of PythonTools, not a bundler of it.**
+RunUpdates is a **consumer** of PythonTools, not a bundler.
 
 ## 🧩 Inventory Model
 
-RunUpdates uses a structured YAML inventory defining:
+The inventory is a structured YAML document defining:
 
-* operating system families
+* OS families
 * distros
 * commands
-* exit‑code interpretation
-* lifecycle steps
-* host lists
+* lifecycle semantics
+* exit‑code or stdout rules
+* hosts
 * connection parameters
-* secrets merged from vault/environment
+
+**Secrets are not stored in the inventory**.
+They live only in the vault file (``vault.yml``).
 
 ### Inventory Hierarchy
 
-`family (OS) → distro → hosts`
+`family → vars → distro → vars → hosts`
 
-Examples of families:
-
-* linux
-* windows
-* macos
-
-Examples of distros under linux:
-
-* opensuse
-* debian
-* redhat
-
-#### Example
+Example:
 
 ```yaml
 linux:
+  vars:
+    port: 2239
   opensuse:
-    packages:
-      refresh: "zypper refresh"
-      check: "zypper patch-check --with-optional"
-      update: "zypper --non-interactive up --auto-agree-with-licenses"
-      clean: "zypper clean"
-      reboot: "zypper needs-rebooting"
+    vars:
+      systemd: true
+      systemd_mode: wait # or: async
+      lifecycle:
+        - refresh
+        - check
+        - update
+        - clean
+        - reboot
+      commands:
+        refresh: "zypper refresh" 
+        check: "zypper patch-check --with-optional"
+        update: "zypper --non-interactive up --auto-agree-with-licenses --recommends --replacefiles --allow-vendor-change"
+        clean: "zypper clean"
+        reboot: "zypper needs-rebooting"
+        orphans: "zypper packages --orphaned"
+        list: "zypper list-updates --all"
+        reboot_now: "systemctl reboot || shutdown -r now"
+      exit_codes:
+        refresh:
+          success: [0]
+          error: ["*"]
 
-    exit_codes:
-      check:
-        up_to_date: [0]
-        patches_available: [100, 101]
-        error: ["*"]
+        check:
+          up_to_date: [0]
+          patches_available: [100, 101]
+          error: ["*"]
 
-    port: 2222
+        update:
+          success: [0]
+          reboot_required: [102, 104]
+          restart_services: [103]
+          error: ["*"]
+
+        reboot:
+          no_reboot: [0]
+          reboot_required: [102]
+          restart_services: [103]
+          reboot_and_restart: [104]
+          error: ["*"]
 
     hosts:
       suse-node-01:
@@ -148,85 +206,125 @@ linux:
         address: ["192.0.2.10"]
 ```
 
-#### Address Model
-`address` is **always a list**, even when only one address is present.
+### Address Model
+
+``address`` is **always a list**, even for a single address.
 
 This ensures:
 
-* consistent normalization
 * predictable iteration
-* multi‑address failover support
+* consistent normalization
+* multi‑address failover
 
 ## 🔧 Secrets Model
 
-Secrets are loaded from a vault file or environment variables.
+Secrets are stored **only** in an encrypted vault file (e.g., ``vault.yml``).
+The inventory contains **no secrets**.
 
-Required fields
+RunUpdates uses CLI arguments and environment variables **only to locate**:
 
-```yaml
-username: "ssh username"
-password: "optional ssh + sudo password"
-keyfile: "/path/to/private/key"
-```
+* the vault file
+* the vault password file (or inline password)
 
-## Authentication Model
+Secrets themselves are never supplied directly via environment variables or CLI.
 
-* **username** → SSH username
-* **keyfile** → primary SSH authentication
-* **password** → fallback SSH authentication + sudo password
+## Vault Location
+
+Vault path resolution:
+
+1. ``--vault-path``
+2. ``RUNUPDATES_VAULT_PATH``
+3. (no default — missing value is a validation error)
+
+Vault password resolution:
+
+1. ``--vault-password-file`` or ``--vault-password``
+2. ``RUNUPDATES_VAULT_PASSWORD_FILE``
+3. (no default — missing value is a validation error)
+
+After decrypting the vault, RunUpdates merges secrets into the normalized host objects in memory.
 
 Secrets are:
 
-* merged into normalized host objects
 * never logged
 * never written to disk
+* redacted in summaries
 
-## 🚀 Usage
+## 🚀 Commands
+RunUpdates uses a subcommand‑driven CLI:
 
-### List operations
+### Top‑level commands
 
-```bash
-runupdates --list-families
-runupdates --list-distros
-runupdates --list-hosts
-runupdates --list-inventory
-```
+| Command | Description |
+| --- | --- |
+| ``version`` | Show version information |
+| ``help`` | Show help for a subcommand (``help ``update``, ``help ``inventory``, etc.) |
+| ``inventory`` | Inspect inventory families, distros, hosts, and metadata |
+| ``update`` | Run updates on selected hosts |
+| ``summary`` | Show run summary information |
 
-### Execute updates
+### 📚 Inventory Subcommand
 
-Run against a family:
+`runupdates inventory [options]`
 
-```bash
-runupdates --family linux
-```
+#### Listing Options
 
-Run against a specific distro:
+Code
+--list-families
+--list-distros
+--list-hosts
+--list-inventory
+--show-metadata
 
-```bash
-runupdates --family linux --distro opensuse
-```
+#### Selection Options
 
-Run against a single host:
+Code
+--family <name>
+--distro <name>
+--host <name>
 
-```bash
-runupdates --host suse-node-01
-```
 
-Dry‑run mode:
+### 🔧 Update Subcommand
 
-```bash
-runupdates --dry-run
-```
+`runupdates update [options]`
 
-## 🛠 Execution Flow
+#### Target Selection
 
-Each host runs the following steps:
+Code
+--family linux
+--distro <name>
+--host <name>
 
-1. refresh
-2. check
-3. update (only if needed)
-4. clean
-5. reboot detection
+#### Execution Options
+
+Code
+--force
+--mode sequential|parallel|distro-parallel
+
+### 📊 Summary Subcommand
+
+`runupdates summary [options]`
+
+#### Summary Options
+
+Code
+--latest
+--list
+--host <hostname>
+
+### 🛠 Execution Flow
+RunUpdates executes a deterministic lifecycle:
+
+`check → parse → refresh → update? → clean → reboot?`
+
+#### Step Descriptions
+
+* **check** — run the distro‑defined check command
+* **parse** — classify stdout/exit codes into universal update states
+* **refresh** — refresh package metadata (only if updates are needed)
+* **update** — apply updates (conditional)
+* **clean** — always run; remove stale metadata and temp files
+* **reboot** — detect whether a reboot is required
 
 Each step records:
 
@@ -235,7 +333,7 @@ Each step records:
 * classification
 * timestamps
 
-Failures do **not** stop the overall run.
+Failures do not stop the overall run.
 
 ## 📊 Summaries
 
@@ -243,7 +341,8 @@ Failures do **not** stop the overall run.
 
 Each host produces:
 
-`<hostname>.json`
+Code
+<hostname>.json
 
 Containing:
 
@@ -252,12 +351,12 @@ Containing:
 * repo health
 * reboot requirement
 * exit codes
-* stdout/stderr
+* stdout/stderr (or redacted indicators)
 * timestamps
 
 ### Final Summary
 
-`summary.json` includes:
+summary.json includes:
 
 * run start/end
 * duration
@@ -267,33 +366,33 @@ Containing:
 ## 🧱 Architecture Overview
 
 Code
-```
 main.py
  └── UpdateOrchestrator
+      ├── ConfigResolver
+      ├── PathResolver
+      ├── SchemaLoader
+      ├── RunUpdatesInventoryLoader
+      ├── VaultLoader
       ├── HostSelector
       ├── HostConnector
       │     ├── sudo_run (local)
       │     └── SSHSession (remote)
       ├── HostExecutor
-      └── SummaryWriter
-
-RunUpdatesInventoryLoader
- ├── YAML loading
- ├── schema validation
- ├── inheritance merging
- ├── vault merging
- └── normalization
-```
+      ├── UniversalCheckParser
+      ├── RebootWaiter
+      └── SummaryAggregator
 
 ### Responsibilities
 
-* **RunUpdatesInventoryLoader** → loads, validates, normalizes inventory
+* **ConfigResolver** → resolves CLI/env/default paths
+* **SchemaLoader** → loads and validates schema
+* **RunUpdatesInventoryLoader** → loads, merges, normalizes inventory
+* **VaultLoader** → locates, decrypts, and merges vault secrets
 * **HostSelector** → applies CLI filters
-* **HostConnector** → selects local vs remote execution
-* **HostExecutor** → runs the distro‑defined pipeline
-* **PythonTools** → execution primitives
-
-Summary generation is integrated into the HostExecutor (per‑host summaries) and the UpdateOrchestrator (final summary).
+* **HostConnector** → local vs remote execution
+* **HostExecutor** → runs deterministic lifecycle
+* **UniversalCheckParser** → stdout/exit‑code classification
+* **SummaryAggregator** → builds final summary
 
 ## 🧪 Error Classification
 
@@ -307,83 +406,43 @@ RunUpdates uses a unified classification model:
 Mapped from:
 
 * exit codes
+* stdout patterns
 * SSH failures
 * PythonTools exceptions
+* repo health indicators
 
 ## 🔒 Security Model
 
 * no dynamic code execution
 * no YAML‑driven logic paths
-* no secrets in logs
+* secrets only in vault.yml
+* secrets never logged or written to disk
 * SSH keyfile preferred
 * deterministic logging
-* strict inventory validation
-
-### Environment Variables (Ansible‑Style Naming)
-
-RunUpdates supports environment variables for vault configuration using the pattern:
-
-Code
-```
-<APPLICATION_NAME>_<VARIABLE>
-```
-
-For RunUpdates, the following variables are recognized:
-
-[RUNUPDATES_VAULT_PATH]
-
-Path to the encrypted vault file.
-
-Example:
-
-```bash
-export RUNUPDATES_VAULT_PATH="$HOME/ansible/vault.yml"
-```
-
-[RUNUPDATES_VAULT_PASSWORD_FILE]
-
-Path to the file containing the vault password.
-
-Example:
-
-```bash
-export RUNUPDATES_VAULT_PASSWORD_FILE="$HOME/.ansible/password"
-```
-
-Resolution Order
-RunUpdates resolves vault configuration in this order:
-
-1. CLI arguments  
-  ([--vault-path], [--vault-password-file], [--vault-password])
-
-2. Environment variables  
-  ([RUNUPDATES_VAULT_PATH], [RUNUPDATES_VAULT_PASSWORD_FILE])
-
-3. Defaults  
-  (none today — missing values cause a validation error)
+* strict schema validation
 
 ## 🛣 Roadmap
 
-Upcoming enhancements:
+Planned enhancements:
 
-* structured check parsing (zypper/dnf/apt)
+* expanded OS family/distro examples
+* richer structured check parsing
 * improved reboot classification
-* expanded distro support
 * inventory diffing
 * dashboard‑ready summary format
 
-## 🤝 [Contributing](CONTRIBUTING.md)
+## 🤝 Contributing
 
 Pull requests are welcome.
 
 Please ensure:
 
 * deterministic behavior
-* no breaking changes to the inventory schema
+* no breaking schema changes
 * placeholder‑only examples
 * documentation updates for new features
 
-## 📄 [License](LICENSE)
+📄 License
 MIT License — see LICENSE for details.
 
 ## 🔗 Related Projects

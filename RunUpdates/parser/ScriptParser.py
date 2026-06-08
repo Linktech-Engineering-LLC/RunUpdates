@@ -194,4 +194,28 @@ class ScriptParser(BaseScriptParser):
         self.paths = resolve_paths(args)
 
         return args
+    # --------------------------------------------------------
+    # Help handling
+    # --------------------------------------------------------
+    def print_help(self, topic: str | None = None):
+        """
+        Print help for the whole program or a specific subcommand.
+        """
+        # BaseScriptParser exposes the underlying argparse parser as self.parser
+        parser = self.parser
+
+        if topic:
+            # Try to find a matching subcommand
+            subparsers_action = None
+            for action in parser._actions:
+                if isinstance(action, type(self.subparsers)):
+                    subparsers_action = action
+                    break
+
+            if subparsers_action and topic in subparsers_action.choices:
+                subparsers_action.choices[topic].print_help()
+                return
+
+        # Fallback: top-level help
+        parser.print_help()
 
