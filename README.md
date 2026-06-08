@@ -365,7 +365,7 @@ summary.json includes:
 
 ## 🧱 Architecture Overview
 
-Code
+```
 main.py
  └── UpdateOrchestrator
       ├── ConfigResolver
@@ -381,6 +381,7 @@ main.py
       ├── UniversalCheckParser
       ├── RebootWaiter
       └── SummaryAggregator
+```
 
 ### Responsibilities
 
