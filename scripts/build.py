@@ -216,10 +216,23 @@ def resolve_entry_point(project_path: Path, meta: dict, log_file: Path) -> Path:
 # ------------------------------------------------------------
 # Granular Build Steps
 # ------------------------------------------------------------
-def clean_directories(dist_dir: Path, build_dir: Path, release_dir: Path, log_file: Path):
+def clean_directories(project_path: Path, dist_dir: Path, build_dir: Path, release_dir: Path, log_file: Path):
     log("Cleaning old build directories...", log_file)
+
+    # Remove PyInstaller output dirs
     rm(dist_dir)
     rm(build_dir)
+    rm(release_dir)
+
+    # Remove all __pycache__ directories
+    for pyc in project_path.rglob("__pycache__"):
+        rm(pyc)
+
+    # Remove PyInstaller user cache
+    pyinstaller_cache = Path.home() / ".cache" / "pyinstaller"
+    if pyinstaller_cache.exists():
+        rm(pyinstaller_cache)
+        log(f"Cleared PyInstaller cache: {pyinstaller_cache}", log_file)
 
 def build_pyinstaller_command(project_path: Path, meta: dict, args, log_file: Path) -> list[str]:
     entry_path = resolve_entry_point(project_path, meta, log_file)
@@ -332,7 +345,7 @@ def main():
     build_dir = project_path / "build"
     release_dir = project_path / "release"
 
-    clean_directories(dist_dir, build_dir, release_dir, log_file)
+    clean_directories(project_path, dist_dir, build_dir, release_dir, log_file)
 
     if args.clean_only:
         print(ctext(Color.YELLOW, "Clean-only mode complete"))
@@ -371,7 +384,7 @@ def main():
     copy_binary(project_path, meta, log_file)
     run_hook(project_path, meta["postbuild"], ["postbuild.sh", "postbuild.py"], "post-build", log_file)
     finalize_release(project_path, meta, args, log_file)
-    clean_directories(dist_dir, build_dir, release_dir, log_file)
+    clean_directories(project_path, dist_dir, build_dir, release_dir, log_file)
     spec_file = project_path / f"{meta['name']}.spec"
     if not args.keep_spec and not args.spec:
         rm(spec_file)

@@ -31,21 +31,31 @@ from RunUpdates.core.constants import (
     VAULT_PATH_ENV,
     VAULT_PASSWORD_ENV,
     PACKAGE_ROOT,
-    is_dev_mode
+    PROJECT_ROOT,
+    INSTALL_ROOT,
+    MODE
 )
 from .paths import Paths
 
+def is_dev_mode() -> bool:
+    # Dev mode: repo checkout with etc/ and var/ next to package
+    return (PROJECT_ROOT / "etc").exists() and (PROJECT_ROOT / "var").exists()
 # -------------------------------------------------------------
 # Resolve Config & Schema folders
 # -------------------------------------------------------------
 def resolve_config_dir(args) -> Path:
     env = os.getenv(CONFIG_ENV)
-    dmode = PACKAGE_ROOT / "etc" if is_dev_mode() else Path.home() / ".config" / "runupdates"
-    return resolve_with_priority(cli_value = args.config_dir, env_value = env, default = dmode)
+
+    if MODE == "DEV":
+        default = PACKAGE_ROOT / "etc"
+    else:
+        default = INSTALL_ROOT / "etc"
+
+    return resolve_with_priority(args.config_dir, env, default)
 def resolve_schema_dir(args, config_dir) -> Path:
     env = os.getenv(SCHEMA_ENV)
-    dmode = PACKAGE_ROOT / "schema" if is_dev_mode() else config_dir / "schema"
-    return resolve_with_priority(cli_value = args.schema_dir, env_value = env, default = dmode)
+    default = config_dir / "schema"
+    return resolve_with_priority(args.schema_dir, env, default)
 def resolve_log_dir(args, default_base: Path) -> Path:
     """
     Resolve the log directory for RunUpdates.

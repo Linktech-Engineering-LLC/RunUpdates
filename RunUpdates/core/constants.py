@@ -23,7 +23,6 @@ PROJECT_VERSION = "1.0.0"
 # ------------------------------------------------------------
 # Project roots
 # ------------------------------------------------------------
-
 if getattr(sys, "frozen", False):
     # FROZEN MODE
     MODE = "FROZEN"
@@ -32,7 +31,7 @@ if getattr(sys, "frozen", False):
     binary_path = Path(sys.argv[0]).resolve()
 
     # INSTALL_ROOT: /opt/RunUpdates
-    INSTALL_ROOT = binary_path.parent.parent
+    INSTALL_ROOT = binary_path.parents[1]
 
     # PACKAGE_ROOT: <_MEIPASS>/RunUpdates
     MEIPASS_ROOT = Path(sys._MEIPASS)
@@ -98,6 +97,7 @@ DEFAULT_SUMMARY_DIR = PACKAGE_ROOT / "var" / "summary"
 DEFAULT_INVENTORY_PATH = DEFAULT_CONFIG_DIR / "hosts.yml"
 DEFAULT_RUN_PATH = INSTALL_ROOT / "var" / "run"
 DEFAULT_BIN_PATH = INSTALL_ROOT / "bin"
+DEFAULT_SCHEMA_DIR = DEFAULT_CONFIG_DIR / "schema"
 
 PID_FILE = DEFAULT_RUN_PATH / f"{PROJECT_NAME.lower()}.pid"
 
