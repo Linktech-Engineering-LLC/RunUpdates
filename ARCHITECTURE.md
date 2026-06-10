@@ -5,6 +5,11 @@ Its architecture emphasizes clarity, reproducibility, and operator‑grade behav
 
 This document describes the internal structure of RunUpdates, the execution pipeline, and the responsibilities of each component.
 
+For installation, configuration, and operator usage, see the companion document:
+**[QuickStart](QuickStart.md)**.
+
+---
+
 ## 1. Design Principles
 
 RunUpdates is built around:
@@ -14,6 +19,8 @@ RunUpdates is built around:
 * **Structured logging** — predictable, machine‑readable output
 * **Separation of concerns** — each module has a single responsibility
 * **Audit‑friendly operation** — logs and summaries reflect exactly what happened
+
+---
 
 ## 2. High‑Level Architecture
 
@@ -26,7 +33,9 @@ Inventory → Orchestrator → Selector → Connector → Executor
 
 Each layer transforms structured input into structured output, with no side effects outside its scope.
 
-### 2.1 Inventory Loader (inventory/loader.py)
+---
+
+## 2.1 Inventory Loader (inventory/loader.py)
 
 The **RunUpdatesInventoryLoader** is responsible for:
 * loading hosts.yml
@@ -39,18 +48,21 @@ It produces two representations:
 * raw_yaml — used for list operations
 * normalized — used for orchestration
 
-**Note**: The schema structure and validation flow are stable, but the schema files themselves will continue to expand as distro models and check‑parsing features mature.
+For details on creating the configuration directory and populating hosts.yml,
+see **QuickStart → Configuration Directory Setup**.
 
-#### Key Behaviors
+### Key Behaviors
 
-* address is always normalized to a list
+* `address` is always normalized to a list
 * vault secrets override inventory fields
 * family/distro/host inheritance is deterministic
 * validation is strict and fail‑fast
 
 The loader fully replaces the old InventoryProcessor.
 
-### 2.2 Orchestrator ([operations/orchestrator.py])
+---
+
+## 2.2 Orchestrator (operations/orchestrator.py)
 
 The orchestrator coordinates the entire run:
 1. Receive normalized inventory
@@ -61,16 +73,14 @@ The orchestrator coordinates the entire run:
 6. Write final summary
 7. Return aggregated status
 
-#### Final Summary (Implemented)
+### Final Summary (Implemented)
 
 The orchestrator writes:
 
-Code
-```
 summary.json
-```
 
 containing:
+
 * run start/end
 * duration
 * total hosts
@@ -82,15 +92,19 @@ containing:
 * per‑host status map
 
 **Orchestrator Does NOT:**
+
 * flatten inventory
 * merge inheritance
 * run commands directly
 
 It is a clean, minimal coordinator.
 
-### 2.3 Selector (operations/selector.py)
+---
+
+## 2.3 Selector (operations/selector.py)
 
 Responsible for:
+
 * filtering normalized hosts based on CLI arguments
 * validating that selected hosts exist
 * returning a list of host execution targets
@@ -98,9 +112,12 @@ Responsible for:
 The selector operates **only** on normalized data.
 
 It does **not**:
+
 * merge inheritance
 * perform vault operations
 * modify host definitions
+
+---
 
 ### 2.4 Connector (operations/connector.py)
 
@@ -108,25 +125,21 @@ Responsible for establishing execution sessions.
 
 RunUpdates uses PythonTools for all execution primitives.
 
-#### Local Execution
+### Local Execution
+
 Uses:
 
-Code
-```
 PythonTools.sudo_run
-```
+
 There is **no LocalSession class**.
 
-#### Remote Execution
+### Remote Execution
+
 Uses:
 
-Code
-```
 PythonTools.SSHSession
-```
-SSHSession is fully provided by PythonTools.
 
-#### Unified Interface
+### Unified Interface
 
 Both local and remote execution expose:
 
@@ -136,29 +149,35 @@ session.run(command) → (exit_code, stdout, stderr)
 
 The executor does not know or care whether the session is local or remote.
 
-#### Connector Responsibilities
+### Connector Responsibilities
 
 * choose local vs remote session
 * initialize the session
 * log connection lifecycle
 * return a ready‑to‑use session object
 
+For SSH and privilege requirements, see **QuickStart → Vault Setup**
+
+---
+
 ### 2.5 Executor (operations/executor.py)
 
 Responsible for running the deterministic lifecycle:
 
-Code
-```
+```Code
 refresh → check → update? → clean → reboot detection
 ```
 
 The executor:
+
 * runs distro‑defined commands
 * interprets exit codes
 * detects reboot requirements
 * logs each stage
 * records lifecycle events
 * writes per‑host summaries
+
+For the operator‑facing summary format, see **QuickStart → Runtime Directories**.
 
 #### Per‑Host Summary (Implemented)
 
@@ -179,7 +198,54 @@ containing:
 * reboot requirement
 * lifecycle events
 
-This is not “planned” — it is fully implemented.
+For the operator‑facing summary directory layout, see
+**QuickStart → Runtime Directories**.
+
+---
+
+### 2.5.1 Exit‑Code Interpretation Model
+
+RunUpdates does not hardcode any package‑manager exit codes.  
+Different distros (APT, DNF, YUM, Zypper, Pacman, etc.) return different exit
+codes for the same semantic meaning, and even the same distro may return
+different codes depending on the command being executed.
+
+To support this variability, RunUpdates uses a fully declarative exit‑code
+model defined in the inventory under:
+
+```yaml
+exit_codes:
+  check:
+    up_to_date: [...]
+    patches_available: [...]
+    reboot_required: [...]
+    error: ["*"]
+```
+
+#### Key Properties
+* **Distro‑specific**
+  Each distro defines its own exit‑code rules in its inventory section.
+
+* **Command‑specific**
+  Exit‑code rules are defined per lifecycle step (``refresh``, ``check``, ``update``,
+  ``clean``), not globally.
+
+* **Host‑overrideable**
+  Hosts may override distro defaults. The loader merges family → distro → host
+  definitions, with host values taking precedence.
+
+* **Deterministic interpretation**
+  The executor calls ``classify_exit_code(step, exit_code, rules, host)`` to
+  determine the semantic meaning of each exit code.
+
+* **No implicit assumptions**
+  RunUpdates never assumes that a particular exit code means “updates available”
+  or “reboot required”. All semantics originate from the inventory.
+
+This model ensures that RunUpdates remains fully distro‑agnostic and that adding
+support for a new distro requires no code changes—only inventory definitions.
+
+---
 
 ## 3. Execution Pipeline
 
@@ -187,19 +253,43 @@ Each host follows the same deterministic sequence:
 1. refresh
 2. check
 3. exit‑code interpretation
-  * backend‑specific parsing (future)
 4. update (only if needed)
 5. clean
 6. reboot detection
 7. per‑host summary
 
-### Not Yet Implemented (Future)
+### 3.1 Exit‑Code Interpretation (Cross‑Link)
+
+RunUpdates does not hardcode any package‑manager exit codes.  
+Different distros return different codes for the same semantic meaning, and even
+the same distro may vary by command.
+
+Exit‑code semantics are defined declaratively in the inventory under:
+
+```yaml
+exit_codes:
+  check:
+    up_to_date: [...]
+    patches_available: [...]
+    reboot_required: [...]
+    error: ["*"]
+```
+
+The executor calls ``classify_exit_code(step, exit_code, rules, host)`` to interpret
+each exit code using the merged host configuration.
+
+For a high‑level explanation of orchestrator exit codes (distinct from
+package‑manager exit codes), see **QuickStart.md → Exit Codes**.
+
+#### Not Yet Implemented (Future)
 
 * pre‑update list
 * post‑update list
 * update count diffing
 
 These remain roadmap items.
+
+---
 
 ## 4. Inventory Model
 
@@ -215,6 +305,7 @@ linux:
 ```
 
 The loader merges:
+
 * family defaults
 * distro defaults
 * host overrides
@@ -234,13 +325,15 @@ The loader merges:
 * GPG key imports
 * host grouping and tags
 
+---
+
 ## 5. PythonTools Integration
 
 RunUpdates uses PythonTools as its execution substrate:
-* [sudo_run] for privileged local execution
-* [local_command] for non‑privileged local execution
-  * local_command is available in PythonTools but is not used by RunUpdates today.
-* [SSHSession] for remote execution
+* ``sudo_run`` for privileged local execution
+* ``local_command`` for non‑privileged local execution
+  * (available in PythonTools but is not used by RunUpdates today)
+* ``SSHSession`` for remote execution
 * structured logging injection
 * secrets injection
 * consistent return structures
@@ -253,21 +346,47 @@ PythonTools is a standalone micro‑library shared across:
 
 RunUpdates relies on PythonTools for all execution‑layer behavior.
 
+---
+
 ## 6. Future Enhancements
 
-Planned architectural improvements:
-* backend‑specific check parsing
-* pre/post list operations
-* concurrency limits for parallel execution
-* rollback hooks
-* package‑level filtering
-* pluggable execution backends
-* optional diagnostics endpoints
-* optional web dashboard (read‑only)
+Planned architectural improvements include:
+
+* **backend‑specific check parsing**  
+  Structured parsing of `check` output for distros that provide machine‑readable formats (e.g., Zypper XML, DNF JSON). 
+
+* **pre/post list operations**  
+  Hooks for listing packages before and after updates.
+
+* **update count diffing**  
+  Deterministic comparison of package lists.
+
+* **concurrency limits for parallel execution**  
+  Operator‑controlled maximum parallel hosts.
+
+* **rollback hooks**  
+  Optional user‑defined rollback commands.
+
+* **package‑level filtering**  
+  Include/exclude specific packages or groups.
+
+* **pluggable execution backends**  
+  Support for alternate execution engines.
+
+* **optional diagnostics endpoints**  
+  Health and metrics endpoints.
+
+* **optional web dashboard (read‑only)**  
+  A lightweight UI for browsing logs, summaries, and run history.
+
+For installation and configuration details referenced here, see
+**QuickStart → Configuration Directory Setup** and  
+**QuickStart → Vault Setup**.
 
 ## 7. Summary
 
 RunUpdates is designed to be:
+
 * predictable
 * auditable
 * maintainable
