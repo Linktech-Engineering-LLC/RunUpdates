@@ -13,45 +13,57 @@ This README is the entry point. For the full packaging manual, see:
 
 ## 1. Installation Policy (Authoritative)
 
-RunUpdates **must be installed into a directory that is writable by the user
-running it**. This requirement is fundamental to the design of the tool.
+RunUpdates supports **two installation models**, depending on the packaging format:
 
-### 1.1 Allowed installation roots
+| Format | Install Location | Requires Root | Notes |
+| --- | --- | --- | --- |
+| ``.tgz`` / ``.zip`` | ``$HOME/RunUpdates`` | No | Portable, user‑local installs |
+| ``.deb`` / ``.rpm`` | ``/opt/RunUpdates`` | Yes | System‑level installs |
 
-The installation root **must be user‑writable**. Valid examples include:
+This distinction is required because:
 
-- `$HOME`
-- Any directory owned by the user
-- A directory created by root but explicitly `chown`ed to the user
+* **DEB cannot install into** ``$HOME``
+* **RPM installs into system paths by default**
+* **TGZ/ZIP are user‑local and relocatable**
 
-Examples:
+### 1.1 User‑Local Installation (TGZ/ZIP)
 
-/home/leon/RunUpdates
+TGZ and ZIP archives must install into a directory **writable by the user**.
+
+Valid examples:
+
+```Code
+$HOME/RunUpdates
 /mnt/data/runupdates/RunUpdates
 /srv/tools/RunUpdates
+```
 
-### 1.2 Forbidden installation roots
+### 1.2 System Installation (DEB/RPM)
 
-These locations are **not allowed** because they are root‑owned and not
-writable by normal users:
+DEB and RPM packages install into:
 
-- `/opt`
-- `/usr/local`
-- `/usr`
-- `/var`
-- Any system‑managed prefix
+```Code
+/opt/RunUpdates
+```
 
-RunUpdates must not be installed into these directories unless the admin
-explicitly changes ownership to the user.
+This location is:
 
-### 1.3 Relocatable installation
+* root‑owned
+* standard for third‑party tools
+* required by DEB packaging rules
+* compatible with RPM packaging conventions
 
-RunUpdates is fully relocatable. The installation root is defined by the user
-or by the packaging system. All internal paths are derived from:
+After installation, the admin must make the directory writable:
 
-`$INSTALL_DIR/RunUpdates`
+```Code
+sudo chown -R <user>:<group> /opt/RunUpdates
+```
 
-No hardcoded absolute paths are permitted.
+### 1.3 Relocatable Installation
+
+Only **TGZ/ZIP** are fully relocatable.
+
+DEB and RPM are **not** relocatable into ``$HOME``, but may be relocated by an admin into another system directory if ownership is corrected.
 
 ---
 
@@ -59,30 +71,31 @@ No hardcoded absolute paths are permitted.
 
 All packaging formats must produce the following directory tree:
 
-```code
-RunUpdates
+```Code
+RunUpdates/
     bin/
+    lib/
     etc/
-        hosts.yml              (template)
-        schema/
+        hosts.yml              (not packaged)
+        schemata/
             hosts.schema.yml   (the only schema file)
     var/
-        log/
-            summary/
+        logs/
+        logs/summaries/
         run/
 ```
 
-### 2.1 `.env` generation
+### 2.1 ``.env`` generation
 
 At install time, packaging scripts must generate:
 
-```code
+```Code
 CONFIG_DIR=$INSTALL_DIR/RunUpdates/etc
-SCHEMA_DIR=$INSTALL_DIR/RunUpdates/etc/schema
-LOG_DIR=$INSTALL_DIR/RunUpdates/var/log
+SCHEMA_DIR=$INSTALL_DIR/RunUpdates/etc/schemata
+LOG_DIR=$INSTALL_DIR/RunUpdates/var/logs
 ```
 
-This file must not be included in source or freeze builds.
+This file must **not** be included in freeze builds.
 
 ---
 
@@ -90,68 +103,88 @@ This file must not be included in source or freeze builds.
 
 ### 3.1 RPM
 
-- Installs into a relocatable prefix.
-- Must create the directory tree under `$INSTALL_DIR/RunUpdates`.
-- Must copy `hosts.schema.yml` into `etc/schema/`.
-- Must not install into `/opt` or `/usr/local` unless the admin chooses that
-  prefix and ensures it is writable.
+* Installs into /opt/RunUpdates
+* Requires root
+*  Must create the directory tree under /opt/RunUpdates
+* Must copy hosts.schema.yml into etc/schemata/
+* Must not package hosts.yml
+* RPM output is renamed to:
+
+```Code
+RunUpdates_<version>.x86_64.rpm
+```
 
 ### 3.2 DEB
 
-- Uses Debian `dh` conventions.
-- Must respect relocatable installation.
-- Must install the same directory structure as RPM.
+Installs into /opt/RunUpdates
+
+* Requires root
+* Must create the same directory structure as RPM
+* Must not package hosts.yml
+* DEB output is named:
+
+```Code
+RunUpdates_<version>.deb
+```
 
 ### 3.3 TGZ
 
-- A portable archive containing the full `RunUpdates/` directory tree.
-- No system integration.
-- No man pages.
+Portable archive containing the full RunUpdates/ directory tree
+
+* Extracts into $HOME/RunUpdates by default
+* No system integration
 
 ### 3.4 ZIP
 
-- Contains only the RPM and DEB artifacts.
-- No binaries, no source, no documentation.
+* Same as TGZ, but ZIP format
+* Extracts into $HOME/RunUpdates
 
 ---
 
 ## 4. Freeze Build Requirements
 
-All packaging formats depend on the PyInstaller freeze build. The freeze build
-must:
+All packaging formats depend on the PyInstaller freeze build. The freeze build must:
 
-- Place the binary in `RunUpdates/bin/runupdates`
-- Exclude `etc/` and `schema/` from the freeze
-- Clone PythonTools before building
-- Produce a relocatable binary with no hardcoded paths
+* Place the binary in RunUpdates/bin/RunUpdates
+* Exclude etc/ and schemata/ from the freeze
+* Clone PythonTools before building
+* Produce a relocatable binary tree with no hardcoded paths
+
+The freeze output is **not compressed**.
+Compression happens only in TGZ/ZIP packaging.
 
 ---
 
 ## 5. Directory Contents
 
-```code
+```Code
 packaging/
     README.md        ← this file (start here)
     Packaging.md     ← full packaging manual
     rpm/
         runupdates.spec
-    debian/
+    deb/
         control
-        rules
-        install
+        postinst
+        prerm
     scripts/
         build_tgz.sh
         build_zip.sh
+        build_deb.sh
+        build_rpm.sh
+        build_all.sh
 ```
 
 ---
 
 ## 6. Maintainer Notes
 
-- All packaging work must conform to the installation policy above.
-- No packaging format may introduce hardcoded paths.
-- No packaging format may assume root‑owned installation directories.
-- The schema directory contains **exactly one** schema file:
-  `hosts.schema.yml`.
+* TGZ/ZIP installs are user‑local and relocatable.
+* DEB/RPM installs are system‑level and require root.
+* After DEB/RPM installation, ``/opt/RunUpdates`` must be made writable.
+* No packaging format may include secrets.
+* No packaging format may include operator inventory.
+* The schema directory contains exactly one schema file:
+  ``hosts.schema.yml``.
 
-For detailed procedures, see `Packaging.md`.
+For detailed procedures, see [Packaging](Packaging.md)

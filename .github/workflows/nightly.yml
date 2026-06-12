@@ -1,0 +1,166 @@
+name: Nightly Build
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC nightly
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+
+  nightly-build:
+    runs-on: ubuntu-latest
+
+    env:
+      NIGHTLY: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pandoc \
+            rpm \
+            dpkg-dev
+
+      - name: Install Python build dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pyinstaller
+
+      - name: Make scripts executable
+        run: chmod +x packaging/*.sh
+
+      - name: Build all artifacts (freeze + DEB + RPM + TGZ + ZIP)
+        run: ./packaging/build_all.sh
+
+      - name: Normalize RPM filename
+        run: |
+          OUT=packaging/output
+          RPM_SRC=$(find ~/rpmbuild/RPMS -type f -name "runupdates-*.rpm" | head -n 1)
+          if [[ -n "$RPM_SRC" ]]; then
+            ARCH=$(echo "$RPM_SRC" | sed -n 's/.*\.\(.*\)\.rpm/\1/p')
+            VERSION=$(basename "$RPM_SRC" | sed -n 's/runupdates-\(.*\)-.*\.rpm/\1/p')
+            mv "$RPM_SRC" "$OUT/RunUpdates_${VERSION}.${ARCH}.rpm"
+          fi
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts
+          cp packaging/output/RunUpdates_* artifacts/ || true
+
+      - name: Upload nightly artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-runupdates
+          path: artifacts
+
+      - name: Update nightly tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f nightly
+          git push -f origin nightly
+
+  publish-dashboard:
+    runs-on: ubuntu-latest
+    needs: nightly-build
+
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Download nightly artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-runupdates
+          path: artifacts
+
+      - name: Extract version metadata
+        id: meta
+        run: |
+          DEB_FILE=$(ls -t artifacts/RunUpdates_*.deb | head -n 1)
+          BASENAME=$(basename "$DEB_FILE")
+          VERSION=$(echo "$BASENAME" | sed -n 's/RunUpdates_\(.*\)\.deb/\1/p')
+
+          # Optional: extract datestamp + git hash if included in version
+          DATESTAMP=$(echo "$VERSION" | grep -o '+[0-9]\{8\}' | tr -d '+' || echo "N/A")
+          GIT_HASH=$(echo "$VERSION" | sed -n 's/.*git\([0-9a-f]\+\).*/\1/p' || echo "N/A")
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "datestamp=$DATESTAMP" >> $GITHUB_OUTPUT
+          echo "hash=$GIT_HASH" >> $GITHUB_OUTPUT
+
+      - name: Compute checksums and sizes
+        id: sums
+        run: |
+          for f in artifacts/RunUpdates_*; do
+            NAME=$(basename "$f")
+            SIZE=$(stat -c%s "$f")
+            SHA=$(sha256sum "$f" | awk '{print $1}')
+            CRC=$(crc32 "$f")
+            echo "${NAME}_size=$SIZE" >> $GITHUB_OUTPUT
+            echo "${NAME}_sha256=$SHA" >> $GITHUB_OUTPUT
+            echo "${NAME}_crc32=$CRC" >> $GITHUB_OUTPUT
+          done
+
+      - name: Generate dashboard HTML
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          DATESTAMP="${{ steps.meta.outputs.datestamp }}"
+          GIT_HASH="${{ steps.meta.outputs.hash }}"
+          RELEASE_URL="https://github.com/.../nightly"
+
+          mkdir -p dashboard
+          rm -f dashboard/*
+
+          cat > dashboard/index.html <<'EOF'
+          <html>
+          <head>
+            <title>RunUpdates Nightly Dashboard</title>
+          </head>
+          <body>
+          <h1>RunUpdates Nightly Dashboard</h1>
+          EOF
+
+          for f in artifacts/RunUpdates_*; do
+            NAME=$(basename "$f")
+            echo "<tr><td>${NAME}</td><td><a href=\"${RELEASE_URL}/${NAME}\">${NAME}</a></td></tr>" >> dashboard/index.html
+          done
+
+          cat >> dashboard/index.html <<'EOF'
+          </table>
+          </body>
+          </html>
+          EOF
+
+          # Replace placeholders
+          sed -i "s/__VERSION__/${VERSION}/" dashboard/index.html
+          sed -i "s/__DATESTAMP__/${DATESTAMP}/" dashboard/index.html
+          sed -i "s/__GIT_HASH__/${GIT_HASH}/" dashboard/index.html
+
+      - name: Publish dashboard to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          cp -r dashboard/* .
+
+          git add .
+          git commit -m "Update nightly dashboard" || echo "No changes"
+          git push origin gh-pages

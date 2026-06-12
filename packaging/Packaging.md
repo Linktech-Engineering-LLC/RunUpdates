@@ -1,162 +1,106 @@
-# RunUpdates Packaging Guide
+# RunUpdates Packaging Guide (Updated)
 
-This document describes how to package RunUpdates for distribution, including:
+This document describes how RunUpdates is packaged for distribution, including:
 
-* source tarballs (`.tar.gz` / `.zip`)
-* frozen binary tarballs (`.tar.gz` / `.zip`)
+* frozen binary builds
+* DEB packaging
 * RPM packaging
+* TGZ/ZIP portable archives
 * directory layout
 * freeze rules
-* environment expectations
-* GitHub Actions workflows
+* GitHub Actions nightly workflow
 
-RunUpdates supports both **source‑based** and **binary‑based** distribution
-models. This guide covers all packaging paths.
+RunUpdates uses a hybrid packaging model:
 
-For installation and configuration instructions, see **QuickStart.md**.  
+| Format | Install Location | Requires Root | Purpose |
+| --- | --- | --- | --- |
+| ``.tgz`` / ``.zip`` | ``$HOME/RunUpdates`` | No | Portable, user‑local installs |
+| ``.deb`` / ``.rpm`` | ``/opt/RunUpdates`` | Yes | System‑level installs |
+
+For installation instructions, see **QuickStart.md**.
 For internal architecture, see **ARCHITECTURE.md**.
-
----
 
 ## 1. Packaging Overview
 
-RunUpdates produces three types of distributable artifacts:
+RunUpdates produces four distributable artifacts:
 
-1. **Source Distribution**  
-   A clean, versioned archive of the source tree.
+| Artifact | Purpose |
+| --- | --- |
+| ``.deb`` | Debian/Ubuntu installation |
+| ``.rpm`` | RHEL/Fedora/openSUSE installation |
+| ``.tgz`` | Portable Linux distribution |
+| ``.zip`` | Portable Linux distribution |
 
-2. **Frozen Distribution**  
-   A PyInstaller‑based self‑contained binary tree.
+All artifacts contain the same runtime layout and the same frozen binary.
 
-3. **RPM Package**  
-   For openSUSE, SLES, Fedora, and RHEL systems.
+### Final Artifact Naming
 
-Each artifact serves a different operational environment:
+```Code
+RunUpdates_<version>.deb
+RunUpdates_<version>.x86_64.rpm
+RunUpdates_<version>.tgz
+RunUpdates_<version>.zip
+```
 
-| Artifact | Use Case |
-|---------|----------|
-| `.tar.gz` / `.zip` (source) | Developers, packagers, offline builds |
-| `.tar.gz` / `.zip` (frozen) | Operators, air‑gapped systems, CI/CD |
-| `.rpm` / `.deb` | Enterprise deployments, managed systems |
+No architecture suffix is used for DEB/TGZ/ZIP.
+RPM retains ``.x86_64.rpm`` because the format requires it.
 
 ---
 
-## 2. Directory Layout (Source, Frozen, RPM)
+## 2. Runtime Directory Layout
 
-All packaging formats follow the same runtime layout:
+All packaging formats produce the same runtime structure:
 
-**The installation root must be user‑writable.**  
-
-The default installation root is:
-
-$HOME/RunUpdates
-
-
-Example:
-
-/home/johndoe/RunUpdates
-
-
-### Runtime Layout
-
-$INSTALL_DIR/RunUpdates/        ← installation root
-    bin/                        ← frozen executable
-    lib/                        ← Python runtime + dependencies (frozen builds)
-    etc/                        ← configuration directory
-        hosts.yml               ← operator inventory (not packaged)
-        schema/
-            hosts.schema.yml    ← the only schema file
+RunUpdates/
+    bin/                    ← frozen executable
+    lib/                    ← Python runtime + dependencies
+    etc/                    ← configuration directory
+        hosts.yml           ← operator inventory (not packaged)
+        schemata/
+            hosts.schema.yml
     var/
-        logs/                   ← rotating logs
-        logs/summaries/         ← per-host + per-run summaries
-        run/                    ← PID file
+        logs/
+        logs/summaries/
+        run/
 
-### Key Rules
+### Rules
 
-* `$INSTALL_DIR` **must be writable by the user.**
-* `etc/` is created automatically in all packaged builds.
-*  `schema/hosts.schema.yml` is always included.
-* `hosts.yml` is never packaged.
-* `var/logs`, `var/log/summaries`, and `var/run` must be writable.
-* No system paths (`/opt`, `/usr/local`, `/usr`) may be used unless the admin explicitly overrides and ensures write permissions.
+* ``hosts.yml`` is never packaged.
+* ``schemata/hosts.schema.yml`` is always included.
+* ``var/logs``, ``var/logs/summaries``, and ``var/run`` must be writable.
+* TGZ/ZIP installs are user‑local.
+* DEB/RPM installs are system‑level.
 
 ---
 
-## 3. Source Distribution Packaging
+## 3. Frozen Binary Build
 
-Source distributions are provided as:
+RunUpdates uses **PyInstaller** to produce a self‑contained binary tree.
 
-```code
-runupdates-<version>.tar.gz
-runupdates-<version>.zip
+### Output
+
+dist/RunUpdates/
+    RunUpdates
+    libpython…
+    dependencies…
+
+This output is **not compressed**.
+Compression happens only during packaging (TGZ/ZIP/DEB/RPM).
+
+### Freeze Rules
+
+Include:
+
+```Code
+RunUpdates source
+PythonTools
+all Python dependencies
+schemata/hosts.schema.yml
 ```
 
-## 3.1 Included in Source Tarball
+Exclude:
 
-```code
-RunUpdates/ (source)
-schemata/
-templates/
-docs/
-build.py
-requirements.txt
-setup.cfg / pyproject.toml (if present)
-```
-
-## 3.2 Excluded from Source Tarball
-
-```code
-etc/
-var/
-vault files
-logs
-summaries
-__pycache__
-```
-
-## 3.3 Creating a Source Tarball
-
-From the repository root:
-
-```bash
-git archive --format=tar.gz --prefix=runupdates-<version>/ -o runupdates-<version>.tar.gz HEAD
-```
-
-ZIP variant:
-
-```bash
-git archive --format=zip --prefix=runupdates-<version>/ -o runupdates-<version>.zip HEAD
-```
-
-## 4. Frozen Distribution Packaging
-
-Frozen builds are created using PyInstaller and packaged as:
-
-```code
-runupdates-frozen-<version>-linux-x86_64.tar.gz
-runupdates-frozen-<version>-linux-x86_64.zip
-```
-
-## 4.1 Freeze Rules
-
-The frozen build must:
-
-* include the RunUpdates source
-* include PythonTools
-* include all dependencies
-* create required runtime directories:
-
-```code
-etc/
-etc/schemata/
-var/logs/
-var/log/summaries/
-var/run/
-```
-
-exclude:
-
-```code
+```Code
 etc/hosts.yml
 vault files
 vault password files
@@ -164,192 +108,226 @@ logs
 summaries
 ```
 
-## 4.2 Creating a Frozen Tarball
+---
 
-After running PyInstaller:
+## 4. TGZ and ZIP Packaging (User‑Local Installs)
 
-```bash
-tar -czf runupdates-frozen-<version>-linux-x86_64.tar.gz runupdates/
-```
+TGZ and ZIP packages are portable and do not require root.
 
-ZIP variant:
-```bash
-zip -r runupdates-frozen-<version>-linux-x86_64.zip runupdates/
-```
-
-## 4.3 Required Operator Steps After Extraction
-
-Operators must:
-
-1. Create /$HOME/RunUpdates/etc (if not present)
-2. Copy hosts.yml
-3. Ensure schema files exist in /$HOME/RunUpdates/etc/schemata/
-4. Provide vault files via environment variables
-
-## 5. RPM Packaging
-
-The RPM package follows the same directory layout as frozen builds, but must
-respect the **relocatable installation root.**
-
-## 5.1 RPM Install Paths
-
-Default prefix:
+### Install Location
 
 ```Code
-%{_buildroot}/home/%{username}/RunUpdates
+$HOME/RunUpdates
 ```
 
-Or admin‑selected prefix:
+### Naming
 
 ```Code
---prefix /srv/tools
+RunUpdates_<version>.tgz
+RunUpdates_<version>.zip
 ```
 
-## 5.2 RPM Scriptlets
+### Creation
 
-%post
+```Code
+tar -czf RunUpdates_<version>.tgz RunUpdates/
+zip -r RunUpdates_<version>.zip RunUpdates/
+```
 
-* create writable directories
-* set permissions
-* ensure correct ownership
+### Usage
 
-%preun / %postun
+```Code
+mkdir -p $HOME/RunUpdates
+tar -xzf RunUpdates_<version>.tgz -C $HOME
+```
 
-* stop running instance if PID exists
-* clean up temporary files
+---
 
-## 5.3 SELinux / AppArmor
+## 5. DEB Packaging (System Install)
 
-If packaging for RHEL/Fedora/SLES:
+DEB packages install into:
 
-* allow execution from `$INSTALL_DIR/RunUpdates/bin`
-* allow writes to `$INSTALL_DIR/RunUpdates/var/logs`
-* allow writes to `$INSTALL_DIR/RunUpdates/var/run`
+```Code
+/opt/RunUpdates/
+```
 
-## 6. Release Asset Naming Conventions
+### Naming
 
-Recommended naming:
+```Code
+RunUpdates_<version>.deb
+```
 
-```code
-runupdates-<version>.tar.gz
-runupdates-<version>.zip
-runupdates-frozen-<version>-linux-x86_64.tar.gz
-runupdates-frozen-<version>-linux-x86_64.zip
+### Requires
+
+* root privileges
+* system‑level installation
+
+### Post‑Install Requirements
+
+Because RunUpdates must be writable:
+
+```Code
+sudo chown -R <user>:<group> /opt/RunUpdates
+```
+
+### Build Process
+
+* Create staging directory under packaging/deb
+* Copy frozen binary tree
+* Create DEBIAN/control
+* Build package:
+
+```Code
+dpkg-deb --build <staging>
+```
+
+---
+
+## 6. RPM Packaging (System Install)
+
+RPM packages also install into:
+
+```Code
+/opt/RunUpdates
+```
+
+### Naming
+
+RPMs are renamed after build:
+
+```Code
+RunUpdates_<version>.x86_64.rpm
+```
+
+### Requires
+
+* root privileges
+* system‑level installation
+
+### Post‑Install Requirements
+
+```Code
+sudo chown -R <user>:<group> /opt/RunUpdates
+```
+
+### Build Process
+
+* Create source tarball for rpmbuild
+* rpmbuild unpacks into BUILD/
+* %install copies files into /opt/RunUpdates
+* rpmbuild produces:
+
+```Code
 runupdates-<version>-1.x86_64.rpm
-runupdates-<version>-checksums.txt
 ```
 
-## 7. Checksum Generation
+Workflow renames it to:
 
-Generate SHA256 checksums for all release assets:
-
-```bash
-sha256sum runupdates-* > runupdates-<version>-checksums.txt
+```Code
+RunUpdates_<version>.x86_64.rpm
 ```
 
-## 8. GitHub Actions Release Workflow
+---
 
-A typical release workflow:
+## 7. GitHub Actions Nightly Workflow
 
-1. Checkout repository
-2. Build source tarball
-3. Build frozen binary
-4. Build RPM and DEB
-5. Generate checksums
-6. Upload all artifacts to GitHub Release
+The nightly workflow:
 
-### 8.1 Required Steps
+1. Freezes the binary
+2. Builds DEB, RPM, TGZ, ZIP
+3. Normalizes filenames
+4. Uploads artifacts
+5. Updates the nightly tag
+6. Generates a dashboard
+7. Publishes to gh-pages
 
-1. install PythonTools
-2. install requirements
-3. run PyInstaller
-4. create tarballs and zip archives
-5. build RPM and DEB packages
-6. generate checksums
-7. upload artifacts
+Artifacts uploaded:
 
-## 9. Packaging Constraints
+```Code
+RunUpdates_<version>.deb
+RunUpdates_<version>.x86_64.rpm
+RunUpdates_<version>.tgz
+RunUpdates_<version>.zip
+```
 
-### 9.1 Never Package Secrets
+---
 
-The following must never appear in any package:
+## 8. Packaging Constraints
+
+### Never package secrets
 
 * vault.yml
-* vault password file
+* vault password files
 * operator inventory
-* operator logs
-* operator summaries
+* logs
+* summaries
 
-### 9.2 Never Package Host‑Specific Data
-
-Packages must not include:
+### Never package host‑specific data
 
 * hostnames
 * IP addresses
 * SSH keys
 * credentials
 
-### 9.3 Never Package Writable Files
+### Never package writable files
 
-Writable files must be created at install time, not build time.
+Writable directories are created at install time.
 
-## 10. Testing a Packaged Build
+## 9. Testing a Packaged Build
 
-After installing a frozen or RPM build:
+### TGZ/ZIP
 
-### 10.1 Create config directory
-
-```bash
-mkdir -p $HOME/RunUpdates/etc
+```Code
+mkdir -p $HOME/RunUpdates
+tar -xzf RunUpdates_<version>.tgz -C $HOME
 ```
 
-### 10.2 Add inventory
+### DEB
 
-```bash
-cp hosts.yml $HOME/RunUpdates/etc/hosts.yml
+```Code
+sudo dpkg -i RunUpdates_<version>.deb
+sudo chown -R $USER:$USER /opt/RunUpdates
 ```
 
-### 10.3 Ensure schemata exists
+### RPM
 
-```bash
-ls $HOME/RunUpdates/etc/schemata
+```Code
+sudo rpm -ivh RunUpdates_<version>.x86_64.rpm
+sudo chown -R $USER:$USER /opt/RunUpdates
 ```
 
-### 10.4 Provide vault files
+### Run
 
-```bash
-export RUNUPDATES_VAULT_PATH=/secure/vault.yml
-export RUNUPDATES_VAULT_PASSWORD_FILE=/secure/passfile
+```Code
+/opt/RunUpdates/bin/RunUpdates update
 ```
 
-### 10.5 Run
+or for TGZ/ZIP:
 
-```bash
-/$HOME/RunUpdates/bin/RunUpdates update
+```Code
+$HOME/RunUpdates/bin/RunUpdates update
 ```
 
-## 11. Future Packaging Enhancements
+---
 
-Planned improvements:
+## 10. Summary
 
-* DEB packaging
-* systemd service unit
-* systemd timer for scheduled updates
-* logrotate integration
-* packaging tests in CI
-* reproducible build metadata
-* optional container image
+RunUpdates packaging follows a hybrid model:
 
-## 12. Summary
+| Format | Install Location | Root Required |
+| --- | --- | --- |
+| TGZ/ZIP | ``$HOME/RunUpdates`` | No |
+| DEB/RPM | ``/opt/RunUpdates`` | Yes |
 
-This packaging guide ensures that RunUpdates builds are:
+All formats share:
 
-* deterministic
-* reproducible
-* operator‑grade
-* secure
-* free of secrets
-* consistent across distros
+* the same frozen binary
+* the same directory layout
+* the same schemata
+* the same runtime expectations
 
-Source tarballs, frozen tarballs, ZIP archives, and RPM packages all follow the same directory layout and runtime expectations, making RunUpdates predictable and easy to deploy in production.
+This model ensures:
 
+* portability for developers
+* system‑level integration for operators
+* consistent behavior across all distributions

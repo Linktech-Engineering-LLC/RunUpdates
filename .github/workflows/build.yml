@@ -1,0 +1,79 @@
+name: Build RunUpdates Packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3-venv \
+          python3-dev \
+          build-essential \
+          rpm \
+          fakeroot \
+          dpkg-dev
+
+    - name: Create virtual environment
+      run: |
+        python3 -m venv venv
+        echo "source venv/bin/activate" >> $GITHUB_ENV
+
+    - name: Install PythonTools
+      run: |
+        source venv/bin/activate
+        if [ ! -d PythonTools ]; then
+          git clone https://github.com/linktech-engineering-llc/PythonTools.git
+        fi
+        pip install -e PythonTools
+
+    - name: Install RunUpdates requirements
+      run: |
+        source venv/bin/activate
+        pip install -r RunUpdates/requirements.txt
+        pip install pyinstaller
+
+    - name: Freeze RunUpdates
+      run: |
+        source venv/bin/activate
+        ./packaging/build_all.sh
+
+    - name: Upload DEB package
+      uses: actions/upload-artifact@v4
+      with:
+        name: runupdates-deb
+        path: packaging/output/*.deb
+
+    - name: Upload RPM package
+      uses: actions/upload-artifact@v4
+      with:
+        name: runupdates-rpm
+        path: ~/rpmbuild/RPMS/**/*.rpm
+
+    - name: Upload TGZ
+      uses: actions/upload-artifact@v4
+      with:
+        name: runupdates-tgz
+        path: packaging/output/*.tgz
+
+    - name: Upload ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: runupdates-zip
+        path: packaging/output/*.zip
