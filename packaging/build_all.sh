@@ -14,12 +14,6 @@ rm -rf "$ROOT_DIR/build" "$ROOT_DIR/dist"
 # Run PyInstaller (assumes venv already active in CI)
 pyinstaller --onefile RunUpdates/__main__.py --name RunUpdates
 
-# Verify output directory
-if [ ! -d "$DIST_DIR" ]; then
-    echo "ERROR: PyInstaller did not produce $DIST_DIR"
-    exit 1
-fi
-
 # Verify frozen binary
 FROZEN_BIN="$DIST_DIR/RunUpdates"
 if [ ! -f "$FROZEN_BIN" ]; then
