@@ -106,7 +106,7 @@ def load_project_metadata(project_path: Path, log_file: Path) -> dict:
 # Versioning
 # ------------------------------------------------------------
 def write_version_file(project_path: Path, version: str, log_file: Path):
-    version_file = project_path / "version.py"
+    version_file = project_path / "VERSION"
     version_file.write_text(f'VERSION = "{version}"\n')
     log(f"Injected version into {version_file}", log_file)
 
