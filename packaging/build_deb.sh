@@ -1,26 +1,32 @@
 #!/bin/bash
 set -e
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT_DIR="$(git rev-parse --show-toplevel)"
 STAGING_DIR="$ROOT_DIR/packaging/staging"
 OUT_DIR="$ROOT_DIR/packaging/output"
 VERSION="$(cat "$ROOT_DIR/VERSION")"
-DIST_DIR="$ROOT_DIR/dist/RunUpdates"
 
 echo "=== Building DEB package ==="
 
+# Locate frozen binary (onefile)
+FROZEN_BIN=$(find "$ROOT_DIR/dist" -maxdepth 1 -type f -name "RunUpdates" | head -n 1)
+
+if [[ -z "$FROZEN_BIN" ]]; then
+    echo "ERROR: Frozen binary not found"
+    exit 1
+fi
+
 # Clean staging
 rm -rf "$STAGING_DIR"
-mkdir -p "$STAGING_DIR/opt/RunUpdates"
-
-# Copy frozen binary + lib
-cp -a "$DIST_DIR/RunUpdates" "$STAGING_DIR/opt/RunUpdates/"
-cp -a "$DIST_DIR/lib" "$STAGING_DIR/opt/RunUpdates/"
-
-# Create etc, schemata, var/log
+mkdir -p "$STAGING_DIR/opt/RunUpdates/bin"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/etc"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/schemata"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/var/log"
+mkdir -p "$STAGING_DIR/opt/RunUpdates/var/log/summaries"
+mkdir -p "$STAGING_DIR/opt/RunUpdates/var/run"
+
+# Copy frozen binary
+cp "$FROZEN_BIN" "$STAGING_DIR/opt/RunUpdates/bin/RunUpdates"
 
 # Copy schemata
 cp -a "$ROOT_DIR/RunUpdates/schemata/"* "$STAGING_DIR/opt/RunUpdates/schemata/"
@@ -29,21 +35,20 @@ cp -a "$ROOT_DIR/RunUpdates/schemata/"* "$STAGING_DIR/opt/RunUpdates/schemata/"
 cp "$ROOT_DIR/LICENSE_BINARY.txt" "$STAGING_DIR/opt/RunUpdates/LICENSE"
 
 # Generate env files
-# Generate env files
 ENV_DIR="$STAGING_DIR/opt/RunUpdates/etc"
 SKEL_SRC="$ROOT_DIR/RunUpdates/templates"
 
 for f in bash cron systemd; do
-    # Copy skeleton into staging
     cp "$SKEL_SRC/$f.env.skel" "$ENV_DIR/$f.env.skel"
 
-    # Apply substitutions and write final .env file
     sed \
       -e "s|@@CONFIG_DIR@@|/opt/RunUpdates/etc|g" \
       -e "s|@@SCHEMA_DIR@@|/opt/RunUpdates/schemata|g" \
       -e "s|@@LOG_DIR@@|/opt/RunUpdates/var/log|g" \
       "$ENV_DIR/$f.env.skel" > "$ENV_DIR/$f.env"
 done
+
+rm "$ENV_DIR"/*.env.skel
 
 # Build DEB
 mkdir -p "$OUT_DIR"

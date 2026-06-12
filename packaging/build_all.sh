@@ -2,7 +2,7 @@
 set -e
 
 # Resolve repo root (works locally and in GitHub Actions)
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT_DIR="$(git rev-parse --show-toplevel)"
 DIST_DIR="$ROOT_DIR/dist/RunUpdates"
 SPEC_FILE="$ROOT_DIR/RunUpdates/RunUpdates.spec"
 

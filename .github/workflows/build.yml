@@ -17,7 +17,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Install system dependencies
       run: |
@@ -41,7 +41,7 @@ jobs:
         if [ ! -d PythonTools ]; then
           git clone https://github.com/linktech-engineering-llc/PythonTools.git
         fi
-        pip install -e PythonTools
+        pip install PythonTools/
 
     - name: Install RunUpdates requirements
       run: |
@@ -64,7 +64,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: runupdates-rpm
-        path: ~/rpmbuild/RPMS/**/*.rpm
+        path: $HOME/rpmbuild/RPMS/**/*.rpm
 
     - name: Upload TGZ
       uses: actions/upload-artifact@v4

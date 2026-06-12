@@ -39,6 +39,13 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install pyinstaller
 
+      - name: Install PythonTools
+        run: |
+          if [ ! -d PythonTools ]; then
+            git clone https://github.com/linktech-engineering-llc/PythonTools.git
+          fi
+          python3 -m pip install PythonTools/
+
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
 
@@ -48,7 +55,7 @@ jobs:
       - name: Normalize RPM filename
         run: |
           OUT=packaging/output
-          RPM_SRC=$(find ~/rpmbuild/RPMS -type f -name "runupdates-*.rpm" | head -n 1)
+          RPM_SRC=$(find $HOME/rpmbuild/RPMS -type f -name "runupdates-*.rpm" | head -n 1)
           if [[ -n "$RPM_SRC" ]]; then
             ARCH=$(echo "$RPM_SRC" | sed -n 's/.*\.\(.*\)\.rpm/\1/p')
             VERSION=$(basename "$RPM_SRC" | sed -n 's/runupdates-\(.*\)-.*\.rpm/\1/p')
