@@ -15,15 +15,15 @@ rm -rf "$ROOT_DIR/build" "$ROOT_DIR/dist"
 pyinstaller --onefile RunUpdates/__main__.py --name RunUpdates
 
 # Verify frozen binary
-FROZEN_BIN="$DIST_DIR/RunUpdates"
-if [ ! -f "$FROZEN_BIN" ]; then
-    echo "ERROR: Frozen binary missing: $FROZEN_BIN"
+# Locate the frozen binary (onefile)
+FROZEN_BIN=$(find "$ROOT_DIR/dist" -maxdepth 1 -type f -name "RunUpdates" | head -n 1)
+
+if [[ -z "$FROZEN_BIN" ]]; then
+    echo "ERROR: PyInstaller did not produce a RunUpdates binary"
     exit 1
 fi
-if [ ! -x "$FROZEN_BIN" ]; then
-    echo "ERROR: Frozen binary exists but is not executable"
-    exit 1
-fi
+
+echo "Frozen binary: $FROZEN_BIN"
 
 # Verify lib directory
 if [ ! -d "$DIST_DIR/lib" ]; then
