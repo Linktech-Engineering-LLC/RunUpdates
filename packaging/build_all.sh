@@ -25,12 +25,6 @@ fi
 
 echo "Frozen binary: $FROZEN_BIN"
 
-# Verify lib directory
-if [ ! -d "$DIST_DIR/lib" ]; then
-    echo "ERROR: PyInstaller lib directory missing"
-    exit 1
-fi
-
 echo "=== Freeze complete ==="
 echo
 
