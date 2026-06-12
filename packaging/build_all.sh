@@ -12,7 +12,7 @@ echo "=== Freezing RunUpdates ==="
 rm -rf "$ROOT_DIR/build" "$ROOT_DIR/dist"
 
 # Run PyInstaller (assumes venv already active in CI)
-pyinstaller "$SPEC_FILE"
+pyinstaller --onefile RunUpdates/__main__.py --name RunUpdates
 
 # Verify output directory
 if [ ! -d "$DIST_DIR" ]; then
