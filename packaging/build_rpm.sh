@@ -29,7 +29,7 @@ mkdir -p "$STAGING_DIR/opt/RunUpdates/var/run"
 cp "$FROZEN_BIN" "$STAGING_DIR/opt/RunUpdates/bin/RunUpdates"
 
 # Copy schemata
-cp -a "$ROOT_DIR/RunUpdates/schemata/"* "$STAGING_DIR/opt/RunUpdates/schemata/"
+cp -a "$ROOT_DIR/RunUpdates/schema/"* "$STAGING_DIR/opt/RunUpdates/schemata/"
 
 # Copy LICENSE
 cp "$ROOT_DIR/LICENSE_BINARY.txt" "$STAGING_DIR/opt/RunUpdates/LICENSE"
