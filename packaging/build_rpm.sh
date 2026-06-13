@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT_DIR="$(git rev-parse --show-toplevel)"
 PACKAGING_DIR="$ROOT_DIR/packaging"
 OUTPUT_DIR="$PACKAGING_DIR/output"
 RPMBUILD_DIR="$PACKAGING_DIR/rpmbuild"
