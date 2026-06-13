@@ -31,6 +31,18 @@ async function loadDashboard() {
       <tr><td>Workflow Run</td><td>${build.workflow_run_id}</td></tr>
     </table>
   `;
+  // Update badges
+  document.getElementById("version-badge").src =
+    `https://img.shields.io/badge/version-${build.commit.substring(0,7)}-blue`;
+  
+  document.getElementById("date-badge").src =
+    `https://img.shields.io/badge/date-${encodeURIComponent(build.date)}-lightgrey`;
+  
+  document.getElementById("python-badge").src =
+    `https://img.shields.io/badge/python-${meta.toolchain.python}-yellow`;
+  
+  document.getElementById("pyi-badge").src =
+    `https://img.shields.io/badge/pyinstaller-${meta.toolchain.pyinstaller}-orange`;
 
   // Artifacts
   const artifacts = isV2 ? meta.artifacts : meta.files;
