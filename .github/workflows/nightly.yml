@@ -55,10 +55,10 @@ jobs:
       - name: Normalize RPM filename
         run: |
           OUT=packaging/output
-          RPM_SRC=$(find $HOME/rpmbuild/RPMS -type f -name "runupdates-*.rpm" | head -n 1)
+          RPM_SRC=$(find $HOME/rpmbuild/RPMS -type f -name "RunUpdates-*.rpm" | head -n 1)
           if [[ -n "$RPM_SRC" ]]; then
             ARCH=$(echo "$RPM_SRC" | sed -n 's/.*\.\(.*\)\.rpm/\1/p')
-            VERSION=$(basename "$RPM_SRC" | sed -n 's/runupdates-\(.*\)-.*\.rpm/\1/p')
+            VERSION=$(basename "$RPM_SRC" | sed -n 's/RunUpdates-\(.*\)-.*\.rpm/\1/p')
             mv "$RPM_SRC" "$OUT/RunUpdates_${VERSION}.${ARCH}.rpm"
           fi
 
@@ -134,35 +134,79 @@ jobs:
           VERSION="${{ steps.meta.outputs.version }}"
           DATESTAMP="${{ steps.meta.outputs.datestamp }}"
           GIT_HASH="${{ steps.meta.outputs.hash }}"
-          RELEASE_URL="https://github.com/.../nightly"
+
+          RELEASE_URL="https://github.com/Linktech-Engineering-LLC/RunUpdates/releases/download/nightly"
 
           mkdir -p dashboard
           rm -f dashboard/*
 
-          cat > dashboard/index.html <<'EOF'
+          # QR code pointing to the dashboard root
+          curl -s -o dashboard/qr.png \
+            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://linktech-engineering-llc.github.io/RunUpdates/"
+
+          cat > dashboard/index.html <<EOF
           <html>
           <head>
             <title>RunUpdates Nightly Dashboard</title>
+            <style>
+              body { font-family: Arial; margin: 20px; }
+              table { border-collapse: collapse; margin-top: 10px; }
+              th, td { padding: 8px 12px; border: 1px solid #ccc; }
+              th { background: #f0f0f0; }
+              h1, h2 { margin-bottom: 5px; }
+              .qr { margin-top: 20px; }
+            </style>
           </head>
           <body>
+
           <h1>RunUpdates Nightly Dashboard</h1>
+
+          <h2>Build Metadata</h2>
+          <table>
+            <tr><th>Field</th><th>Value</th></tr>
+            <tr><td>Version</td><td>${VERSION}</td></tr>
+            <tr><td>Date</td><td>${DATESTAMP}</td></tr>
+            <tr><td>Commit</td><td>${GIT_HASH}</td></tr>
+          </table>
+
+          <h2>Checksums & File Info</h2>
+          <table>
+            <tr>
+              <th>File</th>
+              <th>Size (bytes)</th>
+              <th>SHA‑256</th>
+              <th>CRC‑32</th>
+              <th>Download</th>
+            </tr>
           EOF
 
+          # Append rows for each artifact
           for f in artifacts/RunUpdates_*; do
             NAME=$(basename "$f")
-            echo "<tr><td>${NAME}</td><td><a href=\"${RELEASE_URL}/${NAME}\">${NAME}</a></td></tr>" >> dashboard/index.html
+            SIZE=$(stat -c%s "$f")
+            SHA=$(sha256sum "$f" | awk '{print $1}')
+            CRC=$(crc32 "$f")
+
+            echo "<tr>" >> dashboard/index.html
+            echo "<td>${NAME}</td>" >> dashboard/index.html
+            echo "<td>${SIZE}</td>" >> dashboard/index.html
+            echo "<td>${SHA}</td>" >> dashboard/index.html
+            echo "<td>${CRC}</td>" >> dashboard/index.html
+            echo "<td><a href=\"${RELEASE_URL}/${NAME}\">Download</a></td>" >> dashboard/index.html
+            echo "</tr>" >> dashboard/index.html
           done
 
-          cat >> dashboard/index.html <<'EOF'
+          cat >> dashboard/index.html <<EOF
           </table>
+
+          <div class="qr">
+            <h2>QR Code</h2>
+            <img src="qr.png" alt="QR Code">
+          </div>
+
           </body>
           </html>
           EOF
-
-          # Replace placeholders
-          sed -i "s/__VERSION__/${VERSION}/" dashboard/index.html
-          sed -i "s/__DATESTAMP__/${DATESTAMP}/" dashboard/index.html
-          sed -i "s/__GIT_HASH__/${GIT_HASH}/" dashboard/index.html
 
       - name: Publish dashboard to gh-pages
         env:
