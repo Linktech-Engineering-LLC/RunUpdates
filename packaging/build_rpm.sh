@@ -19,8 +19,15 @@ mkdir -p "$RPMBUILD_DIR"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 cp "$PACKAGING_DIR/rpm/runupdates.spec" "$RPMBUILD_DIR/SPECS/"
 
 # Copy frozen output (the entire tree)
+FROZEN_BIN=$(find "$ROOT_DIR/dist" -maxdepth 1 -type f -name "RunUpdates" | head -n 1)
+
+if [[ -z "$FROZEN_BIN" ]]; then
+    echo "ERROR: Frozen binary not found"
+    exit 1
+fi
+
 mkdir -p "$RPMBUILD_DIR/SOURCES/RunUpdates"
-cp -r "$ROOT_DIR/dist/RunUpdates/"* "$RPMBUILD_DIR/SOURCES/RunUpdates/"
+cp "$FROZEN_BIN" "$RPMBUILD_DIR/SOURCES/RunUpdates/"
 
 # Build RPM
 rpmbuild -bb "$RPMBUILD_DIR/SPECS/runupdates.spec" \
