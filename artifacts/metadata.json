@@ -1,10 +1,10 @@
 {
   "meta_version": 2,
   "build": {
-    "date": "2026-06-13T16:28:41Z",
-    "commit": "6eac67381f8aa86bee18605b017be7e918faea97",
+    "date": "2026-06-13T16:34:36Z",
+    "commit": "913fd1800ac02e7bcd1bccd357d5d6f9123ea95b",
     "branch": "nightly",
-    "workflow_run_id": 27472423994
+    "workflow_run_id": 27472570907
   },
   "toolchain": {
     "python": "3.12.13",
@@ -17,9 +17,9 @@
       "type": "deb",
       "os": "linux",
       "arch": "amd64",
-      "size": 20299680,
-      "sha256": "eb3de88fe44dd4c79671a1c2fd0bdb00dacda1dcd43f84f0d3efec74bb8da98b",
-      "crc32": "7d3df3dd"
+      "size": 20299994,
+      "sha256": "fb392a959bcd97c6a162ac8c5399c02bc9d46eaeca1937467b310457f9511b6d",
+      "crc32": "ecd8eabb"
     }
 ,
     {
@@ -27,9 +27,19 @@
       "type": "tgz",
       "os": "linux",
       "arch": "amd64",
-      "size": 20410210,
-      "sha256": "b8ae7b4816ef1630aba47ee26b373fec5a5054c332fd5949fcbefd231ded00fc",
-      "crc32": "c78203f8"
+      "size": 20409571,
+      "sha256": "d110a5dcdad0b116189a35b1515ed7c35a2130cd73ac6bbf4e03f14bafbe165f",
+      "crc32": "329ed3e1"
+    }
+,
+    {
+      "name": "RunUpdates_1.0.0.x86_64.rpm",
+      "type": "rpm",
+      "os": "linux",
+      "arch": "x86_64",
+      "size": 20424337,
+      "sha256": "6f77388ad51177ab656b97107670a95667d249a98d70759b89cb56571bddf7d5",
+      "crc32": "be63dfc5"
     }
 ,
     {
@@ -37,9 +47,9 @@
       "type": "zip",
       "os": "windows",
       "arch": "x86_64",
-      "size": 20411920,
-      "sha256": "a7091e26fb62d33c437e42bc6126cf417e2bad7cf6c2668b544d0ddc15138d57",
-      "crc32": "3efbdbb2"
+      "size": 20411235,
+      "sha256": "8eeda8c63450f36c1a854239bc253404867a494e1f60b7e59c37197acafa7cdb",
+      "crc32": "c3630a6a"
     }
   ]
 }
