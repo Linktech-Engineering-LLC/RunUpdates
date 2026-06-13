@@ -73,6 +73,15 @@ jobs:
           name: nightly-runupdates
           path: artifacts
 
+      - name: Publish nightly release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          prerelease: true
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update nightly tag
         run: |
           git config user.name "github-actions[bot]"
