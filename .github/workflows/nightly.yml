@@ -60,7 +60,7 @@ jobs:
       - name: Normalize RPM filename
         run: |
           OUT=packaging/output
-          RPM_SRC=$(find $HOME/rpmbuild/RPMS -type f -name "RunUpdates-*.rpm" | head -n 1)
+          RPM_SRC=$(find packaging/rpmbuild/RPMS/x86_64 -type f -name "*.rpm" | head -n 1)
           if [[ -n "$RPM_SRC" ]]; then
             ARCH=$(echo "$RPM_SRC" | sed -n 's/.*\.\(.*\)\.rpm/\1/p')
             VERSION=$(basename "$RPM_SRC" | sed -n 's/RunUpdates-\(.*\)-.*\.rpm/\1/p')
