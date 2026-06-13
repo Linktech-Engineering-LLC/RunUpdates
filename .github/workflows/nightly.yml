@@ -179,6 +179,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: gh-pages
+      - name: Preserve existing dashboard files
+        run: |
+          mkdir -p dashboard
+          cp dashboard.js dashboard.js.bak 2>/dev/null || true
 
       - name: Download nightly artifacts
         uses: actions/download-artifact@v4
@@ -235,6 +239,12 @@ jobs:
           <script src="dashboard.js"></script>
           </body>
           </html>
+
+      - name: Restore dashboard.js
+        run: |
+          if [ -f dashboard.js.bak ]; then
+            mv dashboard.js.bak dashboard.js
+          fi
 
       - name: Publish dashboard to gh-pages
         env:
