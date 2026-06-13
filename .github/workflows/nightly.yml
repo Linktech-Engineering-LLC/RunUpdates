@@ -169,6 +169,9 @@ jobs:
         run: |
           pip install jsonschema
           python3 packaging/metadata/validate.py artifacts/metadata.json
+      - name: Copy metadata.json to dashboard root
+        run: |
+          cp artifacts/metadata.json .
 
   publish-dashboard:
     runs-on: ubuntu-latest
@@ -232,9 +235,6 @@ jobs:
           <script src="dashboard.js"></script>
           </body>
           </html>
-
-          # Copy metadata.json to the gh‑pages root
-          cp artifacts/metadata.json .
 
       - name: Publish dashboard to gh-pages
         env:
