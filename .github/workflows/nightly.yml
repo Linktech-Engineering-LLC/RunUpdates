@@ -14,12 +14,19 @@ jobs:
   nightly-build:
     runs-on: ubuntu-latest
 
-    env:
-      NIGHTLY: "1"
+    outputs:
+      build_date: ${{ steps.capture.outputs.build_date }}
+      git_hash: ${{ steps.capture.outputs.git_hash }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Capture metadata
+        id: capture
+        run: |
+          echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
+          echo "git_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,10 +36,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            pandoc \
-            rpm \
-            dpkg-dev
+          sudo apt-get install -y pandoc rpm dpkg-dev
 
       - name: Install Python build dependencies
         run: |
@@ -49,7 +53,7 @@ jobs:
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
 
-      - name: Build all artifacts (freeze + DEB + RPM + TGZ + ZIP)
+      - name: Build all artifacts
         run: ./packaging/build_all.sh
 
       - name: Normalize RPM filename
@@ -65,29 +69,47 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p artifacts
-          cp packaging/output/RunUpdates_* artifacts/ || true
+          cp packaging/output/RunUpdates_* artifacts/
+
+      - name: Generate metadata.json
+        run: |
+          mkdir -p artifacts
+          echo "{" > artifacts/metadata.json
+          echo "  \"version\": \"${{ steps.capture.outputs.git_hash }}\"," >> artifacts/metadata.json
+          echo "  \"date\": \"${{ steps.capture.outputs.build_date }}\"," >> artifacts/metadata.json
+          echo "  \"commit\": \"${{ steps.capture.outputs.git_hash }}\"," >> artifacts/metadata.json
+          echo "  \"files\": [" >> artifacts/metadata.json
+
+          FIRST=1
+          for f in artifacts/RunUpdates_*; do
+            NAME=$(basename "$f")
+            SIZE=$(stat -c%s "$f")
+            SHA=$(sha256sum "$f" | awk '{print $1}')
+            CRC=$(crc32 "$f")
+
+            if [ $FIRST -eq 0 ]; then echo "," >> artifacts/metadata.json; fi
+            FIRST=0
+
+            echo "    {" >> artifacts/metadata.json
+            echo "      \"name\": \"$NAME\"," >> artifacts/metadata.json
+            echo "      \"size\": $SIZE," >> artifacts/metadata.json
+            echo "      \"sha256\": \"$SHA\"," >> artifacts/metadata.json
+            echo "      \"crc32\": \"$CRC\"" >> artifacts/metadata.json
+            echo "    }" >> artifacts/metadata.json
+          done
+
+          echo "  ]" >> artifacts/metadata.json
+          echo "}" >> artifacts/metadata.json
 
       - name: Upload nightly artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nightly-runupdates
           path: artifacts
-
-      - name: Publish nightly release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: nightly
-          prerelease: true
-          files: artifacts/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update nightly tag
+      - name: Validate metadata.json
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f nightly
-          git push -f origin nightly
+          pip install jsonschema
+          python3 packaging/metadata/validate.py artifacts/metadata.json
 
   publish-dashboard:
     runs-on: ubuntu-latest
@@ -105,51 +127,18 @@ jobs:
           name: nightly-runupdates
           path: artifacts
 
-      - name: Install crc32 tool
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libarchive-zip-perl
-
-      - name: Extract version metadata
-        id: meta
-        run: |
-          DEB_FILE=$(ls -t artifacts/RunUpdates_*.deb | head -n 1)
-          BASENAME=$(basename "$DEB_FILE")
-          VERSION=$(echo "$BASENAME" | sed -n 's/RunUpdates_\(.*\)\.deb/\1/p')
-
-          # Optional: extract datestamp + git hash if included in version
-          DATESTAMP=$(echo "$VERSION" | grep -o '+[0-9]\{8\}' | tr -d '+' || echo "N/A")
-          GIT_HASH=$(echo "$VERSION" | sed -n 's/.*git\([0-9a-f]\+\).*/\1/p' || echo "N/A")
-
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "datestamp=$DATESTAMP" >> $GITHUB_OUTPUT
-          echo "hash=$GIT_HASH" >> $GITHUB_OUTPUT
-
-      - name: Compute checksums and sizes
-        id: sums
-        run: |
-          for f in artifacts/RunUpdates_*; do
-            NAME=$(basename "$f")
-            SIZE=$(stat -c%s "$f")
-            SHA=$(sha256sum "$f" | awk '{print $1}')
-            CRC=$(crc32 "$f")
-            echo "${NAME}_size=$SIZE" >> $GITHUB_OUTPUT
-            echo "${NAME}_sha256=$SHA" >> $GITHUB_OUTPUT
-            echo "${NAME}_crc32=$CRC" >> $GITHUB_OUTPUT
-          done
-
       - name: Generate dashboard HTML
         run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          DATESTAMP="${{ steps.meta.outputs.datestamp }}"
-          GIT_HASH="${{ steps.meta.outputs.hash }}"
+          META=artifacts/metadata.json
+          VERSION=$(jq -r '.version' $META)
+          DATE=$(jq -r '.date' $META)
+          COMMIT=$(jq -r '.commit' $META)
 
           RELEASE_URL="https://github.com/Linktech-Engineering-LLC/RunUpdates/releases/download/nightly"
 
           mkdir -p dashboard
           rm -f dashboard/*
 
-          # QR code pointing to the dashboard root
           curl -s -o dashboard/qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://linktech-engineering-llc.github.io/RunUpdates/"
 
@@ -174,8 +163,8 @@ jobs:
           <table>
             <tr><th>Field</th><th>Value</th></tr>
             <tr><td>Version</td><td>${VERSION}</td></tr>
-            <tr><td>Date</td><td>${DATESTAMP}</td></tr>
-            <tr><td>Commit</td><td>${GIT_HASH}</td></tr>
+            <tr><td>Date</td><td>${DATE}</td></tr>
+            <tr><td>Commit</td><td>${COMMIT}</td></tr>
           </table>
 
           <h2>Checksums & File Info</h2>
@@ -189,12 +178,11 @@ jobs:
             </tr>
           EOF
 
-          # Append rows for each artifact
-          for f in artifacts/RunUpdates_*; do
-            NAME=$(basename "$f")
-            SIZE=$(stat -c%s "$f")
-            SHA=$(sha256sum "$f" | awk '{print $1}')
-            CRC=$(crc32 "$f")
+          jq -c '.files[]' $META | while read -r item; do
+            NAME=$(echo "$item" | jq -r '.name')
+            SIZE=$(echo "$item" | jq -r '.size')
+            SHA=$(echo "$item" | jq -r '.sha256')
+            CRC=$(echo "$item" | jq -r '.crc32')
 
             echo "<tr>" >> dashboard/index.html
             echo "<td>${NAME}</td>" >> dashboard/index.html
