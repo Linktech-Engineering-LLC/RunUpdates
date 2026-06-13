@@ -1,10 +1,49 @@
 <html>
 <head>
   <title>RunUpdates Nightly Dashboard</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    table { border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 8px 12px; border: 1px solid #ccc; }
+    th { background: #f0f0f0; }
+    h1, h2 { margin-bottom: 5px; }
+    .qr { margin-top: 20px; }
+  </style>
 </head>
 <body>
+
 <h1>RunUpdates Nightly Dashboard</h1>
-<tr><td>RunUpdates_1.0.0.deb</td><td><a href="https://github.com/.../nightly/RunUpdates_1.0.0.deb">RunUpdates_1.0.0.deb</a></td></tr>
+
+<h2>Build Metadata</h2>
+<table>
+  <tr><th>Field</th><th>Value</th></tr>
+  <tr><td>Version</td><td>1.0.0</td></tr>
+  <tr><td>Date</td><td></td></tr>
+  <tr><td>Commit</td><td></td></tr>
 </table>
+
+<h2>Checksums & File Info</h2>
+<table>
+  <tr>
+    <th>File</th>
+    <th>Size (bytes)</th>
+    <th>SHA‑256</th>
+    <th>CRC‑32</th>
+    <th>Download</th>
+  </tr>
+<tr>
+<td>RunUpdates_1.0.0.deb</td>
+<td>20298078</td>
+<td>154a41cc6c49e9ad2536d8f9edbe6defd78db997227d0284ec38975a0511dc97</td>
+<td>432b5856</td>
+<td><a href="https://github.com/Linktech-Engineering-LLC/RunUpdates/releases/download/nightly/RunUpdates_1.0.0.deb">Download</a></td>
+</tr>
+</table>
+
+<div class="qr">
+  <h2>QR Code</h2>
+  <img src="qr.png" alt="QR Code">
+</div>
+
 </body>
 </html>
