@@ -11,17 +11,46 @@ async function loadDashboard() {
     return;
   }
 
-  // Support both v1 and v2
+  // Detect metadata version
   const isV2 = meta.meta_version === 2;
 
-  // Build metadata
-  const build = isV2 ? meta.build : {
-    date: meta.date,
-    commit: meta.commit,
-    branch: "nightly",
-    workflow_run_id: "N/A"
-  };
+  // Build metadata (v1 fallback included)
+  const build = isV2
+    ? meta.build
+    : {
+        date: meta.date,
+        commit: meta.commit,
+        branch: "nightly",
+        workflow_run_id: "N/A"
+      };
 
+  const toolchain = isV2
+    ? meta.toolchain
+    : {
+        python: meta.python || "unknown",
+        pyinstaller: meta.pyinstaller || "unknown"
+      };
+
+  // -----------------------------
+  // ⭐ Update Badges
+  // -----------------------------
+  const shortCommit = build.commit ? build.commit.substring(0, 7) : "unknown";
+
+  document.getElementById("version-badge").src =
+    `https://img.shields.io/badge/version-${shortCommit}-blue`;
+
+  document.getElementById("date-badge").src =
+    `https://img.shields.io/badge/date-${encodeURIComponent(build.date)}-lightgrey`;
+
+  document.getElementById("python-badge").src =
+    `https://img.shields.io/badge/python-${toolchain.python}-yellow`;
+
+  document.getElementById("pyi-badge").src =
+    `https://img.shields.io/badge/pyinstaller-${toolchain.pyinstaller}-orange`;
+
+  // -----------------------------
+  // ⭐ Build Info Table
+  // -----------------------------
   document.getElementById("build-info").innerHTML = `
     <table>
       <tr><th>Field</th><th>Value</th></tr>
@@ -31,20 +60,10 @@ async function loadDashboard() {
       <tr><td>Workflow Run</td><td>${build.workflow_run_id}</td></tr>
     </table>
   `;
-  // Update badges
-  document.getElementById("version-badge").src =
-    `https://img.shields.io/badge/version-${build.commit.substring(0,7)}-blue`;
-  
-  document.getElementById("date-badge").src =
-    `https://img.shields.io/badge/date-${encodeURIComponent(build.date)}-lightgrey`;
-  
-  document.getElementById("python-badge").src =
-    `https://img.shields.io/badge/python-${meta.toolchain.python}-yellow`;
-  
-  document.getElementById("pyi-badge").src =
-    `https://img.shields.io/badge/pyinstaller-${meta.toolchain.pyinstaller}-orange`;
 
-  // Artifacts
+  // -----------------------------
+  // ⭐ Artifact Table
+  // -----------------------------
   const artifacts = isV2 ? meta.artifacts : meta.files;
 
   let rows = "";
