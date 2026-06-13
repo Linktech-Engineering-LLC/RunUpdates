@@ -54,9 +54,9 @@ rm "$ENV_DIR"/*.env.skel
 mkdir -p ~/rpmbuild/SOURCES
 tar -czf ~/rpmbuild/SOURCES/runupdates-$VERSION.tar.gz -C "$STAGING_DIR" opt
 
-rpmbuild -bb "$ROOT_DIR/packaging/rpm/runupdates.spec" \
-  --define "_version $VERSION" \
-  --define "_release 1"
+rpmbuild -bb packaging/rpm/runupdates.spec \
+    --define "version $VERSION" \
+    --define "_topdir $RPMBUILD_DIR"
 
 # Normalize RPM filename
 RPM_SRC=$(find ~/rpmbuild/RPMS -type f -name "runupdates-*.rpm" | head -n 1)
