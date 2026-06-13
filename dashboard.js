@@ -39,9 +39,10 @@ async function loadDashboard() {
   document.getElementById("version-badge").src =
     `https://img.shields.io/badge/version-${shortCommit}-blue`;
 
-  const shortDate = build.date.split("T")[0];
+  const dateObj = new Date(build.date);
+  const formatted = `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth()+1).padStart(2,"0")}-${String(dateObj.getUTCDate()).padStart(2,"0")}T${String(dateObj.getUTCHours()).padStart(2,"0")}:${String(dateObj.getUTCMinutes()).padStart(2,"0")}Z`;
   document.getElementById("date-badge").src =
-    `https://img.shields.io/badge/date-${shortDate}-lightgrey`;
+    `https://img.shields.io/badge/date-${encodeURIComponent(formatted)}-lightgrey`;
 
   document.getElementById("python-badge").src =
     `https://img.shields.io/badge/python-${toolchain.python}-yellow`;
