@@ -169,9 +169,6 @@ jobs:
         run: |
           pip install jsonschema
           python3 packaging/metadata/validate.py artifacts/metadata.json
-      - name: Copy metadata.json to dashboard root
-        run: |
-          cp artifacts/metadata.json .
 
   publish-dashboard:
     runs-on: ubuntu-latest
@@ -188,6 +185,9 @@ jobs:
         with:
           name: nightly-runupdates
           path: artifacts
+      - name: Copy metadata.json to dashboard root
+        run: |
+          cp artifacts/metadata.json .
 
       - name: Generate dashboard HTML
         run: |
