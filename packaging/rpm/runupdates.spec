@@ -24,7 +24,7 @@ rm -rf %{buildroot}
 INSTALLROOT=%{buildroot}/opt/RunUpdates
 
 # Copy the entire prebuilt tree from the source tarball
-cp -r %{_builddir}/runupdates-%{version}/* $INSTALLROOT/
+cp -r %{_sourcedir}/RunUpdates/* $INSTALLROOT/
 
 %files
 /opt/RunUpdates
