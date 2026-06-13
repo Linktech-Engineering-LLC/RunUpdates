@@ -233,6 +233,9 @@ jobs:
           </body>
           </html>
 
+          # Copy metadata.json to the gh‑pages root
+          cp artifacts/metadata.json .
+
       - name: Publish dashboard to gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
