@@ -19,13 +19,13 @@ mkdir -p "$PORTABLE_DIR"
 cp -a "$SYSTEM_DIR/"* "$PORTABLE_DIR/"
 
 echo "=== Creating TGZ archive ==="
-tar -czf "$OUT_DIR/RunUpdates-$VERSION.tgz" \
+tar -czf "$OUT_DIR/RunUpdates_$VERSION.tgz" \
     -C "$STAGING_DIR" RunUpdates
 
 echo "=== Creating ZIP archive ==="
 (
     cd "$STAGING_DIR"
-    zip -r "$OUT_DIR/RunUpdates-$VERSION.zip" RunUpdates
+    zip -r "$OUT_DIR/RunUpdates_$VERSION.zip" RunUpdates
 )
 
 echo "=== TGZ and ZIP archives created ==="

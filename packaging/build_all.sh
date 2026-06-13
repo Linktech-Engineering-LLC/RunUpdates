@@ -25,6 +25,17 @@ fi
 
 echo "Frozen binary: $FROZEN_BIN"
 
+echo "=== Preparing staging tree ==="
+rm -rf packaging/staging
+mkdir -p packaging/staging/opt/RunUpdates
+
+# Copy frozen binary and support dirs
+cp "$FROZEN_BIN" packaging/staging/opt/RunUpdates/
+cp -a RunUpdates/lib packaging/staging/opt/RunUpdates/ 2>/dev/null || true
+cp -a RunUpdates/etc packaging/staging/opt/RunUpdates/ 2>/dev/null || true
+cp -a RunUpdates/var packaging/staging/opt/RunUpdates/ 2>/dev/null || true
+cp -a RunUpdates/schemata packaging/staging/opt/RunUpdates/ 2>/dev/null || true
+
 echo "=== Freeze complete ==="
 echo
 
