@@ -37,6 +37,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y pandoc rpm dpkg-dev
+          sudo apt-get install -y libarchive-tools
 
       - name: Install Python build dependencies
         run: |
@@ -74,32 +75,90 @@ jobs:
       - name: Generate metadata.json
         run: |
           mkdir -p artifacts
-          echo "{" > artifacts/metadata.json
-          echo "  \"version\": \"${{ steps.capture.outputs.git_hash }}\"," >> artifacts/metadata.json
-          echo "  \"date\": \"${{ steps.capture.outputs.build_date }}\"," >> artifacts/metadata.json
-          echo "  \"commit\": \"${{ steps.capture.outputs.git_hash }}\"," >> artifacts/metadata.json
-          echo "  \"files\": [" >> artifacts/metadata.json
+
+          # Detect toolchain versions
+          PYTHON_VERSION=$(python3 --version | awk '{print $2}')
+          PYINSTALLER_VERSION=$(pyinstaller --version 2>/dev/null || echo "unknown")
+          BUILDER_OS="ubuntu-latest"
+
+          # Start metadata.json
+          cat > artifacts/metadata.json <<EOF
+          {
+            "meta_version": 2,
+            "build": {
+              "date": "${{ steps.capture.outputs.build_date }}",
+              "commit": "${{ steps.capture.outputs.git_hash }}",
+              "branch": "nightly",
+              "workflow_run_id": $GITHUB_RUN_ID
+            },
+            "toolchain": {
+              "python": "$PYTHON_VERSION",
+              "pyinstaller": "$PYINSTALLER_VERSION",
+              "builder_os": "$BUILDER_OS"
+            },
+            "artifacts": [
+          EOF
 
           FIRST=1
           for f in artifacts/RunUpdates_*; do
             NAME=$(basename "$f")
             SIZE=$(stat -c%s "$f")
             SHA=$(sha256sum "$f" | awk '{print $1}')
-            CRC=$(crc32 "$f")
+            CRC=$(bsdtar --crc32 "$f" | awk '{print $1}')
 
-            if [ $FIRST -eq 0 ]; then echo "," >> artifacts/metadata.json; fi
+            # Detect type, OS, arch
+            case "$NAME" in
+              *.deb)
+                TYPE="deb"
+                OS="linux"
+                ARCH="amd64"
+                ;;
+              *.rpm)
+                TYPE="rpm"
+                OS="linux"
+                ARCH="x86_64"
+                ;;
+              *.zip)
+                TYPE="zip"
+                OS="windows"
+                ARCH="x86_64"
+                ;;
+              *.tgz|*.tar.gz)
+                TYPE="tgz"
+                OS="linux"
+                ARCH="amd64"
+                ;;
+              *)
+                TYPE="unknown"
+                OS="unknown"
+                ARCH="unknown"
+                ;;
+            esac
+
+            if [ $FIRST -eq 0 ]; then
+              echo "," >> artifacts/metadata.json
+            fi
             FIRST=0
 
-            echo "    {" >> artifacts/metadata.json
-            echo "      \"name\": \"$NAME\"," >> artifacts/metadata.json
-            echo "      \"size\": $SIZE," >> artifacts/metadata.json
-            echo "      \"sha256\": \"$SHA\"," >> artifacts/metadata.json
-            echo "      \"crc32\": \"$CRC\"" >> artifacts/metadata.json
-            echo "    }" >> artifacts/metadata.json
+            cat >> artifacts/metadata.json <<EOF
+              {
+                "name": "$NAME",
+                "type": "$TYPE",
+                "os": "$OS",
+                "arch": "$ARCH",
+                "size": $SIZE,
+                "sha256": "$SHA",
+                "crc32": "$CRC"
+              }
+          EOF
+
           done
 
-          echo "  ]" >> artifacts/metadata.json
-          echo "}" >> artifacts/metadata.json
+          # Close JSON
+          cat >> artifacts/metadata.json <<EOF
+            ]
+          }
+          EOF
 
       - name: Upload nightly artifacts
         uses: actions/upload-artifact@v4
@@ -160,50 +219,19 @@ jobs:
           <h1>RunUpdates Nightly Dashboard</h1>
 
           <h2>Build Metadata</h2>
-          <table>
-            <tr><th>Field</th><th>Value</th></tr>
-            <tr><td>Version</td><td>${VERSION}</td></tr>
-            <tr><td>Date</td><td>${DATE}</td></tr>
-            <tr><td>Commit</td><td>${COMMIT}</td></tr>
-          </table>
+          <div id="build-info"></div>
 
-          <h2>Checksums & File Info</h2>
-          <table>
-            <tr>
-              <th>File</th>
-              <th>Size (bytes)</th>
-              <th>SHA‑256</th>
-              <th>CRC‑32</th>
-              <th>Download</th>
-            </tr>
-          EOF
-
-          jq -c '.files[]' $META | while read -r item; do
-            NAME=$(echo "$item" | jq -r '.name')
-            SIZE=$(echo "$item" | jq -r '.size')
-            SHA=$(echo "$item" | jq -r '.sha256')
-            CRC=$(echo "$item" | jq -r '.crc32')
-
-            echo "<tr>" >> dashboard/index.html
-            echo "<td>${NAME}</td>" >> dashboard/index.html
-            echo "<td>${SIZE}</td>" >> dashboard/index.html
-            echo "<td>${SHA}</td>" >> dashboard/index.html
-            echo "<td>${CRC}</td>" >> dashboard/index.html
-            echo "<td><a href=\"${RELEASE_URL}/${NAME}\">Download</a></td>" >> dashboard/index.html
-            echo "</tr>" >> dashboard/index.html
-          done
-
-          cat >> dashboard/index.html <<EOF
-          </table>
+          <h2>Artifacts</h2>
+          <div id="artifact-table"></div>
 
           <div class="qr">
             <h2>QR Code</h2>
             <img src="qr.png" alt="QR Code">
           </div>
 
+          <script src="dashboard.js"></script>
           </body>
           </html>
-          EOF
 
       - name: Publish dashboard to gh-pages
         env:

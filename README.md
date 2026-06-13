@@ -5,6 +5,8 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-blue?style=flat-square&logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey?style=flat-square&logo=linux&logoColor=white)
 ![Last Commit](https://img.shields.io/github/last-commit/Linktech-Engineering-LLC/RunUpdates?style=flat-square)
+[![Nightly Build](https://github.com/Linktech-Engineering-LLC/RunUpdates/actions/workflows/nightly.yml/badge.svg)](https://github.com/Linktech-Engineering-LLC/RunUpdates/actions/workflows/nightly.yml)
+[![Nightly Dashboard](https://img.shields.io/badge/Nightly-Dashboard-blue)](https://linktech-engineering-llc.github.io/RunUpdates/)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 RunUpdates is a deterministic, operator‑grade update orchestrator that runs on Linux and manages updates for any platform whose lifecycle is defined in YAML.
