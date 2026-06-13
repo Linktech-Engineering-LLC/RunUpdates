@@ -173,7 +173,14 @@ jobs:
 
       - name: Remove existing nightly assets
         run: |
-          gh release delete-asset nightly --yes --pattern "RunUpdates*"
+          ASSETS=$(gh release view nightly --json assets --jq '.assets[].name')
+
+          for asset in $ASSETS; do
+            if [[ "$asset" == RunUpdates* ]]; then
+              echo "Deleting asset: $asset"
+              gh release delete-asset nightly "$asset" --yes
+            fi
+          done
 
       - name: Upload artifacts to nightly release
         uses: softprops/action-gh-release@v1
