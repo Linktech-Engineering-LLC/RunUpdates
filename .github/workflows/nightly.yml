@@ -37,7 +37,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y pandoc rpm dpkg-dev
-          sudo apt-get install -y libarchive-tools
+          sudo apt-get install -y libarchive-zip-perl
 
       - name: Install Python build dependencies
         run: |
@@ -104,7 +104,7 @@ jobs:
             NAME=$(basename "$f")
             SIZE=$(stat -c%s "$f")
             SHA=$(sha256sum "$f" | awk '{print $1}')
-            CRC=$(bsdtar --crc32 "$f" | awk '{print $1}')
+            CRC=$(crc32 "$f")
 
             # Detect type, OS, arch
             case "$NAME" in
