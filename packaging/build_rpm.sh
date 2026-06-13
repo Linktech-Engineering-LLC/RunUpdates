@@ -53,6 +53,11 @@ rm "$ENV_DIR"/*.env.skel
 # Build RPM
 mkdir -p ~/rpmbuild/SOURCES
 tar -czf ~/rpmbuild/SOURCES/runupdates-$VERSION.tar.gz -C "$STAGING_DIR" opt
+RPMBUILD_DIR="$ROOT_DIR/packaging/rpmbuild"
+
+mkdir -p "$RPMBUILD_DIR"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+cp packaging/rpm/runupdates.spec "$RPMBUILD_DIR/SPECS/"
+cp packaging/output/runupdates-$VERSION.tar.gz "$RPMBUILD_DIR/SOURCES/"
 
 rpmbuild -bb packaging/rpm/runupdates.spec \
     --define "version $VERSION" \
