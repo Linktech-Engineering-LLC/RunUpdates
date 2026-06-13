@@ -1,8 +1,0 @@
-Package: runupdates
-Version: 1.0.0
-Section: utils
-Priority: optional
-Architecture: amd64
-Maintainer: Linktech Engineering Support <support@linktechengineering.net>
-Description: RunUpdates system updater and automation tool
- A self-contained update orchestration tool with schema-driven logic.

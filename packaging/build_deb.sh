@@ -25,6 +25,9 @@ mkdir -p "$STAGING_DIR/opt/RunUpdates/var/log"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/var/log/summaries"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/var/run"
 
+# Copy DEBIAN metadata
+cp -a packaging/DEBIAN "$STAGING_DIR/"
+
 # Copy frozen binary
 cp "$FROZEN_BIN" "$STAGING_DIR/opt/RunUpdates/bin/RunUpdates"
 
