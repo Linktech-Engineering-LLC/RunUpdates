@@ -23,8 +23,9 @@ RunUpdates is a system update orchestration tool. This RPM installs the frozen R
 rm -rf %{buildroot}
 INSTALLROOT=%{buildroot}/opt/RunUpdates
 
-# Copy the entire prebuilt tree from the source tarball
-cp -r %{_sourcedir}/RunUpdates/* $INSTALLROOT/
+mkdir -p $INSTALLROOT
+
+install -D %{_sourcedir}/RunUpdates/RunUpdates $INSTALLROOT/RunUpdates
 
 %files
 /opt/RunUpdates
