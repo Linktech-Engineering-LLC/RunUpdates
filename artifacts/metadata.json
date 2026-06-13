@@ -1,0 +1,25 @@
+{
+  "meta_version": 2,
+  "build": {
+    "date": "2026-06-13T15:23:11Z",
+    "commit": "b486d78253013e21e8b50e5e50c46bf748c9f524",
+    "branch": "nightly",
+    "workflow_run_id": 27470813203
+  },
+  "toolchain": {
+    "python": "3.12.13",
+    "pyinstaller": "6.21.0",
+    "builder_os": "ubuntu-latest"
+  },
+  "artifacts": [
+    {
+      "name": "RunUpdates_1.0.0.deb",
+      "type": "deb",
+      "os": "linux",
+      "arch": "amd64",
+      "size": 20299316,
+      "sha256": "fa102a94dece81bb13dd0b33349450ed56692c2cf1c69e10b55eda671da0b66b",
+      "crc32": "6bc3323f"
+    }
+  ]
+}
