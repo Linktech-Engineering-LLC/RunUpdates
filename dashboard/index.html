@@ -3,16 +3,33 @@
   <title>RunUpdates Nightly Dashboard</title>
   <style>
     body { font-family: Arial; margin: 20px; }
-    table { border-collapse: collapse; margin-top: 10px; }
+    table { border-collapse: collapse; margin-top: 10px; width: 100%; }
     th, td { padding: 8px 12px; border: 1px solid #ccc; }
     th { background: #f0f0f0; }
-    h1, h2 { margin-bottom: 5px; }
+    .badge-row img { margin-right: 8px; }
+    .download-btn {
+      background: #0078d4;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+    .download-btn:hover {
+      background: #005a9e;
+    }
     .qr { margin-top: 20px; }
   </style>
 </head>
 <body>
 
 <h1>RunUpdates Nightly Dashboard</h1>
+
+<div class="badge-row">
+  <img src="https://img.shields.io/badge/version-loading-blue" id="version-badge">
+  <img src="https://img.shields.io/badge/date-loading-lightgrey" id="date-badge">
+  <img src="https://img.shields.io/badge/python-loading-yellow" id="python-badge">
+  <img src="https://img.shields.io/badge/pyinstaller-loading-orange" id="pyi-badge">
+</div>
 
 <h2>Build Metadata</h2>
 <div id="build-info"></div>
