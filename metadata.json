@@ -1,10 +1,10 @@
 {
   "meta_version": 2,
   "build": {
-    "date": "2026-06-13T15:45:48Z",
-    "commit": "54fc043846556ed65d90bc2f13c0f4e2f57b8fda",
+    "date": "2026-06-13T15:54:46Z",
+    "commit": "64f1108c47469ad128116b3d7be9629a06cb707d",
     "branch": "nightly",
-    "workflow_run_id": 27471373587
+    "workflow_run_id": 27471590876
   },
   "toolchain": {
     "python": "3.12.13",
@@ -17,9 +17,29 @@
       "type": "deb",
       "os": "linux",
       "arch": "amd64",
-      "size": 20299786,
-      "sha256": "585ab56c3e72095022b8d8f2ef87b1671093fc72a1bfb7401c550aec16dec070",
-      "crc32": "cfaeb99b"
+      "size": 20299156,
+      "sha256": "c51672164bd2c939e063563cd46cc0b3e440924148982952a17fb1fc65927aae",
+      "crc32": "04c56665"
+    }
+,
+    {
+      "name": "RunUpdates_1.0.0.tgz",
+      "type": "tgz",
+      "os": "linux",
+      "arch": "amd64",
+      "size": 20409696,
+      "sha256": "54334298a84a1373d47649c8841b8d438aa9f3b2303df982d4a9bf59a3e1d429",
+      "crc32": "2008b351"
+    }
+,
+    {
+      "name": "RunUpdates_1.0.0.zip",
+      "type": "zip",
+      "os": "windows",
+      "arch": "x86_64",
+      "size": 20411512,
+      "sha256": "b641fd6135ebe85497fca3a347dde846d379dd5d15dfcecce7f4c7a9b475ad13",
+      "crc32": "17c9779e"
     }
   ]
 }
