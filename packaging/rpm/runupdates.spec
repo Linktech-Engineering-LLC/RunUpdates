@@ -21,11 +21,13 @@ RunUpdates is a system update orchestration tool. This RPM installs the frozen R
 
 %install
 rm -rf %{buildroot}
-INSTALLROOT=%{buildroot}/opt/RunUpdates
 
-mkdir -p $INSTALLROOT
+# Create target directory
+mkdir -p %{buildroot}/opt/RunUpdates
 
-install -D %{_sourcedir}/RunUpdates/RunUpdates $INSTALLROOT/RunUpdates
+# Install the binary
+install -m 0755 %{_sourcedir}/RunUpdates/RunUpdates \
+    %{buildroot}/opt/RunUpdates/RunUpdates
 
 %files
 /opt/RunUpdates

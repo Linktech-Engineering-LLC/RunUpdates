@@ -67,6 +67,34 @@ jobs:
           mkdir -p artifacts
           cp packaging/output/RunUpdates_* artifacts/ || true
 
+      - name: Install crc32 tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-zip-perl
+
+      - name: Compute checksums and sizes
+        id: sums
+        run: |
+          DEB=$(ls artifacts/*.deb | head -n 1)
+          RPM=$(ls artifacts/*.rpm | head -n 1)
+          ZIP=$(ls artifacts/*.zip | head -n 1)
+          TGZ=$(ls artifacts/*.tgz | head -n 1)
+
+          echo "deb_size=$(stat -c%s "$DEB")" >> $GITHUB_OUTPUT
+          echo "rpm_size=$(stat -c%s "$RPM")" >> $GITHUB_OUTPUT
+          echo "zip_size=$(stat -c%s "$ZIP")" >> $GITHUB_OUTPUT
+          echo "tgz_size=$(stat -c%s "$TGZ")" >> $GITHUB_OUTPUT
+          
+          echo "deb_sha256=$(sha256sum "$DEB" | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "rpm_sha256=$(sha256sum "$DEB" | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "zip_sha256=$(sha256sum "$DEB" | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "tgz_sha256=$(sha256sum "$DEB" | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+          echo "deb_crc32=$(crc32 "$DEB")" >> $GITHUB_OUTPUT
+          echo "rpm_crc32=$(crc32 "$RPM")" >> $GITHUB_OUTPUT
+          echo "zip_crc32=$(crc32 "$ZIP")" >> $GITHUB_OUTPUT
+          echo "tgz_crc32=$(crc32 "$DEB")" >> $GITHUB_OUTPUT
+
       - name: Upload nightly artifacts
         uses: actions/upload-artifact@v4
         with:
