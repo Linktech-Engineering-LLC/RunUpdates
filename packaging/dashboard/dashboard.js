@@ -39,8 +39,9 @@ async function loadDashboard() {
   document.getElementById("version-badge").src =
     `https://img.shields.io/badge/version-${shortCommit}-blue`;
 
+  const shortDate = build.date.split("T")[0];
   document.getElementById("date-badge").src =
-    `https://img.shields.io/badge/date-${encodeURIComponent(build.date)}-lightgrey`;
+    `https://img.shields.io/badge/date-${shortDate}-lightgrey`;
 
   document.getElementById("python-badge").src =
     `https://img.shields.io/badge/python-${toolchain.python}-yellow`;
