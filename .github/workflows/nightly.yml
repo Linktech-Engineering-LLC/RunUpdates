@@ -172,9 +172,10 @@ jobs:
           python3 packaging/metadata/validate.py artifacts/metadata.json
 
       - name: Remove existing nightly assets
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ASSETS=$(gh release view nightly --json assets --jq '.assets[].name')
-
           for asset in $ASSETS; do
             if [[ "$asset" == RunUpdates* ]]; then
               echo "Deleting asset: $asset"
@@ -268,7 +269,7 @@ jobs:
             <img src="qr.png" alt="QR Code">
           </div>
 
-          <script src="dashboard.js"></script>
+          <script src="dashboard/dashboard.js"></script>
           </body>
           </html>
 
