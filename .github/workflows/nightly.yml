@@ -165,10 +165,16 @@ jobs:
         with:
           name: nightly-runupdates
           path: artifacts
+
       - name: Validate metadata.json
         run: |
           pip install jsonschema
           python3 packaging/metadata/validate.py artifacts/metadata.json
+
+      - name: Remove existing nightly assets
+        run: |
+          gh release delete-asset nightly --yes --pattern "RunUpdates*"
+
       - name: Upload artifacts to nightly release
         uses: softprops/action-gh-release@v1
         with:
