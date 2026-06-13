@@ -169,6 +169,11 @@ jobs:
         run: |
           pip install jsonschema
           python3 packaging/metadata/validate.py artifacts/metadata.json
+      - name: Upload artifacts to nightly release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          files: packaging/output/*
 
   publish-dashboard:
     runs-on: ubuntu-latest
