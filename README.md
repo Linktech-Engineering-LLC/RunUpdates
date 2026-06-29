@@ -28,7 +28,7 @@ RunUpdates emphasizes:
 
 A fixed, cross‑platform pipeline:
 
-`check → parse → refresh → update? → clean → reboot?`
+`check → refresh → update? → clean → reboot?`
 
 The pipeline is **not distro‑defined**.
 
@@ -57,13 +57,13 @@ RunUpdates does not assume Linux hosts — it assumes **schema‑validated comma
 
 ### Universal stdout‑based update detection
 
-RunUpdates includes a universal parser that detects:
-
-* updates available
-* updates performed
-* no updates needed
-* repo broken
-* reboot required
+RunUpdates uses a YAML‑driven ExitCodeClassifier to determine update states such as 
+* `up_to_date`
+* `success`
+* `solver_warning` 
+* `restart_services`
+* `reboot_required`
+* `error`
 
 This works across all distros and OS families.
 
@@ -317,12 +317,14 @@ Code
 ### 🛠 Execution Flow
 RunUpdates executes a deterministic lifecycle:
 
-`check → parse → refresh → update? → clean → reboot?`
+`check → refresh → update? → clean → reboot?`
+
+Each step’s exit code is classified using the YAML‑defined `ExitCodeClassifier`.
 
 #### Step Descriptions
 
 * **check** — run the distro‑defined check command
-* **parse** — classify stdout/exit codes into universal update states
+* **classify** — each step’s exit code is mapped to a semantic category using the YAML-defined ExitCodeClassifier
 * **refresh** — refresh package metadata (only if updates are needed)
 * **update** — apply updates (conditional)
 * **clean** — always run; remove stale metadata and temp files
@@ -338,6 +340,10 @@ Each step records:
 Failures do not stop the overall run.
 
 ## 📊 Summaries
+
+All lifecycle events are now structured dictionaries containing {`step`, `exit_code`, `status`}.
+
+Update and lifecycle status are derived from classifier categories, not raw exit codes.
 
 ### Per‑Host Summary
 
@@ -356,6 +362,9 @@ Containing:
 * stdout/stderr (or redacted indicators)
 * timestamps
 
+Lifecycle events are now structured and classifier‑driven.
+No legacy string markers remain.
+
 ### Final Summary
 
 summary.json includes:
@@ -364,6 +373,8 @@ summary.json includes:
 * duration
 * totals (completed, failed, skipped, repo_broken, reboot_required, etc.)
 * per‑host status map
+
+Totals are computed from classifier categories.
 
 ## 🧱 Architecture Overview
 
@@ -402,9 +413,13 @@ main.py
 RunUpdates uses a unified classification model:
 
 * success
-* warning
+* up_to_date
+* patches_available
+* solver_warning
+* restart_services
+* reboot_required
+* reboot_and_restart
 * error
-* fatal
 
 Mapped from:
 
@@ -413,6 +428,10 @@ Mapped from:
 * SSH failures
 * PythonTools exceptions
 * repo health indicators
+
+Classifier categories are defined per‑step in the inventory’s `exit_codes` section.
+
+These categories drive update_status, lifecycle_status, reboot_status, and semantic fields.
 
 ## 🔒 Security Model
 
@@ -433,6 +452,9 @@ Planned enhancements:
 * improved reboot classification
 * inventory diffing
 * dashboard‑ready summary format
+* semantic summary fields (updated, needs_reboot, needs_service_restart)
+* classifier‑driven fleet summary counters
+* distro‑specific semantic interpretation rules
 
 ## 🤝 Contributing
 

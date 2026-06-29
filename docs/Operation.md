@@ -133,6 +133,51 @@ After the check and refresh stages, RunUpdates analyzes stderr for repository me
 
 If --dry-run is enabled, commands are printed but not executed.
 
+## 🧩 5.1 SUSE Update Behavior (zypper up vs zypper dup)
+
+RunUpdates supports both zypper up and zypper dup for SUSE‑family hosts.
+Because this environment contains no SLES/SLED systems, SUSE update semantics follow openSUSE behavior exclusively.
+
+### openSUSE Leap and Tumbleweed
+
+openSUSE uses two distinct update modes:
+
+`zypper up` — **conservative mode**
+* Installs same‑vendor updates only
+* Does not switch repositories
+* Does not replace or downgrade packages
+* Holds back updates requiring vendor or repo changes
+* Suitable only for Leap systems with strict OSS‑only repositories
+
+`zypper dup` — **full synchronization mode**
+* Performs vendor changes
+* Switches repositories when required
+* Replaces and downgrades packages to match repo state
+* Required for Tumbleweed
+* Required for Leap systems using mixed repositories (OSS + Packman + KDE)
+* Required when zypper up reports large sets of “updates will NOT be installed”
+
+### RunUpdates Behavior
+
+RunUpdates does not enforce a specific update mode.
+The update command is taken directly from hosts.yml:
+
+```yaml
+packages:
+  update: zypper dup
+```
+
+or
+
+```yaml
+packages:
+  update: zypper up
+```
+
+Because this environment contains **no SUSE Enterprise hosts**, `zypper dup` is considered safe and correct for all openSUSE systems unless explicitly overridden.
+
+This ensures deterministic behavior when vendor changes, repo transitions, or rolling‑release updates are required.
+
 ## 📦 6. YAML‑Driven Exit‑Code Interpretation
 
 Each distro defines exit‑code behavior:
