@@ -21,6 +21,7 @@ from pathlib import Path
 # Import generic helpers from PythonTools
 from PythonTools.ansible.helpers import resolve_with_priority
 from PythonTools.parser.errors import CheckArgError
+from PythonTools.system.env.modes import is_dev_mode
 
 # Import RunUpdates-specific constants
 from RunUpdates.core.constants import (
@@ -37,9 +38,8 @@ from RunUpdates.core.constants import (
 )
 from .paths import Paths
 
-def is_dev_mode() -> bool:
-    # Dev mode: repo checkout with etc/ and var/ next to package
-    return (PROJECT_ROOT / "etc").exists() and (PROJECT_ROOT / "var").exists()
+MODE = "DEV" if is_dev_mode(PROJECT_ROOT) else "INSTALL"
+
 # -------------------------------------------------------------
 # Resolve Config & Schema folders
 # -------------------------------------------------------------
