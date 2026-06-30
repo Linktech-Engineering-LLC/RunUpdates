@@ -17,3 +17,4 @@ RunUpdates.egg-info/
 *.code-workspace
 archive
 release
+*_cache

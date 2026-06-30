@@ -12,11 +12,12 @@ echo "=== Freezing RunUpdates ==="
 rm -rf "$ROOT_DIR/build" "$ROOT_DIR/dist"
 
 # Run PyInstaller (assumes venv already active in CI)
-pyinstaller --onefile RunUpdates/__main__.py --name RunUpdates
+#pyinstaller --onefile RunUpdates/__main__.py --name RunUpdates
+python3 build.py --include-toml .
 
 # Verify frozen binary
 # Locate the frozen binary (onefile)
-FROZEN_BIN=$(find "$ROOT_DIR/dist" -maxdepth 1 -type f -name "RunUpdates" | head -n 1)
+FROZEN_BIN=$(find "$ROOT_DIR/release" -maxdepth 1 -type f -name "RunUpdates" | head -n 1)
 
 if [[ -z "$FROZEN_BIN" ]]; then
     echo "ERROR: PyInstaller did not produce a RunUpdates binary"

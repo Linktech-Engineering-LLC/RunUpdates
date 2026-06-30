@@ -4,9 +4,11 @@ import sys
 import shutil
 import subprocess
 import argparse
+import tomllib  # Python 3.11+
+
 from pathlib import Path
 from datetime import datetime
-import tomllib  # Python 3.11+
+from typing import Optional
 
 # ------------------------------------------------------------
 # Colors
@@ -216,23 +218,91 @@ def resolve_entry_point(project_path: Path, meta: dict, log_file: Path) -> Path:
 # ------------------------------------------------------------
 # Granular Build Steps
 # ------------------------------------------------------------
-def clean_directories(project_path: Path, dist_dir: Path, build_dir: Path, release_dir: Path, log_file: Path):
+def clean_directories(
+    project_path: Path,
+    dist_dir: Path,
+    build_dir: Path,
+    release_dir: Path,
+    log_file: Path,
+    current_version: Optional[str]
+):
     log("Cleaning old build directories...", log_file)
+
+    # Determine binary path inside release_dir
+    binary = release_dir / project_path.name
+
+    # --- First pass: no version available ---
+    if current_version is None:
+        log("No current version provided (first pass). Removing release_dir.", log_file)
+        rm(release_dir)
+
+    else:
+        # Compare timestamps
+        binary_mtime = get_binary_mtime(binary)
+        latest_source_mtime = get_latest_source_mtime(project_path)
+
+        if binary_mtime is None:
+            log("No existing release binary found; removing release_dir.", log_file)
+            rm(release_dir)
+
+        elif binary_mtime < latest_source_mtime:
+            log(
+                f"Existing release binary is older "
+                f"(binary mtime={binary_mtime}, source mtime={latest_source_mtime}); "
+                f"removing release_dir.",
+                log_file
+            )
+            rm(release_dir)
+
+        else:
+            log(
+                f"Existing release binary is up-to-date "
+                f"(binary mtime={binary_mtime}, source mtime={latest_source_mtime}); "
+                f"keeping release_dir.",
+                log_file
+            )
 
     # Remove PyInstaller output dirs
     rm(dist_dir)
     rm(build_dir)
-    rm(release_dir)
 
-    # Remove all __pycache__ directories
+    # Remove __pycache__
     for pyc in project_path.rglob("__pycache__"):
         rm(pyc)
 
-    # Remove PyInstaller user cache
+    # Remove PyInstaller cache
     pyinstaller_cache = Path.home() / ".cache" / "pyinstaller"
     if pyinstaller_cache.exists():
         rm(pyinstaller_cache)
         log(f"Cleared PyInstaller cache: {pyinstaller_cache}", log_file)
+
+def get_binary_version(binary: Path) -> str | None:
+    if not binary.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [str(binary), "--version"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+def get_latest_source_mtime(project_path: Path) -> float:
+    latest = 0.0
+    for path in project_path.rglob("*.py"):
+        mtime = path.stat().st_mtime
+        if mtime > latest:
+            latest = mtime
+    return latest
+
+def get_binary_mtime(binary: Path) -> float | None:
+    if not binary.exists():
+        return None
+    return binary.stat().st_mtime
 
 def build_pyinstaller_command(project_path: Path, meta: dict, args, log_file: Path) -> list[str]:
     entry_path = resolve_entry_point(project_path, meta, log_file)
@@ -332,7 +402,7 @@ def main():
     project_path = Path(args.project_path).resolve()
     script_name = Path(sys.argv[0]).stem
     log_file = setup_logging(script_name, project_path)
-
+    
     meta = load_project_metadata(project_path, log_file)
     version = meta["version"]
 
@@ -345,7 +415,7 @@ def main():
     build_dir = project_path / "build"
     release_dir = project_path / "release"
 
-    clean_directories(project_path, dist_dir, build_dir, release_dir, log_file)
+    clean_directories(project_path, dist_dir, build_dir, release_dir, log_file, None)
 
     if args.clean_only:
         print(ctext(Color.YELLOW, "Clean-only mode complete"))
@@ -357,7 +427,7 @@ def main():
 
     run_hook(project_path, meta["prebuild"], ["prebuild.sh", "prebuild.py"], "pre-build", log_file)
     write_version_file(project_path, version, log_file)
-
+    
     # Determine if we should use a spec file
     spec_file = None
 
@@ -384,7 +454,7 @@ def main():
     copy_binary(project_path, meta, log_file)
     run_hook(project_path, meta["postbuild"], ["postbuild.sh", "postbuild.py"], "post-build", log_file)
     finalize_release(project_path, meta, args, log_file)
-    clean_directories(project_path, dist_dir, build_dir, release_dir, log_file)
+    clean_directories(project_path, dist_dir, build_dir, release_dir, log_file, version)
     spec_file = project_path / f"{meta['name']}.spec"
     if not args.keep_spec and not args.spec:
         rm(spec_file)

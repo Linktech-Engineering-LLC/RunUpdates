@@ -31,7 +31,11 @@ mkdir -p %{buildroot}/opt/RunUpdates
 cp -a %{_sourcedir}/RunUpdates/opt/RunUpdates/* %{buildroot}/opt/RunUpdates/
 
 %files
-/opt/RunUpdates
+%dir /opt/RunUpdates
+%dir /opt/RunUpdates/bin
+%dir /opt/RunUpdates/etc
+%dir /opt/RunUpdates/etc/schemata
+%dir /opt/RunUpdates/var
 
 %post
 echo "RunUpdates installed."

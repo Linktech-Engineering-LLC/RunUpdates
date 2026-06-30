@@ -9,7 +9,7 @@ VERSION="$(grep -i version $ROOT_DIR/VERSION | cut -d '=' -f2 | tr -d ' "')"
 echo "=== Building DEB package ==="
 
 # Locate frozen binary (onefile)
-FROZEN_BIN=$(find "$ROOT_DIR/dist" -maxdepth 1 -type f -name "RunUpdates" | head -n 1)
+FROZEN_BIN=$(find "$ROOT_DIR/release" -maxdepth 1 -type f -name "RunUpdates" | head -n 1)
 
 if [[ -z "$FROZEN_BIN" ]]; then
     echo "ERROR: Frozen binary not found"
