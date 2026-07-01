@@ -54,6 +54,9 @@ jobs:
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
 
+      - name: Debug build_all_sh
+        run: cat packaging/build_all.sh
+
       - name: Build all artifacts
         run: ./packaging/build_all.sh
 
