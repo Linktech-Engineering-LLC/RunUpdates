@@ -23,12 +23,8 @@ directories.
 
 %install
 rm -rf %{buildroot}
-
-# Create target directory
 mkdir -p %{buildroot}/opt/RunUpdates
-
-# Copy full runtime tree from SOURCES
-cp -a %{_sourcedir}/staging/opt/RunUpdates/* %{buildroot}/opt/RunUpdates/
+cp -a %{_builddir}/../staging/opt/RunUpdates/* %{buildroot}/opt/RunUpdates/
 
 %files
 %dir /opt/RunUpdates
