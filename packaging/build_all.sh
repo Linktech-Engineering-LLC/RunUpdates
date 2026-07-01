@@ -43,7 +43,7 @@ cp -a RunUpdates/schema/* packaging/staging/opt/RunUpdates/etc/schemata/
 mkdir -p packaging/rpmbuild/{BUILD,BUILDROOT,RPMS,SOURCES,SRPMS}
 
 # Copy staging tree into SOURCES
-cp -a packaging/staging "$ROOT_DIR/packaging/rpmbuild/SOURCES/"
+cp -a packaging/staging "packaging/rpmbuild/SOURCES/"
 
 echo "=== Freeze complete ==="
 echo
