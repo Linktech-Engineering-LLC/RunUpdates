@@ -28,7 +28,7 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/opt/RunUpdates
 
 # Copy full runtime tree from SOURCES
-cp -a %{_sourcedir}/RunUpdates/opt/RunUpdates/* %{buildroot}/opt/RunUpdates/
+cp -a %{_sourcedir}/staging/opt/RunUpdates/* %{buildroot}/opt/RunUpdates/
 
 %files
 %dir /opt/RunUpdates

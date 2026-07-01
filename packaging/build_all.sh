@@ -38,6 +38,7 @@ cp "$FROZEN_BIN" packaging/staging/opt/RunUpdates/bin/
 cp -a RunUpdates/etc packaging/staging/opt/RunUpdates/ 2>/dev/null || true
 cp -a RunUpdates/var packaging/staging/opt/RunUpdates/ 2>/dev/null || true
 cp -a RunUpdates/schema packaging/staging/opt/RunUpdates/etc/schemata/ 2>/dev/null || true
+cp -a packaging/staging "$ROOT_DIR/packaging/rpmbuild/SOURCES/"
 
 echo "=== Freeze complete ==="
 echo
