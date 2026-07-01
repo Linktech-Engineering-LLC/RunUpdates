@@ -13,7 +13,7 @@ rm -rf "$ROOT_DIR/build" "$ROOT_DIR/dist"
 
 # Run PyInstaller (assumes venv already active in CI)
 #pyinstaller --onefile RunUpdates/__main__.py --name RunUpdates
-python3 build.py --include-toml .
+python3 scripts/build.py --include-toml .
 
 # Verify frozen binary
 # Locate the frozen binary (onefile)
