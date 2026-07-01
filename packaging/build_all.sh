@@ -37,7 +37,7 @@ mkdir -p packaging/staging/opt/RunUpdates/etc/schemata
 cp "$FROZEN_BIN" packaging/staging/opt/RunUpdates/bin/
 cp -a RunUpdates/etc packaging/staging/opt/RunUpdates/ 2>/dev/null || true
 cp -a RunUpdates/var packaging/staging/opt/RunUpdates/ 2>/dev/null || true
-cp -a RunUpdates/schema/* packaging/staging/opt/RunUpdates/etc/schemata/
+cp -a RunUpdates/RunUpdates/schema/* packaging/staging/opt/RunUpdates/etc/schemata/
 
 # Ensure rpmbuild directory structure exists
 mkdir -p packaging/rpmbuild/{BUILD,BUILDROOT,RPMS,SOURCES,SRPMS}
