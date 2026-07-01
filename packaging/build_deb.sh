@@ -20,7 +20,7 @@ fi
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/bin"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/etc"
-mkdir -p "$STAGING_DIR/opt/RunUpdates/schemata"
+mkdir -p "$STAGING_DIR/opt/RunUpdates/etc/schemata"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/var/log"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/var/log/summaries"
 mkdir -p "$STAGING_DIR/opt/RunUpdates/var/run"
@@ -32,7 +32,7 @@ cp -a packaging/DEBIAN "$STAGING_DIR/"
 cp "$FROZEN_BIN" "$STAGING_DIR/opt/RunUpdates/bin/RunUpdates"
 
 # Copy schemata
-cp -a "$ROOT_DIR/RunUpdates/schema/"* "$STAGING_DIR/opt/RunUpdates/schemata/"
+cp -a "$ROOT_DIR/RunUpdates/schema/"* "$STAGING_DIR/opt/RunUpdates/etc/schemata/"
 
 # Copy LICENSE
 cp "$ROOT_DIR/LICENSE_BINARY.txt" "$STAGING_DIR/opt/RunUpdates/LICENSE"
