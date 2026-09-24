@@ -1,58 +1,59 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Leon McClatchey, Linktech Engineering LLC
+# Copyright (c) 2026 Leon McClatchey
+
 """
  Package: RunUpdates
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-31
+Modified: 2026-09-24
  File: RunUpdates/parser/ScriptParser.py
- Version: 1.0.1
- Description: 
-            RunUpdates ScriptParser (CLI-driven)
-            Uses PythonTools BaseScriptParser + InventoryBaseParser
-            Defines only RunUpdates-specific switches and validation.
+ Version: 2.0.0
+ Description:
+    Modernized RunUpdates ScriptParser.
+    - Thin wrapper around PythonTools BaseScriptParser
+    - No duplicated logic
+    - Uses BaseScriptParser.add_subcommand() and add_group()
+    - RunUpdates-specific default-subcommand insertion preserved
 """
+
 import sys
 
-from PythonTools.parser.BaseScriptParser import BaseScriptParser
+from PythonTools.parser import BaseScriptParser
 from RunUpdates.core.constants import (
     PROJECT_NAME,
     PROJECT_VERSION,
     LINUX_VERSION,
 )
-from RunUpdates.utils.common import (
-    resolve_paths,
-)
+from RunUpdates.utils.common import resolve_paths
+
 
 DESCRIPTION = (
     f"{PROJECT_NAME} version {PROJECT_VERSION} "
     "Manages System Patches and/or Updates"
 )
+
 DEFAULT_SUBCOMMAND = "update"
 SUBCOMMANDS = {"update", "inventory", "summary"}
 
+
 def _auto_insert_default_subcommand():
-    # If user asked for help, do NOT insert default subcommand
+    """Insert default subcommand unless user explicitly requests help."""
     if "-h" in sys.argv or "--help" in sys.argv:
         return
-    # No args at all → insert default
+
     if len(sys.argv) == 1:
         sys.argv.insert(1, DEFAULT_SUBCOMMAND)
         return
 
     first = sys.argv[1]
 
-    # If first arg is a known subcommand → do nothing
     if first in SUBCOMMANDS:
         return
 
-    # If first arg is a flag → insert default subcommand
     if first.startswith("-"):
         sys.argv.insert(1, DEFAULT_SUBCOMMAND)
         return
-
-    # Otherwise: user typed something unexpected → let argparse handle it
 
 
 class ScriptParser(BaseScriptParser):
@@ -71,21 +72,18 @@ class ScriptParser(BaseScriptParser):
             version_string=f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}",
         )
 
-        # IMPORTANT:
-        # Use the BaseScriptParser parser as the parent for all subcommands.
-        self.parent = self.global_parent
-        self.VERSION_STRING = f"{PROJECT_NAME} {PROJECT_VERSION} running on Linux {LINUX_VERSION}"
         # Subcommands
         self._add_help_subcommand()
         self._add_inventory_subcommand()
         self._add_update_subcommand()
         self._add_summary_subcommand()
 
+    # --------------------------------------------------------
+    # help subcommand
+    # --------------------------------------------------------
     def _add_help_subcommand(self):
-        help_parser = self.subparsers.add_parser(
+        help_parser = self.add_subcommand(
             "help",
-            parents=[self.global_parent],
-            add_help=False,
             help="Show help for a subcommand",
         )
 
@@ -99,46 +97,36 @@ class ScriptParser(BaseScriptParser):
     # inventory subcommand
     # --------------------------------------------------------
     def _add_inventory_subcommand(self):
-        inv = self.subparsers.add_parser(
+        inv = self.add_subcommand(
             "inventory",
-            parents=[self.global_parent],
-            add_help=True,
             help="Inspect inventory families, distros, hosts, and metadata",
         )
 
         grp = inv.add_argument_group("Inventory Listing Options")
-
         grp.add_argument("--list-families", action="store_true",
                          help="List all inventory families as JSON")
-
         grp.add_argument("--list-distros", action="store_true",
                          help="List all distros for the selected family as JSON")
-
         grp.add_argument("--list-hosts", action="store_true",
                          help="List all hosts for the selected family/distro as JSON")
-
         grp.add_argument("--list-inventory", action="store_true",
-                         help="Dump the full inventory block for the selected family/distro as JSON")
-
+                         help="Dump full inventory block for the selected family/distro as JSON")
         grp.add_argument("--show-metadata", action="store_true",
                          help="Show metadata (vars) for the selected family/distro")
 
-        # Shared selection flags
         sel = inv.add_argument_group("Selection Options")
         sel.add_argument("--family", help="Target family")
         sel.add_argument("--distro", help="Target distro")
         sel.add_argument("--host", help="Target host")
-        
+
         self.inventory_parser = inv
 
     # --------------------------------------------------------
     # update subcommand
     # --------------------------------------------------------
     def _add_update_subcommand(self):
-        upd = self.subparsers.add_parser(
+        upd = self.add_subcommand(
             "update",
-            parents=[self.global_parent],
-            add_help=True,
             help="Run updates on selected hosts",
         )
 
@@ -156,14 +144,13 @@ class ScriptParser(BaseScriptParser):
                              help="Execution mode for orchestrator")
 
         self.update_parser = upd
+
     # --------------------------------------------------------
     # summary subcommand
     # --------------------------------------------------------
     def _add_summary_subcommand(self):
-        summary = self.subparsers.add_parser(
+        summary = self.add_subcommand(
             "summary",
-            parents=[self.global_parent],
-            add_help=True,
             help="Show run summary information",
         )
 
@@ -176,46 +163,29 @@ class ScriptParser(BaseScriptParser):
                          help="Show summary for a specific host")
 
         self.summary_parser = summary
+
     # --------------------------------------------------------
     # Validation
     # --------------------------------------------------------
     def validate(self):
         super()._validate()
+        # RunUpdates-specific validation can be added here
 
     # --------------------------------------------------------
     # Parse wrapper
     # --------------------------------------------------------
     def parse(self):
         _auto_insert_default_subcommand()
-
         args = super().parse()
-
-        # Unified resolver
         self.paths = resolve_paths(args)
-
         return args
+
     # --------------------------------------------------------
     # Help handling
     # --------------------------------------------------------
     def print_help(self, topic: str | None = None):
-        """
-        Print help for the whole program or a specific subcommand.
-        """
-        # BaseScriptParser exposes the underlying argparse parser as self.parser
-        parser = self.parser
+        if topic and topic in self._dynamic_subcommands:
+            self._dynamic_subcommands[topic].print_help()
+            return
 
-        if topic:
-            # Try to find a matching subcommand
-            subparsers_action = None
-            for action in parser._actions:
-                if isinstance(action, type(self.subparsers)):
-                    subparsers_action = action
-                    break
-
-            if subparsers_action and topic in subparsers_action.choices:
-                subparsers_action.choices[topic].print_help()
-                return
-
-        # Fallback: top-level help
-        parser.print_help()
-
+        self.parser.print_help()

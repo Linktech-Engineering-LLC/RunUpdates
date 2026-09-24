@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-16
- Modified: 2026-05-26
+Modified: 2026-09-24
  File: RunUpdates/ansible/loader.py
  Version: 2.0.0
  Description: Deterministic Inventory Loader for RunUpdates (multi-family)
@@ -14,7 +14,7 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
-from PythonTools.ansible.loader import GenericInventoryLoader, InventoryError
+from PythonTools.ansible import GenericInventoryLoader, InventoryError
 
 class RunUpdatesInventoryLoader(GenericInventoryLoader):
     def __init__(self, *args, **kwargs):

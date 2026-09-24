@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-30
+Modified: 2026-09-24
  File: RunUpdates/core/constants.py
  Version: 1.0.0
  Description: 
@@ -19,7 +19,7 @@ import platform
 import sys
 
 PROJECT_NAME = "RunUpdates"
-PROJECT_VERSION = "1.0.0"
+PROJECT_VERSION = "2.0.0"
 # ------------------------------------------------------------
 # Project roots
 # ------------------------------------------------------------

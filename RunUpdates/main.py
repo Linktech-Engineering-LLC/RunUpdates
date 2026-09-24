@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-31
+Modified: 2026-09-24
  File: RunUpdates/main.py
  Version: 1.0.0
  Description: Checks the distro and runs the updates
@@ -20,16 +20,15 @@ import json
 from pathlib import Path
 
 # PythonTools imports (generic only)
-from PythonTools.ansible.vault import VaultLoader, VaultError
-from PythonTools.ansible.loader import InventoryLoadError
-from PythonTools.ansible.helpers import load_yaml
-from PythonTools.log_helpers.helpers import (
-    init_logger,
-    build_log_cfg,
-    register_custom_levels
+from PythonTools.ansible import (
+    VaultLoader, 
+    VaultError,
+    InventoryLoadError,
+    load_yaml
 )
-from PythonTools.net.tools import pid_is_running
-from PythonTools.net.pidguard import PidGuard
+from PythonTools.security import assert_not_root, assert_sudo_available
+from PythonTools.log_helpers import LoggerFactory
+from PythonTools.net import PidGuard
 from PythonTools.utils.common import json_output
 # RunUpdates components
 from RunUpdates.operations.listops import ListOperations
@@ -42,46 +41,34 @@ from RunUpdates.core.constants import (
 )
 
 # ------------------------------------------------------------
-# Safety checks
-# ------------------------------------------------------------
-
-def assert_not_root():
-    if os.geteuid() == 0:
-        raise RuntimeError("RunUpdates must not be executed as root")
-def assert_sudo_available(sudo_password):
-    if sudo_password is None:
-        raise RuntimeError("No sudo password available for non-root execution")
-
-# ------------------------------------------------------------
 # Logging initialization
 # ------------------------------------------------------------
-def initialize_logging(context: dict) -> dict:
-    """
-    Initialize RunUpdates logging system.
-    """
+def initialize_logging(context):
+    args = context["args"]
+    paths = context["paths"]
 
-    log_cfg = build_log_cfg(context)
-    logger_factory = init_logger(log_cfg, PROJECT_NAME)
+    log_dir = args.log_dir or paths.LOG_DIR
+    os.makedirs(log_dir, exist_ok=True)
 
-    register_custom_levels(log_cfg)
+    log_cfg = {
+        "path": os.path.join(log_dir, f"{PROJECT_NAME}.log"),
+        "log_level": "DEBUG" if args.debug else args.log_level,
+        "log_max_mb": args.log_max_mb,
+        "archive_mode": args.archive_mode,
+        "backup_count": args.backup_count,
+        "console_stream": sys.stderr,
+        "console_enabled": not args.quiet,
+        "color": args.color,
+    }
 
-    logger = logger_factory.get_logger("loader")
+    factory = LoggerFactory(log_cfg, context["PROJECT_NAME"])
+    logger = factory.get_logger("main")
 
     logger.banner("RunUpdates Starting")
     logger.audit("RUNUPDATES_LOGGER_INIT", "Logger initialized successfully")
     logger.lifecycle("RUNUPDATES_LOADER_SETUP", "Loader setup complete")
 
-    return {
-        "factory": logger_factory,
-        "logger": logger,
-        "config": log_cfg,
-        "paths": {
-            "LOG_DIR": context["paths"].LOG_DIR,
-            "CONFIG_DIR": context["paths"].CONFIG_DIR,
-            "SCHEMA_DIR": context["paths"].SCHEMA_DIR,
-            "PROJECT_NAME": PROJECT_NAME,
-        }
-    }
+    return logger
 # ------------------------------------------------------------
 # Inventory loading
 # ------------------------------------------------------------
@@ -254,8 +241,7 @@ def main():
     context = {"PROJECT_NAME": PROJECT_NAME, "args": args, "paths": paths}
     
     # 2. Initialize logging
-    logging_ctx = initialize_logging(context)
-    logger = logging_ctx["logger"]
+    logger = initialize_logging(context)
     guard = PidGuard(PID_FILE, logger)
     guard.acquire()
     try:

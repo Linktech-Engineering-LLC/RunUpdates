@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-18
- Modified: 2026-06-30
+Modified: 2026-09-24
  File: RunUpdates/operations/executor.py
  Version: 1.1.0
  Description: Executes update commands on a host using a session object.
@@ -18,7 +18,7 @@ from typing import Optional
 from datetime import datetime
 
 # Project Libraries
-from PythonTools.net.tools import sudo_run
+from PythonTools.net import sudo_run
 from PythonTools.sessions.systemd_runner import SystemdRunner
 
 from PythonTools.system.events.lifecycle import record_event

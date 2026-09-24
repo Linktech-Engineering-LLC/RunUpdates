@@ -1,4 +1,15 @@
 # RunUpdates
+Deterministic, operator‑grade update orchestrator for cross‑platform systems.
+
+**Suite:** Linktech Engineering Tools Suite  
+**Maintainer:** Leon McClatchey, Linktech Engineering LLC  
+**License:** MIT (source) • Proprietary (binaries)  
+**Requires:** Python 3.12+  
+**Version:** 1.0.0 (Stable) • Nightly: latest  
+**Packaging:** DEB • RPM • TGZ • ZIP  
+**PythonTools:** 0.2.0  
+**Last Updated:** 2026‑09‑24
+
 
 ![Linktech Engineering Tools Suite](https://img.shields.io/badge/Linktech%20Engineering-Tools%20Suite-0052CC?style=flat-square&logo=powershell)
 ![Status](https://img.shields.io/badge/Status-Active%20Development-green?style=flat-square)
@@ -9,20 +20,58 @@
 [![Nightly Dashboard](https://img.shields.io/badge/Nightly-Dashboard-blue)](https://linktech-engineering-llc.github.io/RunUpdates/)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-RunUpdates is a deterministic, operator‑grade update orchestrator that runs on Linux and manages updates for any platform whose lifecycle is defined in YAML.
+## 📘 Table of Contents
+1. [Overview](#-1-overview)
+2. [Core Features](#-2-core-features)
+3. [Installation](#-3-installation)
+  1. [Install PythonTools](#31-install-pythontools)
+  2. [Install RunUpdates](#32-install-runupdates)
+  3. [Development Workflow](#33-development-workflow)
+4. [Inventory Model](#-4-inventory-model)
+  1. [Inventory Hierarchy](#41-inventory-hierarchy)
+  2. [Address Model](#42-address-model)
+5. [Secrets Model](#-5-secrets-model)
+  1. [Vault Location](#51-vault-location)
+6. [Commands](#-6-commands)
+  1. [Top‑level Commands](#61-top-level-commands)
+  2. [Inventory Subcommand](#62-inventory-subcommand)
+  3. [Update Subcommand](#63-update-subcommand)
+  4. [Summary Subcommand](#64-summary-subcommand)
+7. [Execution Flow](#-7-execution-flow)
+8. [Summaries](#-8-summaries)
+  1. [Per‑Host Summary](#81-per-host-summary)
+  2. [Final Summary](#82-final-summary)
+9. [Architecture Overview](#-9-architecture-overview)
+10. [Error Classification](#-10-error-classification)
+11. [Security Model](#-11-security-model)
+12. [Roadmap](#-12-roadmap)
+13. [Contributing](#-13-contributing)
+14. [License](#-14-license)
+15. [Related Projects](#-15-related-projects)
 
-The orchestrator itself is Linux‑based, but the hosts it manages may be Linux, Windows, macOS, OS/2, or any other system with a command model defined in the inventory schema.
+---
+
+## 🔍 1. Overview
+**RunUpdates** is a deterministic, operator‑grade update orchestrator designed for Linux operators managing mixed‑platform fleets.
+The orchestrator itself runs on Linux, but the hosts it manages may be Linux, Windows, macOS, or any platform whose lifecycle is defined in YAML.
+
+RunUpdates executes a fixed, reproducible pipeline:
+`check → refresh → update → clean → reboot`
+
+
+All lifecycle behavior is defined in the inventory schema, not hard‑coded into the tool.
+This ensures predictable, cross‑platform update behavior suitable for automation, dashboards, and fleet‑wide maintenance.
 
 RunUpdates emphasizes:
-
-* reproducible execution
-* strict validation
+* deterministic execution
+* strict schema validation
 * audit‑transparent logging
-* schema‑aligned configuration
 * machine‑readable summaries
-* predictable operator‑grade behavior
+* reproducible operator‑grade behavior
 
-## ✨ Core Features
+---
+
+## ⚙️ 2. Core Features
 
 ### Deterministic, universal execution pipeline
 
@@ -100,12 +149,14 @@ All paths (config, schema, inventory, logs, summaries) follow:
 4. Installed‑mode defaults
 5. Frozen‑bundle defaults (.env auto‑generated)
 
-## 📦 Installation (Source)
+---
+
+## 📦 3. Installation (Source)
 
 RunUpdates depends on **PythonTools**.
 Both must be installed in the same environment.
 
-### 1. Clone and install PythonTools
+### 3.1 Clone and install PythonTools
 
 ```bash
 git clone https://github.com/Linktech-Engineering-LLC/PythonTools.git
@@ -115,7 +166,7 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### 2. Clone and install RunUpdates (same venv)
+### 3.2 Clone and install RunUpdates (same venv)
 
 ```bash
 git clone https://github.com/Linktech-Engineering-LLC/RunUpdates.git
@@ -125,7 +176,7 @@ pip install -r requirements.txt
 
 RunUpdates is now ready to use.
 
-### Development Workflow
+### 3.3 Development Workflow
 
 If modifying both repositories:
 
@@ -135,7 +186,9 @@ If modifying both repositories:
 
 RunUpdates is a **consumer** of PythonTools, not a bundler.
 
-## 🧩 Inventory Model
+---
+
+## 🧩 4. Inventory Model
 
 The inventory is a structured YAML document defining:
 
@@ -150,7 +203,7 @@ The inventory is a structured YAML document defining:
 **Secrets are not stored in the inventory**.
 They live only in the vault file (``vault.yml``).
 
-### Inventory Hierarchy
+### 4.1 Inventory Hierarchy
 
 `family → vars → distro → vars → hosts`
 
@@ -208,7 +261,7 @@ linux:
         address: ["192.0.2.10"]
 ```
 
-### Address Model
+### 4.2 Address Model
 
 ``address`` is **always a list**, even for a single address.
 
@@ -218,7 +271,9 @@ This ensures:
 * consistent normalization
 * multi‑address failover
 
-## 🔧 Secrets Model
+---
+
+## 🔧 5. Secrets Model
 
 Secrets are stored **only** in an encrypted vault file (e.g., ``vault.yml``).
 The inventory contains **no secrets**.
@@ -230,18 +285,18 @@ RunUpdates uses CLI arguments and environment variables **only to locate**:
 
 Secrets themselves are never supplied directly via environment variables or CLI.
 
-## Vault Location
+## 5.1 Vault Location
 
 Vault path resolution:
 
-1. ``--vault-path``
-2. ``RUNUPDATES_VAULT_PATH``
+1. `--vault-path`
+2. `RUNUPDATES_VAULT_PATH`
 3. (no default — missing value is a validation error)
 
 Vault password resolution:
 
-1. ``--vault-password-file`` or ``--vault-password``
-2. ``RUNUPDATES_VAULT_PASSWORD_FILE``
+1. `--vault-password-file` or `--vault-password`
+2. `RUNUPDATES_VAULT_PASSWORD_FILE`
 3. (no default — missing value is a validation error)
 
 After decrypting the vault, RunUpdates merges secrets into the normalized host objects in memory.
@@ -252,69 +307,77 @@ Secrets are:
 * never written to disk
 * redacted in summaries
 
-## 🚀 Commands
+---
+
+## 🚀 6. Commands
 RunUpdates uses a subcommand‑driven CLI:
 
-### Top‑level commands
+### 6.1 Top‑level commands
 
 | Command | Description |
 | --- | --- |
-| ``version`` | Show version information |
-| ``help`` | Show help for a subcommand (``help ``update``, ``help ``inventory``, etc.) |
-| ``inventory`` | Inspect inventory families, distros, hosts, and metadata |
-| ``update`` | Run updates on selected hosts |
-| ``summary`` | Show run summary information |
+| `version` | Show version information |
+| `help` | Show help for a subcommand (`help update`, `help inventory`, etc.) |
+| `inventory` | Inspect inventory families, distros, hosts, and metadata |
+| `update` | Run updates on selected hosts |
+| `summary` | Show run summary information |
 
-### 📚 Inventory Subcommand
+### 6.2 Inventory Subcommand
 
 `runupdates inventory [options]`
 
 #### Listing Options
 
-Code
+```Bash
 --list-families
 --list-distros
 --list-hosts
 --list-inventory
 --show-metadata
+```
 
 #### Selection Options
 
-Code
+```Bash
 --family <name>
 --distro <name>
 --host <name>
+```
 
-
-### 🔧 Update Subcommand
+### 6.3 Update Subcommand
 
 `runupdates update [options]`
 
 #### Target Selection
 
-Code
+```Bash
 --family linux
 --distro <name>
 --host <name>
+```
 
 #### Execution Options
 
-Code
+```Bash
 --force
 --mode sequential|parallel|distro-parallel
+```
 
-### 📊 Summary Subcommand
+### 6.4 Summary Subcommand
 
 `runupdates summary [options]`
 
 #### Summary Options
 
-Code
+```Bash
 --latest
 --list
 --host <hostname>
+```
 
-### 🛠 Execution Flow
+---
+
+## 🛠 7. Execution Flow
 RunUpdates executes a deterministic lifecycle:
 
 `check → refresh → update? → clean → reboot?`
@@ -339,18 +402,18 @@ Each step records:
 
 Failures do not stop the overall run.
 
-## 📊 Summaries
+---
+
+## 📊 8. Summaries
 
 All lifecycle events are now structured dictionaries containing {`step`, `exit_code`, `status`}.
 
 Update and lifecycle status are derived from classifier categories, not raw exit codes.
 
-### Per‑Host Summary
+### 8.1 Per‑Host Summary
 
 Each host produces:
-
-Code
-<hostname>.json
+`<hostname>.json`
 
 Containing:
 
@@ -365,7 +428,7 @@ Containing:
 Lifecycle events are now structured and classifier‑driven.
 No legacy string markers remain.
 
-### Final Summary
+### 8.2 Final Summary
 
 summary.json includes:
 
@@ -376,9 +439,11 @@ summary.json includes:
 
 Totals are computed from classifier categories.
 
-## 🧱 Architecture Overview
+---
 
-```
+## 🧱 9. Architecture Overview
+
+```Code
 main.py
  └── UpdateOrchestrator
       ├── ConfigResolver
@@ -408,7 +473,9 @@ main.py
 * **UniversalCheckParser** → stdout/exit‑code classification
 * **SummaryAggregator** → builds final summary
 
-## 🧪 Error Classification
+---
+
+## 🧪 10. Error Classification
 
 RunUpdates uses a unified classification model:
 
@@ -433,7 +500,9 @@ Classifier categories are defined per‑step in the inventory’s `exit_codes` s
 
 These categories drive update_status, lifecycle_status, reboot_status, and semantic fields.
 
-## 🔒 Security Model
+---
+
+## 🔒 11. Security Model
 
 * no dynamic code execution
 * no YAML‑driven logic paths
@@ -443,7 +512,9 @@ These categories drive update_status, lifecycle_status, reboot_status, and seman
 * deterministic logging
 * strict schema validation
 
-## 🛣 Roadmap
+---
+
+## 🛣 12. Roadmap
 
 Planned enhancements:
 
@@ -456,7 +527,9 @@ Planned enhancements:
 * classifier‑driven fleet summary counters
 * distro‑specific semantic interpretation rules
 
-## 🤝 Contributing
+---
+
+## 🤝 13. Contributing
 
 Pull requests are welcome.
 
@@ -467,10 +540,14 @@ Please ensure:
 * placeholder‑only examples
 * documentation updates for new features
 
-## 📄 License
+---
+
+## 📄 14. License
 MIT License — see [LICENSE](LICENSE) for details.
 
-## 🔗 Related Projects
+---
+
+## 🔗 15. Related Projects
 
 * [NMS_Tools](https://github.com/Linktech-Engineering-LLC/NMS_Tools)
 * [VSCode-Updater](https://github.com/Linktech-Engineering-LLC/VSCode-Updater)
