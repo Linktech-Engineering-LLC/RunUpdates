@@ -38,7 +38,7 @@ from RunUpdates.core.constants import (
 )
 from .paths import Paths
 
-MODE = "DEV" if is_dev_mode(PROJECT_ROOT) else "INSTALL"
+MODE = "DEV" if is_dev_mode() else "INSTALL"
 
 # -------------------------------------------------------------
 # Resolve Config & Schema folders
