@@ -210,10 +210,10 @@ jobs:
     needs: nightly-build
 
     steps:
-      - name: Checkout gh-pages branch
+      - name: Checkout pages branch
         uses: actions/checkout@v4
         with:
-          ref: gh-pages
+          ref: pages
 
       - name: Download nightly artifacts
         uses: actions/download-artifact@v3
@@ -293,7 +293,7 @@ jobs:
             mv dashboard.js.bak dashboard.js
           fi
 
-      - name: Publish dashboard to gh-pages
+      - name: Publish dashboard to pages
         env:
           FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
         run: |
@@ -304,4 +304,4 @@ jobs:
 
           git add .
           git commit -m "Update nightly dashboard" || echo "No changes"
-          git push origin gh-pages
+          git push origin pages
