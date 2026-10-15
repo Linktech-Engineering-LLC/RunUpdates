@@ -306,5 +306,5 @@ jobs:
 
           git add .
           git commit -m "Update nightly dashboard" || echo "No changes"
-          git push origin gh-page
+          git push origin gh-pages
 
