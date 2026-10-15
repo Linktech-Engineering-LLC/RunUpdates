@@ -204,3 +204,104 @@ jobs:
               --data-binary @"$f" \
               "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/$RELEASE/assets?name=$(basename "$f")"
           done
+
+  publish-dashboard:
+    runs-on: ubuntu-latest
+    needs: nightly-build
+
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Download nightly artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: nightly-runupdates
+          path: artifacts
+
+      - name: Copy metadata.json to dashboard root
+        run: |
+          cp artifacts/metadata.json .
+
+      - name: Generate dashboard HTML
+        run: |
+          META=artifacts/metadata.json
+
+          RELEASE_URL="http://dad:3000/Linux/RunUpdates/releases/download/nightly"
+
+          mkdir -p dashboard
+          rm -f dashboard/*
+
+          curl -s -o dashboard/qr.png \
+            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
+
+          cat > dashboard/index.html <<EOF
+          <html>
+          <head>
+            <title>RunUpdates Nightly Dashboard</title>
+            <style>
+              body { font-family: Arial; margin: 20px; }
+              table { border-collapse: collapse; margin-top: 10px; width: 100%; }
+              th, td { padding: 8px 12px; border: 1px solid #ccc; }
+              th { background: #f0f0f0; }
+              .badge-row img { margin-right: 8px; }
+              .download-btn {
+                background: #0078d4;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 4px;
+                text-decoration: none;
+              }
+              .download-btn:hover {
+                background: #005a9e;
+              }
+              .qr { margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+
+          <h1>RunUpdates Nightly Dashboard</h1>
+
+          <div class="badge-row">
+            <img src="https://img.shields.io/badge/version-loading-blue" id="version-badge">
+            <img src="https://img.shields.io/badge/date-loading-lightgrey" id="date-badge">
+            <img src="https://img.shields.io/badge/python-loading-yellow" id="python-badge">
+            <img src="https://img.shields.io/badge/pyinstaller-loading-orange" id="pyi-badge">
+          </div>
+
+          <h2>Build Metadata</h2>
+          <div id="build-info"></div>
+
+          <h2>Artifacts</h2>
+          <div id="artifact-table"></div>
+
+          <div class="qr">
+            <h2>QR Code</h2>
+            <img src="qr.png" alt="QR Code">
+          </div>
+
+          <script src="dashboard.js"></script>
+          </body>
+          </html>
+          EOF
+
+      - name: Restore dashboard.js
+        run: |
+          if [ -f dashboard.js.bak ]; then
+            mv dashboard.js.bak dashboard.js
+          fi
+
+      - name: Publish dashboard to gh-pages
+        env:
+          FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
+        run: |
+          git config user.name "forgejo-actions"
+          git config user.email "forgejo-actions@noreply.local"
+
+          cp -r dashboard/* .
+
+          git add .
+          git commit -m "Update nightly dashboard" || echo "No changes"
+          git push origin gh-pages
