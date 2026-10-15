@@ -19,6 +19,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          args: ping -c 1 dad
+          options: '--add-host=dad:191.168.0.1'
 
       - name: Ensure nightly tag exists
         run: |
