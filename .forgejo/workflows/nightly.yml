@@ -218,7 +218,7 @@ jobs:
       - name: Download nightly artifacts
         uses: actions/download-artifact@v3
         with:
-          name: nightly-runupdates
+          name: nightly
           path: artifacts
 
       - name: Copy metadata.json to dashboard root
