@@ -155,10 +155,15 @@ jobs:
 
       - name: Ensure nightly release exists
         run: |
-          RELEASE=$(curl -s http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly | jq -r '.id // empty')
+          RELEASE=$(curl -s \
+            -H "Authorization: token ${{ secrets.RUNUPDATESTOKEN }}" \
+            http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly \
+            | jq -r '.id // empty')
+
           if [ -z "$RELEASE" ]; then
             echo "Creating nightly release"
             curl -X POST \
+              -H "Authorization: token ${{ secrets.RUNUPDATESTOKEN }}" \
               -H "Content-Type: application/json" \
               -d '{"tag_name":"nightly","name":"Nightly Build","prerelease":true}' \
               http://dad:3000/api/v1/repos/linux/RunUpdates/releases
@@ -168,12 +173,19 @@ jobs:
 
       - name: Remove existing nightly assets
         run: |
-          RELEASE=$(curl -s http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly | jq -r '.id')
-          curl -s http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly \
-            | jq -r '.assets[].id' \
+          RELEASE=$(curl -s \
+            -H "Authorization: token ${{ secrets.RUNUPDATESTOKEN }}" \
+            http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly \
+            | jq -r '.id')
+
+          curl -s \
+            -H "Authorization: token ${{ secrets.RUNUPDATESTOKEN }}" \
+            http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly \
+            | jq -r '.assets // [] | .[].id' \
             | while read ID; do
                 echo "Deleting asset $ID"
                 curl -X DELETE \
+                  -H "Authorization: token ${{ secrets.RUNUPDATESTOKEN }}" \
                   http://dad:3000/api/v1/repos/linux/RunUpdates/releases/$RELEASE/assets/$ID
               done
 
