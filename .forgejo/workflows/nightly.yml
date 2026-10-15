@@ -40,9 +40,9 @@ jobs:
 
       - name: Install Python 3.12
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3.12 python3.12-venv python3.12-distutils
-          sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+          apt-get update
+          apt-get install -y python3.12 python3.12-venv python3.12-distutils
+          update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
       - name: Ensure Python 3.12 is installed
         run: |
@@ -54,8 +54,8 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pandoc rpm dpkg-dev libarchive-zip-perl
+          apt-get update
+          apt-get install -y pandoc rpm dpkg-dev libarchive-zip-perl
 
       - name: Install Python build dependencies
         run: |
