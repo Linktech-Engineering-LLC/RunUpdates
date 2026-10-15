@@ -153,14 +153,27 @@ jobs:
           }
           EOF
 
+      - name: Ensure nightly release exists
+        run: |
+          RELEASE=$(curl -s http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly | jq -r '.id // empty')
+          if [ -z "$RELEASE" ]; then
+            echo "Creating nightly release"
+            curl -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"tag_name":"nightly","name":"Nightly Build","prerelease":true}' \
+              http://dad:3000/api/v1/repos/linux/RunUpdates/releases
+          else
+            echo "Nightly release already exists"
+          fi
+
       - name: Remove existing nightly assets
         run: |
           curl -s -X GET \
-            http://dad:3000/linux/RunUpdates/releases/nightly \
+            http://dad:3000/api/v1/repos/linux/RunUpdates/releases/nightly \
             | jq -r '.assets[].id' \
             | while read ID; do
                 curl -X DELETE \
-                  http://dad:3000/linux/RunUpdates/releases/assets/$ID
+                  http://dad:3000/api/v1/repos/linux/RunUpdates/releases/assets/$ID
               done
 
       - name: Upload artifacts to Forgejo nightly release
