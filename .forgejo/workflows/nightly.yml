@@ -14,9 +14,16 @@ jobs:
   nightly-build:
     runs-on: ubuntu-latest
     container:
-      image: node:20-bookworm
+      image: ubuntu:22.04
 
     steps:
+      - name: Install Node 20
+        run: |
+          apt-get update
+          apt-get install -y curl
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
