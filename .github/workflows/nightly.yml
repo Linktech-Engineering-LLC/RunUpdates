@@ -22,6 +22,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Ensure nightly tag points to current commit
+        run: |
+          if ! git ls-remote --tags origin nightly >/dev/null; then
+            echo "Creating nightly tag"
+            git tag nightly
+            git push origin nightly
+          else
+            echo "Updating nightly tag to current commit"
+            git tag -f nightly
+            git push origin nightly --force
+          fi
+
+
       - name: Capture metadata
         id: capture
         run: |
