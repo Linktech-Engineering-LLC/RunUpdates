@@ -19,9 +19,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          args: ping -c 1 dad
-          options: '--add-host=dad:191.168.0.1'
 
       - name: Ensure nightly tag exists
         run: |
@@ -41,13 +38,10 @@ jobs:
           echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
           echo "git_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Ensure Python 3.12 is installed
-        run: |
-          python3 --version
-          if [[ "$(python3 -V)" != *"3.12"* ]]; then
-            echo "Python 3.12 is required"
-            exit 1
-          fi
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Install build dependencies
         run: |
