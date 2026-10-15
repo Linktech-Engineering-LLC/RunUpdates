@@ -59,7 +59,7 @@ jobs:
       - name: Install PythonTools
         run: |
           if [ ! -d PythonTools ]; then
-            git clone https://your.forgejo.instance/dad/linux/PythonTools.git
+            git clone http://dad:3000/dad/linux/PythonTools.git
           fi
           python3 -m pip install PythonTools/
 
@@ -148,11 +148,11 @@ jobs:
       - name: Remove existing nightly assets
         run: |
           curl -s -X GET \
-            https://your.forgejo.instance/api/v1/repos/dad/linux/RunUpdates/releases/nightly \
+            https://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/nightly \
             | jq -r '.assets[].id' \
             | while read ID; do
                 curl -X DELETE \
-                  https://your.forgejo.instance/api/v1/repos/dad/linux/RunUpdates/releases/assets/$ID
+                  https://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/assets/$ID
               done
 
       - name: Upload artifacts to Forgejo nightly release
