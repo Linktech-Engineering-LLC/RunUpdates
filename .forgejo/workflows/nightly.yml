@@ -14,7 +14,7 @@ jobs:
   nightly-build:
     runs-on: ubuntu-latest
     container:
-      image: node:20-bullseye
+      image: node:20-bookworm
 
     steps:
       - name: Checkout repository
