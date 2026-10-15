@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: node:20-bullseye
-      options: "--add-host=dad:192.168.0.1"
 
     steps:
       - name: Checkout repository
@@ -60,7 +59,7 @@ jobs:
       - name: Install PythonTools
         run: |
           if [ ! -d PythonTools ]; then
-            git clone http://dad:3000/dad/linux/PythonTools.git
+            git clone http://dad:3000/linux/PythonTools.git
           fi
           python3 -m pip install PythonTools/
 
@@ -149,11 +148,11 @@ jobs:
       - name: Remove existing nightly assets
         run: |
           curl -s -X GET \
-            http://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/nightly \
+            http://dad:3000/linux/RunUpdates/releases/nightly \
             | jq -r '.assets[].id' \
             | while read ID; do
                 curl -X DELETE \
-                  http://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/assets/$ID
+                  http://dad:3000/linux/RunUpdates/releases/assets/$ID
               done
 
       - name: Upload artifacts to Forgejo nightly release
