@@ -204,6 +204,11 @@ jobs:
               --data-binary @"$f" \
               "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/$RELEASE/assets?name=$(basename "$f")"
           done
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: nightly
+          path: artifacts/
 
   publish-dashboard:
     runs-on: ubuntu-latest
