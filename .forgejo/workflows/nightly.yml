@@ -148,11 +148,11 @@ jobs:
       - name: Remove existing nightly assets
         run: |
           curl -s -X GET \
-            https://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/nightly \
+            http://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/nightly \
             | jq -r '.assets[].id' \
             | while read ID; do
                 curl -X DELETE \
-                  https://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/assets/$ID
+                  http://dad:3000/api/v1/repos/dad/linux/RunUpdates/releases/assets/$ID
               done
 
       - name: Upload artifacts to Forgejo nightly release
