@@ -214,10 +214,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: gh-pages
-      - name: Preserve existing dashboard files
+      - name: Prepare dashboard folder
         run: |
           mkdir -p dashboard
-          cp dashboard/dashboard.js dashboard.js.bak 2>/dev/null || true
+      - name: Copy canonical dashboard assets
+        run: |
+          cp assets/dashboard/dashboard.js dashboard/
+          cp assets/dashboard/metadata.json dashboard/
 
       - name: Download nightly artifacts
         uses: actions/download-artifact@v4
@@ -235,7 +238,6 @@ jobs:
           RELEASE_URL="https://github.com/Linktech-Engineering-LLC/RunUpdates/releases/download/nightly"
 
           mkdir -p dashboard
-          rm -f dashboard/*
 
           curl -s -o dashboard/qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://linktech-engineering-llc.github.io/RunUpdates/"
@@ -288,12 +290,6 @@ jobs:
           <script src="dashboard.js"></script>
           </body>
           </html>
-
-      - name: Restore dashboard.js
-        run: |
-          if [ -f dashboard.js.bak ]; then
-            mv dashboard.js.bak dashboard/dashboard.js
-          fi
 
       - name: Publish dashboard to gh-pages
         env:
