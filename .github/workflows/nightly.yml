@@ -214,35 +214,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: gh-pages
-      - name: Prepare dashboard folder
+
+      - name: Prepare root dashboard
         run: |
-          mkdir -p dashboard
-      - name: Copy canonical dashboard assets
-        run: |
-          cp assets/dashboard/dashboard.js dashboard/
-          cp assets/dashboard/metadata.json dashboard/
+          mkdir -p .
 
       - name: Download nightly artifacts
         uses: actions/download-artifact@v4
         with:
           name: nightly-runupdates
           path: artifacts
-      - name: Copy metadata.json to dashboard root
+
+      - name: Copy canonical dashboard assets
         run: |
-          cp artifacts/metadata.json dashboard/
+          cp assets/dashboard/dashboard.js .
+          cp assets/dashboard/metadata.json .
+          cp assets/dashboard/qr.png .
 
       - name: Generate dashboard HTML
         run: |
-          META=artifacts/metadata.json
+          rm -f index.html
+          rm -f qr.png
 
-          RELEASE_URL="https://github.com/Linktech-Engineering-LLC/RunUpdates/releases/download/nightly"
-
-          mkdir -p dashboard
-
-          curl -s -o dashboard/qr.png \
+          curl -s -o qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://linktech-engineering-llc.github.io/RunUpdates/"
 
-          cat > dashboard/index.html <<EOF
+          cat > index.html <<EOF
           <html>
           <head>
             <title>RunUpdates Nightly Dashboard</title>
@@ -252,16 +249,6 @@ jobs:
               th, td { padding: 8px 12px; border: 1px solid #ccc; }
               th { background: #f0f0f0; }
               .badge-row img { margin-right: 8px; }
-              .download-btn {
-                background: #0078d4;
-                color: white;
-                padding: 6px 12px;
-                border-radius: 4px;
-                text-decoration: none;
-              }
-              .download-btn:hover {
-                background: #005a9e;
-              }
               .qr { margin-top: 20px; }
             </style>
           </head>
@@ -290,6 +277,7 @@ jobs:
           <script src="dashboard.js"></script>
           </body>
           </html>
+          EOF
 
       - name: Publish dashboard to gh-pages
         env:
@@ -298,9 +286,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          cp -r dashboard/* .
-
-          git add .
+          git add index.html dashboard.js metadata.json qr.png
           git commit -m "Update nightly dashboard" || echo "No changes"
           git push origin gh-pages
 
