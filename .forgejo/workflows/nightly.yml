@@ -235,7 +235,7 @@ jobs:
           cp artifacts/metadata.json dashboard/metadata.json
 
           # Copy static JS from repo
-          cp packaging/dashboard/dashboard.js packaging/dashboard/dashboard.js
+          cp packaging/dashboard/dashboard.js dashboard/dashboard.js
 
           # Generate QR dynamically
           curl -s -o dashboard/qr.png \
