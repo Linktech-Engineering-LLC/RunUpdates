@@ -217,7 +217,7 @@ jobs:
       - name: Preserve existing dashboard files
         run: |
           mkdir -p dashboard
-          cp dashboard.js dashboard.js.bak 2>/dev/null || true
+          cp dashboard/dashboard.js dashboard.js.bak 2>/dev/null || true
 
       - name: Download nightly artifacts
         uses: actions/download-artifact@v4
@@ -226,7 +226,7 @@ jobs:
           path: artifacts
       - name: Copy metadata.json to dashboard root
         run: |
-          cp artifacts/metadata.json .
+          cp artifacts/metadata.json dashboard/
 
       - name: Generate dashboard HTML
         run: |
@@ -292,7 +292,7 @@ jobs:
       - name: Restore dashboard.js
         run: |
           if [ -f dashboard.js.bak ]; then
-            mv dashboard.js.bak dashboard.js
+            mv dashboard.js.bak dashboard/dashboard.js
           fi
 
       - name: Publish dashboard to gh-pages
