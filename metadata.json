@@ -1,7 +1,7 @@
 {
   "meta_version": 2,
   "build": {
-    "date": "2026-10-16T14:51:37Z",
+    "date": "2026-10-16T15:08:32Z",
     "commit": "b1c25feea3490ce108394e10f6a2c96348333d1e",
     "branch": "nightly"
   },
@@ -16,9 +16,9 @@
       "type": "deb",
       "os": "linux",
       "arch": "amd64",
-      "size": 21750278,
-      "sha256": "ac04843c790a1e1eb761ac504f87c562f2de711c0d7839b315714b8d45718f57",
-      "crc32": "b901e262"
+      "size": 21748930,
+      "sha256": "36d15bcd25ffe63775a6d24f4d225dadd755bf02819757fd7859cf87cdad0e4e",
+      "crc32": "97a393a7"
     }
 ,
     {
@@ -26,9 +26,9 @@
       "type": "tgz",
       "os": "linux",
       "arch": "amd64",
-      "size": 21866588,
-      "sha256": "82e2e574f5828410861f05ed3168dfcdbef36f335ec18386ec193da2ab6990b2",
-      "crc32": "0f0e7665"
+      "size": 21865634,
+      "sha256": "8876dea80a28825d86cc986911628330178bd9fd71bf923efe58c3e6965c0ee2",
+      "crc32": "5c7807f0"
     }
 ,
     {
@@ -36,9 +36,9 @@
       "type": "rpm",
       "os": "linux",
       "arch": "x86_64",
-      "size": 21880727,
-      "sha256": "e923761280c5592e0fe5e8331d6ca26f0632399ba941cc2baf069aac327a523e",
-      "crc32": "62009450"
+      "size": 21879780,
+      "sha256": "1d5fd9b99197961578619d2d29130ce105645912ff25d4d6d9bab797b36c8a4b",
+      "crc32": "553cd4ea"
     }
 ,
     {
@@ -46,9 +46,9 @@
       "type": "zip",
       "os": "windows",
       "arch": "x86_64",
-      "size": 21868117,
-      "sha256": "a11d6fa94fb2be2bd0831be171c66df8422050d1367b23bf73e7aefcc80e29b7",
-      "crc32": "a930a550"
+      "size": 21867194,
+      "sha256": "977678628408fecbdb9264eeac772243d1985dd3cd61c21fb1271b21c5b39ddf",
+      "crc32": "00971a7e"
     }
   ]
 }
