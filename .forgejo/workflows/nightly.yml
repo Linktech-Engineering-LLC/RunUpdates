@@ -226,21 +226,24 @@ jobs:
           name: nightly
           path: artifacts
 
-      - name: Copy metadata.json to dashboard root
+      - name: Prepare dashboard directory
         run: |
-          cp artifacts/metadata.json .
+          rm -rf dashboard
+          mkdir -p dashboard
+
+          # Copy dynamic metadata
+          cp artifacts/metadata.json dashboard/metadata.json
+
+          # Copy static JS from repo
+          cp packaging/dashboard/dashboard.js packaging/dashboard/dashboard.js
+
+          # Generate QR dynamically
+          curl -s -o dashboard/qr.png \
+            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
 
       - name: Generate dashboard HTML
         run: |
-          META=artifacts/metadata.json
-
-          RELEASE_URL="http://dad:3000/Linux/RunUpdates/releases/download/nightly"
-
-          mkdir -p dashboard
-          rm -f dashboard/*
-
-          curl -s -o dashboard/qr.png \
-            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
+          META=dashboard/metadata.json
 
           cat > dashboard/index.html <<EOF
           <html>
@@ -292,21 +295,13 @@ jobs:
           </html>
           EOF
 
-      - name: Restore dashboard.js
-        run: |
-          if [ -f dashboard.js.bak ]; then
-            mv dashboard.js.bak dashboard.js
-          fi
-
-      - name: Publish dashboard to pages
+      - name: Publish dashboard to pages branch
         env:
           FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
         run: |
           git config user.name "forgejo-actions"
           git config user.email "forgejo-actions@noreply.local"
 
-          cp -r dashboard/* .
-
-          git add .
+          git add dashboard
           git commit -m "Update nightly dashboard" || echo "No changes"
           git push origin pages
