@@ -266,7 +266,8 @@ jobs:
 
           git add .
           git commit -m "Nightly RunUpdates dashboard update"
-          git push origin master --force
+          git branch -M main
+          git push origin main --force
 
   publish-dashboard:
     runs-on: ubuntu-latest
