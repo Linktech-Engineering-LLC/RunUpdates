@@ -291,7 +291,7 @@ jobs:
           git config user.name "forgejo-actions"
           git config user.email "forgejo-actions@noreply.local"
 
-          git remote add origin https://forgejo-actions:${FORGEJO_TOKEN}@dad:3000/Linux/RunUpdates.git
+          git remote add origin ssh://git@dad:2222/Linux/RunUpdates.git
 
           git fetch origin pages || true
           git checkout pages || git checkout --orphan pages
