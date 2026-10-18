@@ -289,14 +289,11 @@ jobs:
       - name: Checkout Pages repo
         uses: actions/checkout@v4
         with:
-          repository: doug/Pages
+          repository: "ssh://forgejo@dad:2222/doug/Pages.git"
           ref: master
           ssh-key: ${{ secrets.SSH_PAGES_KEY }}
           ssh-strict: false
           fetch-depth: 1
-          ssh-user: forgejo
-          ssh-host: dad
-          ssh-port: 2222
 
       - name: Fix remote URL to use SSH port 2222
         run: |
