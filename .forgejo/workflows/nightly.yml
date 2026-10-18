@@ -299,4 +299,4 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -p 2222 dad >> ~/.ssh/known_hosts
 
-          rsync -avz --delete -e "ssh -p 2222 -i ~/.ssh/id_rsa" Pages/RunUpdates/ runner@dad:/srv/forgejo-pages/RunUpdates/
+          rsync -avz --delete -e "ssh -p 2222 -i ~/.ssh/id_rsa -o IdentitiesOnly=yes" RunUpdates/ runner@dad:/srv/forgejo-pages/RunUpdates/
