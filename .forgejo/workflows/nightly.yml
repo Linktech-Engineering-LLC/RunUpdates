@@ -237,6 +237,8 @@ jobs:
           cp packaging/dashboard/index.html dashboard/
           cp packaging/dashboard/dashboard.js dashboard/
           cp artifacts/metadata.json dashboard/
+
+          mkdir -p RunUpdates/artifacts
           cp -r artifacts/Run* RunUpdates/artifacts/
 
           curl -s -o dashboard/qr.png \
