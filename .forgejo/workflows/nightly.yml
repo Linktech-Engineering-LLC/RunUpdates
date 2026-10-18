@@ -215,10 +215,15 @@ jobs:
     needs: nightly-build
 
     steps:
-      - name: Checkout pages branch
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          ref: pages
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "forgejo-actions"
+          git config user.email "forgejo-actions@noreply.local"
 
       - name: Download nightly artifacts
         uses: actions/download-artifact@v3
@@ -228,20 +233,13 @@ jobs:
 
       - name: Build dashboard folder
         run: |
-          rm -rf dashboard
           mkdir -p dashboard
-
-          # Copy metadata.json
           cp artifacts/metadata.json dashboard/
-
-          # Copy static JS
           cp packaging/dashboard/dashboard.js dashboard/
 
-          # Generate QR
           curl -s -o dashboard/qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
 
-          # Generate index.html
           cat > dashboard/index.html <<EOF
           <html>
           <head>
@@ -252,16 +250,6 @@ jobs:
               th, td { padding: 8px 12px; border: 1px solid #ccc; }
               th { background: #f0f0f0; }
               .badge-row img { margin-right: 8px; }
-              .download-btn {
-                background: #0078d4;
-                color: white;
-                padding: 6px 12px;
-                border-radius: 4px;
-                text-decoration: none;
-              }
-              .download-btn:hover {
-                background: #005a9e;
-              }
               .qr { margin-top: 20px; }
             </style>
           </head>
@@ -292,16 +280,28 @@ jobs:
           </html>
           EOF
 
-      - name: Commit dashboard to pages branch
+      - name: Publish dashboard via throwaway repo
         env:
           FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
         run: |
+          mkdir publish
+          cd publish
+
+          git init
           git config user.name "forgejo-actions"
           git config user.email "forgejo-actions@noreply.local"
 
-          git add dashboard
-          git commit -m "Update nightly dashboard" || echo "No changes"
-          git push origin pages
+          git remote add origin https://forgejo-actions:${FORGEJO_TOKEN}@dad:3000/Linux/RunUpdates.git
+
+          git fetch origin pages || true
+          git checkout pages || git checkout --orphan pages
+
+          git rm -rf .
+          cp -r ../dashboard/ .
+
+          git add .
+          git commit -m "Update nightly dashboard"
+          git push origin pages --force
 
 
   publish-dashboard:
