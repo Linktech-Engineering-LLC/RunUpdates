@@ -282,7 +282,7 @@ jobs:
 
       - name: Publish dashboard via throwaway repo
         env:
-          FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
+          FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
           mkdir publish
           cd publish
@@ -291,8 +291,20 @@ jobs:
           git config user.name "forgejo-actions"
           git config user.email "forgejo-actions@noreply.local"
 
+          # SSH setup (this was missing!)
+          mkdir -p ~/.ssh
+          echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_ed25519
+
+          ssh-keyscan -t rsa -p 2222 dad >> ~/.ssh/known_hosts
+          ssh-keyscan -t ecdsa -p 2222 dad >> ~/.ssh/known_hosts
+          ssh-keyscan -t ed25519 -p 2222 dad >> ~/.ssh/known_hosts
+
           git remote add origin ssh://forgejo@dad:2222/Linux/RunUpdates.git
-          
+
           git fetch origin pages || true
           git checkout pages || git checkout --orphan pages
 
@@ -302,7 +314,6 @@ jobs:
           git add .
           git commit -m "Update nightly dashboard"
           git push origin pages --force
-
 
   publish-dashboard:
     runs-on: ubuntu-latest
