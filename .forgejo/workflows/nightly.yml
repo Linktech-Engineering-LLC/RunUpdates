@@ -284,8 +284,9 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 2222 dad >> ~/.ssh/known_hosts
+          ssh-keyscan -p 2222 dad > ~/.ssh/known_hosts
 
+          GIT_SSH_COMMAND="ssh -p 2222 -i ~/.ssh/id_rsa -o IdentitiesOnly=yes" \
           git clone "ssh://forgejo@dad:2222/doug/Pages.git" Pages
 
       - name: Deploy to Dad server via rsync
@@ -297,6 +298,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 2222 dad >> ~/.ssh/known_hosts
+          ssh-keyscan -p 2222 dad > ~/.ssh/known_hosts
 
           rsync -avz --delete -e "ssh -p 2222 -i ~/.ssh/id_rsa -o IdentitiesOnly=yes" RunUpdates/ runner@dad:/srv/forgejo-pages/RunUpdates/
