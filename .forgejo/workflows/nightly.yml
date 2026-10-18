@@ -261,6 +261,9 @@ jobs:
           rm -rf RunUpdates/*
           cp -r ../dashboard/* RunUpdates/
 
+          git config --global user.name "forgejo-actions"
+          git config --global user.email "forgejo-actions@noreply.local"
+
           git add .
           git commit -m "Nightly RunUpdates dashboard update"
           git push origin main --force
