@@ -210,14 +210,15 @@ jobs:
     needs: nightly-build
 
     steps:
-      - name: Checkout gh-pages branch
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          ref: gh-pages
+          fetch-depth: 0
 
-      - name: Prepare root dashboard
+      - name: Configure git identity
         run: |
-          mkdir -p .
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Download nightly artifacts
         uses: actions/download-artifact@v4
@@ -225,21 +226,20 @@ jobs:
           name: nightly-runupdates
           path: artifacts
 
-      - name: Copy canonical dashboard assets
+      - name: Prepare dashboard assets
         run: |
-          cp assets/dashboard/dashboard.js .
-          cp assets/dashboard/metadata.json .
-          cp assets/dashboard/qr.png .
+          mkdir -p dashboard
+          cp packaging/dashboard/dashboard.js dashboard/
+          cp artifacts/metadata.json dashboard/
+
+      - name: Generate QR code
+        run: |
+          curl -s -o dashboard/qr.png \
+            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://linktech-engineering-llc.github.io/RunUpdates/"
 
       - name: Generate dashboard HTML
         run: |
-          rm -f index.html
-          rm -f qr.png
-
-          curl -s -o qr.png \
-            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://linktech-engineering-llc.github.io/RunUpdates/"
-
-          cat > index.html <<EOF
+          cat > dashboard/index.html <<EOF
           <html>
           <head>
             <title>RunUpdates Nightly Dashboard</title>
@@ -279,14 +279,28 @@ jobs:
           </html>
           EOF
 
-      - name: Publish dashboard to gh-pages
+      - name: Publish dashboard via throwaway repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          mkdir publish
+          cd publish
+
+          git init
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add index.html dashboard.js metadata.json qr.png
-          git commit -m "Update nightly dashboard" || echo "No changes"
-          git push origin gh-pages
+          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/Linktech-Engineering-LLC/RunUpdates.git
+
+          # Fetch gh-pages if it exists
+          git fetch origin gh-pages || true
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+          # Replace contents
+          git rm -rf .
+          cp -r ../dashboard/* .
+
+          git add .
+          git commit -m "Update nightly dashboard"
+          git push origin gh-pages --force
 
