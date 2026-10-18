@@ -277,27 +277,49 @@ jobs:
     needs: create-dashboard
 
     steps:
-      - name: Clone Pages repo manually
+      - name: Setup SSH keys and config
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PAGES_KEY }}
+          SSH_PAGES_KEY: ${{ secrets.SSH_PAGES_KEY }}
+          RUNUPDATES_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+
+          # Pages key (forgejo user)
+          echo "$SSH_PAGES_KEY" > ~/.ssh/id_pages
+          chmod 600 ~/.ssh/id_pages
+
+          # RunUpdates key (runner user)
+          echo "$RUNUPDATES_SSH_KEY" > ~/.ssh/id_runupdates
+          chmod 600 ~/.ssh/id_runupdates
+
+          # Known hosts
           ssh-keyscan -p 2222 dad > ~/.ssh/known_hosts
 
-          GIT_SSH_COMMAND="ssh -p 2222 -i ~/.ssh/id_rsa -o IdentitiesOnly=yes" \
-          git clone "ssh://forgejo@dad:2222/doug/Pages.git" Pages
+          # SSH config for two identities
+          cat <<EOF > ~/.ssh/config
+          Host dad-pages
+              HostName dad
+              Port 2222
+              User forgejo
+              IdentityFile ~/.ssh/id_pages
+              IdentitiesOnly yes
+
+          Host dad-runupdates
+              HostName dad
+              Port 2222
+              User runner
+              IdentityFile ~/.ssh/id_runupdates
+              IdentitiesOnly yes
+          EOF
+
+      - name: Clone Pages repo
+        run: |
+          git clone ssh://dad-pages/doug/Pages.git Pages
+
+      - name: Install rsync
+        run: |
+          apt-get update && apt-get install -y rsync
 
       - name: Deploy to Dad server via rsync
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
-          apt-get update && apt-get install -y rsync openssh-client
-
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 2222 dad > ~/.ssh/known_hosts
-
-          rsync -avz --delete -e "ssh -p 2222 -i ~/.ssh/id_rsa -o IdentitiesOnly=yes" RunUpdates/ runner@dad:/srv/forgejo-pages/RunUpdates/
+          rsync -avz --delete Pages/RunUpdates/ dad-runupdates:/srv/forgejo-pages/RunUpdates/
