@@ -238,8 +238,8 @@ jobs:
           cp packaging/dashboard/dashboard.js dashboard/
           cp artifacts/metadata.json dashboard/
 
-          mkdir -p RunUpdates/artifacts
-          cp -r artifacts/Run* RunUpdates/artifacts/
+          mkdir -p dashboard/artifacts
+          cp -r artifacts/* dashboard/artifacts/
 
           curl -s -o dashboard/qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
