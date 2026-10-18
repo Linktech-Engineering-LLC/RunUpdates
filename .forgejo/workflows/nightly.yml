@@ -243,7 +243,7 @@ jobs:
 
       - name: Clone global Pages repo
         env:
-          FORGEJO_SSH_KEY: ${{ secrets.Pages-SSH-Key }}
+          FORGEJO_SSH_KEY: ${{ secrets.PAGES_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
           echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_ed25519
