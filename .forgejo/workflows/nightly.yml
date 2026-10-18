@@ -322,4 +322,5 @@ jobs:
 
       - name: Deploy to Dad server via rsync
         run: |
-          rsync -avz --delete Pages/RunUpdates/ dad-runupdates:/srv/forgejo-pages/RunUpdates/
+          rsync -avz --delete -e "ssh -o IdentitiesOnly=yes" Pages/RunUpdates/ dad-runupdates:/srv/forgejo-pages/RunUpdates/
+
