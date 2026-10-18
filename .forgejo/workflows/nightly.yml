@@ -215,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout main repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -234,38 +234,14 @@ jobs:
       - name: Build dashboard folder
         run: |
           mkdir -p dashboard
-
-          # Copy static template
           cp packaging/dashboard/index.html dashboard/
-
-          # Copy JS
           cp packaging/dashboard/dashboard.js dashboard/
-
-          # Copy metadata
           cp artifacts/metadata.json dashboard/
 
-          # Generate QR
           curl -s -o dashboard/qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
 
-      - name: Switch to pages branch
-        run: |
-          if git show-ref --verify --quiet refs/heads/pages; then
-            git checkout pages
-          else
-            git checkout --orphan pages
-          fi
-
-      - name: Wipe branch contents
-        run: |
-          git rm -rf .
-          rm -rf *
-
-      - name: Copy dashboard
-        run: |
-          cp -r dashboard/* .
-
-      - name: Push dashboard
+      - name: Clone Pages repo
         env:
           FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
@@ -278,9 +254,15 @@ jobs:
 
           ssh-keyscan -t ed25519 -p 2222 dad >> ~/.ssh/known_hosts
 
+          git clone ssh://forgejo@dad:2222/Linux/RunUpdates-Pages.git pagesrepo
+          cd pagesrepo
+
+          git rm -rf .
+          cp -r ../dashboard/* .
+
           git add .
           git commit -m "Nightly dashboard update"
-          git push origin pages --force
+          git push origin main --force
 
   publish-dashboard:
     runs-on: ubuntu-latest
