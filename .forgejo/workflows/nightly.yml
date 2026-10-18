@@ -277,34 +277,11 @@ jobs:
     needs: create-dashboard
 
     steps:
-      - name: Checkout pages branch
+      - name: Checkout Pages repo
         uses: actions/checkout@v4
         with:
-          ref: pages
-
-      - name: Download nightly artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: nightly
-          path: artifacts
-
-      - name: Assemble publish folder
-        run: |
-          rm -rf publish
-          mkdir -p publish
-
-          # Copy dashboard contents from pages branch
-          cp dashboard/index.html publish/
-          cp dashboard/dashboard.js publish/
-          cp dashboard/metadata.json publish/
-          cp dashboard/qr.png publish/
-
-          # Copy artifacts (but NOT metadata.json)
-          mkdir -p publish/artifacts
-          cp artifacts/*.rpm publish/artifacts/ || true
-          cp artifacts/*.deb publish/artifacts/ || true
-          cp artifacts/*.zip publish/artifacts/ || true
-          cp artifacts/*.tgz publish/artifacts/ || true
+          repository: doug/Pages
+          ref: master
 
       - name: Deploy to Dad server via rsync
         env:
@@ -317,4 +294,4 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -p 2222 dad >> ~/.ssh/known_hosts
 
-          rsync -avz --delete -e "ssh -p 2222" publish/ runner@dad:/srv/forgejo-pages/RunUpdates/
+          rsync -avz --delete -e "ssh -p 2222 -i ~/.ssh/id_rsa" RunUpdates/ runner@dad:/srv/forgejo-pages/RunUpdates/
