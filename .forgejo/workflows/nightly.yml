@@ -293,15 +293,13 @@ jobs:
 
           # SSH setup (this was missing!)
           mkdir -p ~/.ssh
-          echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_ed25519
+          echo "${{ secrets.RUNUPDATES_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_ed25519
 
-          ssh-keyscan -t rsa -p 2222 dad >> ~/.ssh/known_hosts
-          ssh-keyscan -t ecdsa -p 2222 dad >> ~/.ssh/known_hosts
-          ssh-keyscan -t ed25519 -p 2222 dad >> ~/.ssh/known_hosts
+          ssh-keyscan -t ed25519 -p 2222 runner@dad >> ~/.ssh/known_hosts
 
           git remote add origin ssh://forgejo@dad:2222/Linux/RunUpdates.git
 
