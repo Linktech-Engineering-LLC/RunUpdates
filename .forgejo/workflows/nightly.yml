@@ -282,7 +282,7 @@ jobs:
 
       - name: Publish dashboard via throwaway repo
         env:
-          FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATESTOKEN }}
+          FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
           mkdir publish
           cd publish
