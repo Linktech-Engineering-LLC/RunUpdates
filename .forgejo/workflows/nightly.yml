@@ -277,12 +277,23 @@ jobs:
     needs: create-dashboard
 
     steps:
+      - name: Force SSH port 2222
+        run: |
+          echo "GIT_SSH_COMMAND=ssh -p 2222" >> $GITHUB_ENV
+
+      - name: Add Dad host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p 2222 dad >> ~/.ssh/known_hosts
+
       - name: Checkout Pages repo
         uses: actions/checkout@v4
         with:
           repository: doug/Pages
-          ssh-key: ${{ secrets.SSH_PAGES_KEY }}
           ref: master
+          ssh-key: ${{ secrets.SSH_PAGES_KEY }}
+          ssh-strict: false
+          fetch-depth: 1
 
       - name: Deploy to Dad server via rsync
         env:
