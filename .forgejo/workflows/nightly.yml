@@ -294,6 +294,13 @@ jobs:
           ssh-key: ${{ secrets.SSH_PAGES_KEY }}
           ssh-strict: false
           fetch-depth: 1
+          ssh-user: forgejo
+          ssh-host: dad
+          ssh-port: 2222
+
+      - name: Fix remote URL to use SSH port 2222
+        run: |
+          git remote set-url origin "ssh://forgejo@dad:2222/doug/Pages.git"
 
       - name: Deploy to Dad server via rsync
         env:
