@@ -241,9 +241,9 @@ jobs:
           curl -s -o dashboard/qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
 
-      - name: Clone Pages repo
+      - name: Clone global Pages repo
         env:
-          FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
+          FORGEJO_SSH_KEY: ${{ secrets.Pages-SSH-Key }}
         run: |
           mkdir -p ~/.ssh
           echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_ed25519
@@ -254,14 +254,15 @@ jobs:
 
           ssh-keyscan -t ed25519 -p 2222 dad >> ~/.ssh/known_hosts
 
-          git clone ssh://forgejo@dad:2222/Linux/RunUpdates-Pages.git pagesrepo
+          git clone ssh://forgejo@dad:2222/doug/Pages.git pagesrepo
           cd pagesrepo
 
-          git rm -rf .
-          cp -r ../dashboard/* .
+          mkdir -p RunUpdates
+          rm -rf RunUpdates/*
+          cp -r ../dashboard/* RunUpdates/
 
           git add .
-          git commit -m "Nightly dashboard update"
+          git commit -m "Nightly RunUpdates dashboard update"
           git push origin main --force
 
   publish-dashboard:
