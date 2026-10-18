@@ -285,9 +285,8 @@ jobs:
           FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
           mkdir publish
-          cd publish
 
-          git init
+          git init publish
           git config user.name "forgejo-actions"
           git config user.email "forgejo-actions@noreply.local"
 
@@ -301,11 +300,12 @@ jobs:
 
           ssh-keyscan -t ed25519 -p 2222 dad >> ~/.ssh/known_hosts
 
-          git remote add origin ssh://forgejo@dad:2222/linux/runupdates.git
+          git remote add origin ssh://forgejo@dad:2222/Linux/RunUpdates.git
 
           git fetch origin pages || true
           git checkout pages || git checkout --orphan pages
 
+          cd publish
           git rm -rf .
           cp -r ../dashboard/ .
 
