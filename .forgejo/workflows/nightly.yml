@@ -237,6 +237,7 @@ jobs:
           cp packaging/dashboard/index.html dashboard/
           cp packaging/dashboard/dashboard.js dashboard/
           cp artifacts/metadata.json dashboard/
+          cp -r ../archives/* RunUpdates/archives/
 
           curl -s -o dashboard/qr.png \
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
