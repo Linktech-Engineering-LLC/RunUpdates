@@ -20,28 +20,28 @@ jobs:
           chmod 600 ~/.ssh/id_pages
 
           # RunUpdates key (runner user)
-          echo "$RUNUPDATES_SSH_KEY" > ~/.ssh/id_runupdates
+          echo "$RUNUPDATES_SSH_KEY" >> ~/.ssh/id_runupdates
           chmod 600 ~/.ssh/id_runupdates
 
           # Known hosts
-          ssh-keyscan -p 2222 dad > ~/.ssh/known_hosts
+          ssh-keyscan -p 2222 dad >> ~/.ssh/known_hosts
 
           # SSH config for both identities
           cat <<EOF > ~/.ssh/config
-            Host dad-pages
-                HostName dad
-                Port 2222
-                User forgejo
-                IdentityFile ~/.ssh/id_pages
-                IdentitiesOnly yes
+          Host dad-pages
+              HostName dad
+              Port 2222
+              User forgejo
+              IdentityFile ~/.ssh/id_pages
+              IdentitiesOnly yes
 
-            Host dad-runupdates
-                HostName dad
-                Port 2222
-                User runner
-                IdentityFile ~/.ssh/id_runupdates
-                IdentitiesOnly yes
-            EOF
+          Host dad-runupdates
+              HostName dad
+              Port 2222
+              User runner
+              IdentityFile ~/.ssh/id_runupdates
+              IdentitiesOnly yes
+          EOF
 
       - name: Clone Pages repo
         run: |
