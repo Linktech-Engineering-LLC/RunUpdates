@@ -23,7 +23,8 @@ jobs:
           echo "$RUNUPDATES_SSH_KEY" > /github/home/.ssh/id_runupdates
           chmod 600 /github/home/.ssh/id_runupdates
 
-          ssh-keyscan -p 2222 dad > /github/home/.ssh/known_hosts
+          # Append, never overwrite
+          ssh-keyscan -p 2222 dad >> /github/home/.ssh/known_hosts
 
           cat <<EOF > /github/home/.ssh/config
           Host dad-pages
@@ -43,7 +44,9 @@ jobs:
 
       - name: Clone Pages repo
         run: |
-          git clone ssh://dad-pages/doug/Pages.git Pages
+          git clone ssh://forgejo@dad:2222/doug/Pages.git Pages
+          cd Pages
+          git remote set-url origin ssh://forgejo@dad:2222/doug/Pages.git
 
       - name: Install rsync
         run: |
@@ -51,4 +54,7 @@ jobs:
 
       - name: Deploy dashboard via rsync
         run: |
-          rsync -avz --delete -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" Pages/RunUpdates/ dad-runupdates:/srv/forgejo-pages/RunUpdates/
+          rsync -avz --delete \
+            -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" \
+            Pages/RunUpdates/ \
+            dad-runupdates:/srv/forgejo-pages/RunUpdates/
