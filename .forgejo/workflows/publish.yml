@@ -20,9 +20,9 @@ jobs:
           chmod 600 /github/home/.ssh/id_runupdates
 
           # Append, never overwrite
-          ssh-keyscan -p 2222 -t ed25519 dad > /github/home/.ssh/known_host
-          cat /github/home/.ssh/known_host
-          
+          ssh-keyscan -p 2222 -t ed25519 dad > /github/home/.ssh/known_hosts
+          cat /github/home/.ssh/known_hosts
+
           cat <<EOF > /github/home/.ssh/config
           Host dad-runupdates
               HostName dad
