@@ -37,7 +37,7 @@ jobs:
           git clone http://doug:${{ secrets.RUNUPDATESTOKEN }}@dad:3000/doug/Pages.git Pages
           cd Pages
           git remote set-url origin http://doug:${{ secrets.RUNUPDATESTOKEN }}@dad:3000/doug/Pages.git
-
+          git ls-remote
       - name: Install rsync
         run: |
           apt-get update && apt-get install -y rsync
@@ -45,6 +45,6 @@ jobs:
       - name: Deploy dashboard via rsync
         run: |
           rsync -avz --delete \
-            -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" \
+            -e "ssh -F ~/.ssh/config -o IdentitiesOnly=yes" \
             Pages/RunUpdates/ \
             dad-runupdates:/srv/forgejo-pages/RunUpdates/
