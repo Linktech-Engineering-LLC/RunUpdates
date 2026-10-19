@@ -21,9 +21,9 @@ jobs:
 
           # Append, never overwrite
           cat <<EOF >> /github/home/.ssh/known_hosts
-          [dad]:2222 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6iH1QdUQ4Bc/OU1uHxmq6ogNHk9ObiTTIIKo8tarXaFcqDKrf/XNRFpXReSrFCxzR344l+a8h4IUP1qrOxEyxUrkAXqFiMIFoaLsGfLQxPk0ehcIZQ+a/4tsC8rUvvnIvlJKy5wY8nSlNNusctfGVkRw/A2dhfyLOG03av7/euH18mEM+5Qok5rGl8HRCauReUepF9rGjujC9NC8Tk8OLrM5OKMCuUsdEKZkRPk22IiQMVEUG8IqZchJ8AOEYIkmbHSWh3s4+1g4Zx7/4DyVh0M9xpi9/PUEAvwVUyKQTJwp98GGpyI92/BAucRQlENXkcA5yUS52wy6/X/2DaXlKXvsVuPNT4YupqcQFfKYN5T4FTRoH5O6E1+4L+MQY9dy42bpTKvAGmrEeh1PnZP8/CdbZY2VJ3hglCvjytwZbqT/Fc6LGHgsChX+V0q0emj2AQw3JxRSIqNxYPlx2mwSiGK27nfleuDxA+WoeCB2ggSP+zBH+mhuJoU9KcmYecwM=
-          [dad]:2222 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBB3roT956PKBfI0cmiw+YlYQcutV+UwbK/RSGhbgoHRZfNHW9pjyQLsK1TpNAhlP2YZgLKCSBlbA+Xvy6yihwPk=
-          [dad]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICVPET4rtLlJV01hpY0DGJnri53tiUkV+GDs0K6RDtmi
+          [dad-runupdates]:2222 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6iH1QdUQ4Bc/OU1uHxmq6ogNHk9ObiTTIIKo8tarXaFcqDKrf/XNRFpXReSrFCxzR344l+a8h4IUP1qrOxEyxUrkAXqFiMIFoaLsGfLQxPk0ehcIZQ+a/4tsC8rUvvnIvlJKy5wY8nSlNNusctfGVkRw/A2dhfyLOG03av7/euH18mEM+5Qok5rGl8HRCauReUepF9rGjujC9NC8Tk8OLrM5OKMCuUsdEKZkRPk22IiQMVEUG8IqZchJ8AOEYIkmbHSWh3s4+1g4Zx7/4DyVh0M9xpi9/PUEAvwVUyKQTJwp98GGpyI92/BAucRQlENXkcA5yUS52wy6/X/2DaXlKXvsVuPNT4YupqcQFfKYN5T4FTRoH5O6E1+4L+MQY9dy42bpTKvAGmrEeh1PnZP8/CdbZY2VJ3hglCvjytwZbqT/Fc6LGHgsChX+V0q0emj2AQw3JxRSIqNxYPlx2mwSiGK27nfleuDxA+WoeCB2ggSP+zBH+mhuJoU9KcmYecwM=
+          [dad-runupdates]:2222 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBB3roT956PKBfI0cmiw+YlYQcutV+UwbK/RSGhbgoHRZfNHW9pjyQLsK1TpNAhlP2YZgLKCSBlbA+Xvy6yihwPk=
+          [dad-runupdates]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICVPET4rtLlJV01hpY0DGJnri53tiUkV+GDs0K6RDtmi
           EOF
 
           cat <<EOF > /github/home/.ssh/config
