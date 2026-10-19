@@ -20,7 +20,7 @@ jobs:
           chmod 600 ~/.ssh/id_runupdates
 
           # Append, never overwrite
-          ssh-keyscan -p 2222 -t ed25519 > ~/.ssh/known_host
+          ssh-keyscan -p 2222 -t ed25519 dad > ~/.ssh/known_host
           cat ~/.ssh/known_host
 
           cat <<EOF > ~/.ssh/config
