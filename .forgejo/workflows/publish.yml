@@ -26,11 +26,20 @@ jobs:
           [dad]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICVPET4rtLlJV01hpY0DGJnri53tiUkV+GDs0K6RDtmi
           EOF
 
+          cat <<EOF > /github/home/.ssh/config
+          Host dad-runupdates
+              HostName dad
+              Port 2222
+              User runner
+              IdentityFile /github/home/.ssh/id_runupdates
+              IdentitiesOnly yes
+          EOF
+
       - name: Clone Pages repo
         run: |
           git clone http://doug:${{ secrets.RUNUPDATESTOKEN }}@dad:3000/doug/Pages.git Pages
           cd Pages
-          git remote set-url origin http://doug:${{ secrets.CI_TOKEN }}@dad:3000/doug/Pages.git
+          git remote set-url origin http://doug:${{ secrets.RUNUPDATESTOKEN }}@dad:3000/doug/Pages.git
 
       - name: Install rsync
         run: |
