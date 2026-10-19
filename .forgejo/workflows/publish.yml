@@ -7,38 +7,37 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      GIT_SSH_COMMAND: "ssh -o IdentitiesOnly=yes"
+      GIT_SSH_COMMAND: "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes"
 
     steps:
       - name: Setup SSH keys and config
         env:
-          HOME: /home/actions
           SSH_PAGES_KEY: ${{ secrets.SSH_PAGES_KEY }}
           RUNUPDATES_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
-          mkdir -p $HOME/.ssh
+          mkdir -p /github/home/.ssh
 
-          echo "$SSH_PAGES_KEY" > $HOME/.ssh/id_pages
-          chmod 600 $HOME/.ssh/id_pages
+          echo "$SSH_PAGES_KEY" > /github/home/.ssh/id_pages
+          chmod 600 /github/home/.ssh/id_pages
 
-          echo "$RUNUPDATES_SSH_KEY" > $HOME/.ssh/id_runupdates
-          chmod 600 $HOME/.ssh/id_runupdates
+          echo "$RUNUPDATES_SSH_KEY" > /github/home/.ssh/id_runupdates
+          chmod 600 /github/home/.ssh/id_runupdates
 
-          ssh-keyscan -p 2222 -t ed25519 dad >> $HOME/.ssh/known_hosts
+          ssh-keyscan -p 2222 -t ed25519 dad >> /github/home/.ssh/known_hosts
 
-          cat <<EOF > $HOME/.ssh/config
+          cat <<EOF > /github/home/.ssh/config
           Host dad-pages
               HostName dad
               Port 2222
               User forgejo
-              IdentityFile $HOME/.ssh/id_pages
+              IdentityFile /github/home/.ssh/id_pages
               IdentitiesOnly yes
 
           Host dad-runupdates
               HostName dad
               Port 2222
               User runner
-              IdentityFile $HOME/.ssh/id_runupdates
+              IdentityFile /github/home/.ssh/id_runupdates
               IdentitiesOnly yes
           EOF
 
@@ -52,4 +51,4 @@ jobs:
 
       - name: Deploy dashboard via rsync
         run: |
-          rsync -avz --delete -e "ssh -o IdentitiesOnly=yes" Pages/RunUpdates/ dad-runupdates:/srv/forgejo-pages/RunUpdates/
+          rsync -avz --delete -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" Pages/RunUpdates/ dad-runupdates:/srv/forgejo-pages/RunUpdates/
