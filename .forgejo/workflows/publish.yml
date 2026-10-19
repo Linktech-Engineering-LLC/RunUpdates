@@ -23,7 +23,7 @@ jobs:
           echo "$RUNUPDATES_SSH_KEY" > /github/home/.ssh/id_runupdates
           chmod 600 /github/home/.ssh/id_runupdates
 
-          ssh-keyscan -p 2222 dad >> /github/home/.ssh/known_hosts
+          ssh-keyscan -p 2222 dad > /github/home/.ssh/known_hosts
 
           cat <<EOF > /github/home/.ssh/config
           Host dad-pages
