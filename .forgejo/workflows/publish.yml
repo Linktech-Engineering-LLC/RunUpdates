@@ -47,6 +47,3 @@ jobs:
             -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" \
             Pages/RunUpdates/ \
             dad-runupdates:/srv/forgejo-pages/RunUpdates/
-      - name: Debug local Pages directory
-        run: |
-          ls -R Pages/RunUpdates/
