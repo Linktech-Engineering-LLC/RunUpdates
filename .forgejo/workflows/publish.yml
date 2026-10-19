@@ -12,37 +12,33 @@ jobs:
     steps:
       - name: Setup SSH keys and config
         env:
+          HOME: /home/actions
           SSH_PAGES_KEY: ${{ secrets.SSH_PAGES_KEY }}
           RUNUPDATES_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
-          
         run: |
-          mkdir -p ~/.ssh
+          mkdir -p $HOME/.ssh
 
-          # Pages key (forgejo user)
-          echo "$SSH_PAGES_KEY" > ~/.ssh/id_pages
-          chmod 600 ~/.ssh/id_pages
+          echo "$SSH_PAGES_KEY" > $HOME/.ssh/id_pages
+          chmod 600 $HOME/.ssh/id_pages
 
-          # RunUpdates key (runner user)
-          echo "$RUNUPDATES_SSH_KEY" > ~/.ssh/id_runupdates
-          chmod 600 ~/.ssh/id_runupdates
+          echo "$RUNUPDATES_SSH_KEY" > $HOME/.ssh/id_runupdates
+          chmod 600 $HOME/.ssh/id_runupdates
 
-          # Known hosts
-          ssh-keyscan -p 2222 dad ll>> ~/.ssh/known_hosts
+          ssh-keyscan -p 2222 -t ed25519 dad >> $HOME/.ssh/known_hosts
 
-          # SSH config for both identities
-          cat <<EOF > ~/.ssh/config
+          cat <<EOF > $HOME/.ssh/config
           Host dad-pages
               HostName dad
               Port 2222
               User forgejo
-              IdentityFile ~/.ssh/id_pages
+              IdentityFile $HOME/.ssh/id_pages
               IdentitiesOnly yes
 
           Host dad-runupdates
               HostName dad
               Port 2222
               User runner
-              IdentityFile ~/.ssh/id_runupdates
+              IdentityFile $HOME/.ssh/id_runupdates
               IdentitiesOnly yes
           EOF
 
