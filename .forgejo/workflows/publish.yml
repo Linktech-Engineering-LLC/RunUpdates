@@ -24,7 +24,7 @@ jobs:
           chmod 600 /github/home/.ssh/id_runupdates
 
           # Append, never overwrite
-          ssh-keyscan -p 2222 dad >> /github/home/.ssh/known_hosts
+          echo "dad:2222 SHA256:S8XuCWXWm/lbWk4Ma1T7Fcy+xK902j9Qr2ooX/e6kvQ" >> /github/home/.ssh/known_hosts
 
           cat <<EOF > /github/home/.ssh/config
           Host dad-pages
