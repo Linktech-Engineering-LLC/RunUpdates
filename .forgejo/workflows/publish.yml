@@ -14,16 +14,16 @@ jobs:
         env:
           RUNUPDATES_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
-          mkdir -p /github/home/.ssh
+          mkdir -p ~/.ssh
 
-          echo "$RUNUPDATES_SSH_KEY" > /github/home/.ssh/id_runupdates
-          chmod 600 /github/home/.ssh/id_runupdates
+          echo "$RUNUPDATES_SSH_KEY" > ~/.ssh/id_runupdates
+          chmod 600 ~/.ssh/id_runupdates
 
           # Append, never overwrite
           ssh-keyscan -p 2222 -t ed25519 > ~/.ssh/known_host
           cat ~/.ssh/known_host
-          
-          cat <<EOF > /github/home/.ssh/config
+
+          cat <<EOF > ~/.ssh/config
           Host dad-runupdates
               HostName dad
               Port 2222
