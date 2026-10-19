@@ -48,9 +48,9 @@ jobs:
 
       - name: Clone Pages repo
         run: |
-          git clone ssh://forgejo@dad:2222/doug/Pages.git Pages
+          git clone http://doug:${{ secrets.CI_TOKEN }}@dad:3000/doug/Pages.git Pages
           cd Pages
-          git remote set-url origin ssh://forgejo@dad:2222/doug/Pages.git
+          git remote set-url origin http://doug:${{ secrets.CI_TOKEN }}@dad:3000/doug/Pages.git
 
       - name: Install rsync
         run: |
