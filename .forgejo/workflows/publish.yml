@@ -7,23 +7,23 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      GIT_SSH_COMMAND: "ssh -F ~/.ssh/config -o IdentitiesOnly=yes"
+      GIT_SSH_COMMAND: "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes"
 
     steps:
       - name: Setup SSH keys and config
         env:
           RUNUPDATES_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
         run: |
-          mkdir -p ~/.ssh
+          mkdir -p /github/home/.ssh
 
-          echo "$RUNUPDATES_SSH_KEY" > ~/.ssh/id_runupdates
-          chmod 600 ~/.ssh/id_runupdates
+          echo "$RUNUPDATES_SSH_KEY" > /github/home/.ssh/id_runupdates
+          chmod 600 /github/home/.ssh/id_runupdates
 
           # Append, never overwrite
-          ssh-keyscan -p 2222 -t ed25519 dad > ~/.ssh/known_host
-          cat ~/.ssh/known_host
+          ssh-keyscan -p 2222 -t ed25519 dad > /github/home/.ssh/known_host
+          cat /github/home/.ssh/known_host
 
-          cat <<EOF > ~/.ssh/config
+          cat <<EOF > /github/home/.ssh/config
           Host dad-runupdates
               HostName dad
               Port 2222
@@ -37,7 +37,6 @@ jobs:
           git clone http://doug:${{ secrets.RUNUPDATESTOKEN }}@dad:3000/doug/Pages.git Pages
           cd Pages
           git remote set-url origin http://doug:${{ secrets.RUNUPDATESTOKEN }}@dad:3000/doug/Pages.git
-
       - name: Install rsync
         run: |
           apt-get update && apt-get install -y rsync
@@ -45,6 +44,6 @@ jobs:
       - name: Deploy dashboard via rsync
         run: |
           rsync -avz --delete \
-            -e "ssh -F ~/.ssh/config -o IdentitiesOnly=yes" \
+            -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" \
             Pages/RunUpdates/ \
             dad-runupdates:/srv/forgejo-pages/RunUpdates/
