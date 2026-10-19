@@ -21,7 +21,8 @@ jobs:
 
           # Append, never overwrite
           ssh-keyscan -p 2222 -t ed25519 dad > /github/home/.ssh/known_host
-
+          cat /github/home/.ssh/known_host
+          
           cat <<EOF > /github/home/.ssh/config
           Host dad-runupdates
               HostName dad
