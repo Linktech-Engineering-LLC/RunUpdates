@@ -6,12 +6,15 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      GIT_SSH_COMMAND: "ssh -o IdentitiesOnly=yes"
 
     steps:
       - name: Setup SSH keys and config
         env:
           SSH_PAGES_KEY: ${{ secrets.SSH_PAGES_KEY }}
           RUNUPDATES_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
+          
         run: |
           mkdir -p ~/.ssh
 
@@ -24,7 +27,7 @@ jobs:
           chmod 600 ~/.ssh/id_runupdates
 
           # Known hosts
-          ssh-keyscan -p 2222 -t ed25519 dad ll>> ~/.ssh/known_hosts
+          ssh-keyscan -p 2222 dad ll>> ~/.ssh/known_hosts
 
           # SSH config for both identities
           cat <<EOF > ~/.ssh/config
