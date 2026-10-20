@@ -22,13 +22,10 @@ jobs:
           # Fetch actual host key for dad
           ssh-keyscan -p 2222 -t ed25519 dad >> /github/home/.ssh/known_hosts
 
-          # Fetch actual host key for alias dad-runupdates
-          ssh-keyscan -p 2222 -t ed25519 dad | sed 's/^dad/[dad-runupdates]/' >> /github/home/.ssh/known_hosts
-
           cat /github/home/.ssh/known_hosts
 
           cat <<EOF > /github/home/.ssh/config
-          Host dad-runupdates
+          Host dad
               HostName dad
               Port 2222
               User runner
