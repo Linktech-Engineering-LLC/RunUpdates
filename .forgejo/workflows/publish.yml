@@ -49,4 +49,5 @@ jobs:
             -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" \
             Pages/RunUpdates/ \
             dad:/srv/forgejo-pages/RunUpdates/
-          ssh runner@dad -p 2222 "ls -la /srv/forgejo-pages/RunUpdates"
+
+          ssh -F /github/home/.ssh/config dad "ls -l /srv/forgejo-pages/RunUpdates"
