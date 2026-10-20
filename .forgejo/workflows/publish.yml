@@ -20,6 +20,7 @@ jobs:
           chmod 600 /github/home/.ssh/id_runupdates
 
           # Fetch actual host key for dad
+          ssh-keyscan -p 2222 -t ed25519 192.168.x.x >> /github/home/.ssh/known_hosts
           ssh-keyscan -p 2222 -t ed25519 dad >> /github/home/.ssh/known_hosts
 
           cat /github/home/.ssh/known_hosts
