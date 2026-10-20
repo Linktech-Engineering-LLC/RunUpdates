@@ -47,4 +47,4 @@ jobs:
           rsync -avz --delete \
             -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" \
             Pages/RunUpdates/ \
-            dad-runupdates:/srv/forgejo-pages/RunUpdates/
+            dad:/srv/forgejo-pages/RunUpdates/
