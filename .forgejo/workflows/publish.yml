@@ -32,7 +32,7 @@ jobs:
               IdentityFile /github/home/.ssh/id_runupdates
               IdentitiesOnly yes
           EOF
-          ssh -vvv -F /github/home/.ssh/config
+          ssh -vvv -F /github/home/.ssh/config dad
 
       - name: Clone Pages repo
         run: |
