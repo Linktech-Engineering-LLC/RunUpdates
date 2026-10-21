@@ -66,17 +66,17 @@ jobs:
       - name: Install SSH key
         run: |
           mkdir -p /home/github/.ssh
-          echo "${{ secrets.RUNUPDATES_GITSSH_KEY }}" > /home/github/.ssh/git_ed25519
-          chmod 600 /home/github/.ssh/git_ed25519
+          echo "${{ secrets.RUNUPDATES_GITSSH_KEY }}" >  ~/.ssh/id_ed25519
+          chmod 600  ~/.ssh/id_ed25519
 
       - name: Add GitHub to known_hosts
         run: |
-          ssh-keyscan github.com >> /home/github/.ssh/known_hosts
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
 
       - name: Start SSH agent
         run: |
           eval "$(ssh-agent -s)"
-          ssh-add /home/github/.ssh/git_ed25519
+          ssh-add ~/.ssh/id_ed25519
       - name: Test GitHub SSH
         run: |
           ssh -T git@github.com || true
