@@ -81,15 +81,21 @@ jobs:
 
       - name: Install Python build dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install pyinstaller
+          python3 -m pip install \
+            --break-system-packages \
+            --upgrade pip
+          python3 -m pip install \
+            --break-system-packages \
+            pyinstaller
 
       - name: Install PythonTools
         run: |
           if [ ! -d PythonTools ]; then
             git clone http://dad:3000/linux/PythonTools.git
           fi
-          python3 -m pip install PythonTools/
+          python3 -m pip install \
+            --break-system-packages \
+            PythonTools/
 
       - name: Make scripts executable
         run: chmod +x packaging/*.sh

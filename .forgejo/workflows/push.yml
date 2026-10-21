@@ -23,9 +23,8 @@ jobs:
           apt-get update
           apt-get install -y shellcheck
           python3 -m pip install \
-            ruff \
-            black \
-            yamllint
+              --break-system-packages \
+              ruff black yamllint
 
       - name: Python compile check
         run: |
