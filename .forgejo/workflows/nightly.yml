@@ -1,3 +1,25 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Leon McClatchey, Linktech Engineering LLC
+#
+# Workflow: nightly-build.yml
+# Package: RunUpdates
+# Author: Leon McClatchey
+# Company: Linktech Engineering LLC
+# Created: 2026-10-19
+# Modified: 2026-10-21
+# Version: 2.0.0
+#
+# Description:
+#   Builds RunUpdates artifacts and publishes workflow artifacts
+#   for downstream dashboard generation.
+#
+# Dependencies:
+#   Triggered manually or by schedule.
+#   Produces artifact: nightly
+#
+# Consumers:
+#   dashboard.yml
+
 name: Forgejo Nightly Build
 
 on:
@@ -209,69 +231,4 @@ jobs:
         with:
           name: nightly
           path: artifacts/
-
-  create-dashboard:
-    needs: nightly-build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout main repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Configure git identity
-        run: |
-          git config user.name "forgejo-actions"
-          git config user.email "forgejo-actions@noreply.local"
-
-      - name: Download nightly artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: nightly
-          path: artifacts
-
-      - name: Build dashboard folder
-        run: |
-          mkdir -p dashboard
-          cp packaging/dashboard/index.html dashboard/
-          cp packaging/dashboard/dashboard.js dashboard/
-          cp artifacts/metadata.json dashboard/
-
-          mkdir -p dashboard/artifacts
-          cp -r artifacts/RunUpdates* dashboard/artifacts/
-
-          curl -s -o dashboard/qr.png \
-            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
-
-      - name: Clone global Pages repo
-        env:
-          FORGEJO_SSH_KEY: ${{ secrets.SSH_PAGES_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_ed25519
-
-          ssh-keyscan -t ed25519 -p 2222 dad >> ~/.ssh/known_hosts
-
-          ssh -T -p 2222 forgejo@dad
-
-          git clone ssh://forgejo@dad:2222/doug/Pages.git pagesrepo
-          cd pagesrepo
-
-          mkdir -p RunUpdates
-          rm -rf RunUpdates/*
-          cp -r ../dashboard/* RunUpdates/
-
-          git config --global user.name "forgejo-actions"
-          git config --global user.email "forgejo-actions@noreply.local"
-
-          git add .
-          git commit -m "Nightly RunUpdates dashboard update"
-          git branch -M main
-          git push origin main --force
-
 

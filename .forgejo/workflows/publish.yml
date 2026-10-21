@@ -1,8 +1,29 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Leon McClatchey, Linktech Engineering LLC
+#
+# Workflow: publish.yml
+# Package: RunUpdates
+# Author: Leon McClatchey
+# Company: Linktech Engineering LLC
+# Created: 2026-10-21
+# Modified: 2026-10-21
+# Version: 1.0.0
+#
+# Description:
+#   Publishes Pages content to the local Apache server.
+#
+# Dependencies:
+#   workflow_run -> dashboard
+#   workflow_dispatch
+#
+# Target:
+#   /var/www/html/RunUpdates
+
 name: publish-dashboard
 
 on:
   workflow_run:
-    workflows: ["nightly-build"]
+    workflows: ["create-dashboard"]
     types:
       - completed
   workflow_dispatch:
