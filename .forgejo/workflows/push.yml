@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: dad:3000/linux/leon-ci:latest
+    needs: lint
 
     steps:
       - name: Checkout code
@@ -64,18 +65,18 @@ jobs:
 
       - name: Install SSH key
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.RUNUPDATES_GITSSH_KEY }}" > ~/.ssh/id_ed25519
+          mkdir -p /home/github/.ssh
+          echo "${{ secrets.RUNUPDATES_GITSSH_KEY }}" > /home/github/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
       - name: Add GitHub to known_hosts
         run: |
-          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+          ssh-keyscan -t ed25519 github.com >> /home/github/.ssh/known_hosts
 
       - name: Start SSH agent
         run: |
           eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_ed25519
+          ssh-add /home/github/.ssh/id_ed25519
 
       - name: Push to Remote Hub
         run: |
