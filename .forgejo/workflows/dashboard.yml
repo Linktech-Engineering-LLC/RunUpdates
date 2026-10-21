@@ -64,6 +64,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GIT_SSH_COMMAND: "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes"
+      FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
+      FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
+      FORGEJO_SSH_KEY: ${{ secrets.SSH_PAGES_KEY }}
 
     steps:
       - name: Checkout main repo
@@ -76,11 +79,29 @@ jobs:
           git config user.name "forgejo-actions"
           git config user.email "forgejo-actions@noreply.local"
 
-      - name: Download nightly artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: nightly
-          path: artifacts
+      - name: Download nightly metadata
+        run: |
+          mkdir -p artifacts
+
+          curl -L \
+            -H "Authorization: token $FORGEJO_TOKEN" \
+            "$FORGEJO_API_ROOT/releases/tags/nightly" \
+            -o release.json
+
+      - name: Download release assets
+        run: |
+          mkdir -p artifacts
+
+          curl -s \
+            -H "Authorization: token $FORGEJO_TOKEN" \
+            "$FORGEJO_API_ROOT/releases/tags/nightly" \
+            > release.json
+
+          jq -r '.assets[] | "\(.name)|\(.browser_download_url)"' release.json |
+          while IFS='|' read NAME URL; do
+            echo "Downloading $NAME"
+            curl -L "$URL" -o "artifacts/$NAME"
+          done
 
       - name: Build dashboard folder
         run: |
@@ -96,8 +117,6 @@ jobs:
             "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/"
 
       - name: Clone global Pages repo
-        env:
-          FORGEJO_SSH_KEY: ${{ secrets.SSH_PAGES_KEY }}
         run: |
           mkdir -p ~/.ssh
           echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_ed25519
