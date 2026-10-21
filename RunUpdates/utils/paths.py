@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+
 @dataclass(frozen=True)
 class Paths:
     CONFIG_DIR: Path
@@ -25,4 +26,3 @@ class Paths:
     INVENTORY_PATH: Optional[Path]
     VAULT_PATH: Optional[Path]
     VAULT_PASSWORD_FILE: Optional[Path]
-

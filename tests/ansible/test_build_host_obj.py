@@ -15,11 +15,13 @@
 import pytest
 from RunUpdates.ansible.loader import RunUpdatesInventoryLoader, InventoryError
 
+
 @pytest.fixture
 def loader(tmp_path):
     # Minimal inventory with inheritance structure
     inv = tmp_path / "inventory.yml"
-    inv.write_text("""
+    inv.write_text(
+        """
 linux:
   vars:
     port: 1111
@@ -44,11 +46,13 @@ linux:
         commands:
           upgrade: "apt full-upgrade"
         vm_host: hypervisor-01
-""")
+"""
+    )
 
     # Minimal schema matching the above structure
     schema = tmp_path / "schema.yml"
-    schema.write_text("""
+    schema.write_text(
+        """
 root:
   type: dict
   required: true
@@ -85,12 +89,10 @@ root:
             hosts:
               type: dict
               required: false
-""")
-
-    return RunUpdatesInventoryLoader(
-        inventory_path=str(inv),
-        schema_path=str(schema)
+"""
     )
+
+    return RunUpdatesInventoryLoader(inventory_path=str(inv), schema_path=str(schema))
 
 
 def test_build_host_obj_inheritance(loader):

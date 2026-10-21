@@ -15,21 +15,30 @@
 
 from PythonTools.ansible.helpers import resolve_with_priority
 
+
 def test_cli_wins_over_env_and_default():
-    result = resolve_with_priority(cli_value="~/cli", env_value="/env", default="/default")
+    result = resolve_with_priority(
+        cli_value="~/cli", env_value="/env", default="/default"
+    )
     assert str(result).endswith("cli")
 
+
 def test_env_used_when_cli_missing():
-    result = resolve_with_priority(cli_value=None, env_value="~/env", default="/default")
+    result = resolve_with_priority(
+        cli_value=None, env_value="~/env", default="/default"
+    )
     assert str(result).endswith("env")
+
 
 def test_default_used_when_cli_and_env_missing(tmp_path):
     default = tmp_path / "default"
     result = resolve_with_priority(cli_value=None, env_value=None, default=default)
     assert result == default.resolve()
 
+
 def test_returns_none_when_all_missing():
     assert resolve_with_priority(None, None, None) is None
+
 
 def test_expands_user_home(monkeypatch):
     monkeypatch.setenv("HOME", "/fakehome")

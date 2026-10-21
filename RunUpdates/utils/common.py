@@ -31,7 +31,7 @@ from RunUpdates.core.constants import (
     VAULT_PASSWORD_ENV,
     PACKAGE_ROOT,
     INSTALL_ROOT,
-    MODE
+    MODE,
 )
 from .paths import Paths
 
@@ -48,10 +48,14 @@ def resolve_config_dir(args) -> Path:
         default = INSTALL_ROOT / "etc"
 
     return resolve_with_priority(args.config_dir, env, default)
+
+
 def resolve_schema_dir(args, config_dir) -> Path:
     env = os.getenv(SCHEMA_ENV)
     default = config_dir / "schema"
     return resolve_with_priority(args.schema_dir, env, default)
+
+
 def resolve_log_dir(args, default_base: Path) -> Path:
     """
     Resolve the log directory for RunUpdates.
@@ -63,7 +67,8 @@ def resolve_log_dir(args, default_base: Path) -> Path:
     """
     env = os.getenv(LOG_DIR_ENV)
     default = default_base / "var" / "log"
-    return resolve_with_priority(cli_value = args.log_dir, env_value = env, default = default)
+    return resolve_with_priority(cli_value=args.log_dir, env_value=env, default=default)
+
 
 def resolve_paths(args) -> Paths:
     """
@@ -80,7 +85,7 @@ def resolve_paths(args) -> Paths:
 
     # Summaries live under LOG_DIR
     summary_host_dir = log_dir / "summaries" / "hosts"
-    summary_run_dir  = log_dir / "summaries" / "runs"
+    summary_run_dir = log_dir / "summaries" / "runs"
 
     # Inventory + vault
     inventory_path = resolve_inventory_path(args.inventory, config_dir)
@@ -103,31 +108,39 @@ def resolve_paths(args) -> Paths:
         VAULT_PASSWORD_FILE=vault_password_file,
     )
 
+
 # ------------------------------------------------------------
 # Inventory resolution logic (RunUpdates-specific)
 # ------------------------------------------------------------
+
 
 def resolve_inventory_path(args_inventory: str | None, config_dir: Path) -> Path:
     env_value = os.getenv(INVENTORY_ENV)
     default_path = config_dir / "hosts.yml"
     return resolve_with_priority(args_inventory, env_value, default_path)
+
+
 # ------------------------------------------------------------
 # Vault path resolution (RunUpdates-specific)
 # ------------------------------------------------------------
+
 
 def resolve_vault_path(args_vault: str | None) -> Path | None:
     env_value = os.getenv(VAULT_PATH_ENV)
     path = resolve_with_priority(args_vault, env_value, default=None)
     return path if path else None
 
+
 def resolve_vault_password_file(args_password_file: str | None) -> Path | None:
     env_value = os.getenv(VAULT_PASSWORD_ENV)
     path = resolve_with_priority(args_password_file, env_value, default=None)
     return path if path else None
 
+
 # ------------------------------------------------------------
 # Family / Distro / Host validation (RunUpdates-specific)
 # ------------------------------------------------------------
+
 
 def validate_family_distro_host(inventory_data, family, distro, host):
     """
@@ -151,9 +164,7 @@ def validate_family_distro_host(inventory_data, family, distro, host):
     # Validate distro
     if distro:
         if distro not in family_block:
-            raise CheckArgError(
-                f"Distro '{distro}' not found under family '{family}'"
-            )
+            raise CheckArgError(f"Distro '{distro}' not found under family '{family}'")
         distro_block = family_block[distro]
     else:
         distro_block = None
@@ -161,17 +172,11 @@ def validate_family_distro_host(inventory_data, family, distro, host):
     # Validate host
     if host:
         if not distro:
-            raise CheckArgError(
-                f"Host '{host}' specified but no distro selected"
-            )
+            raise CheckArgError(f"Host '{host}' specified but no distro selected")
 
         if distro_block is None:
-            raise CheckArgError(
-                f"Distro '{distro}' not found under family '{family}'"
-            )
+            raise CheckArgError(f"Distro '{distro}' not found under family '{family}'")
 
         hosts = distro_block.get("hosts", [])
         if host not in hosts:
-            raise CheckArgError(
-                f"Host '{host}' not found under {family}/{distro}"
-            )
+            raise CheckArgError(f"Host '{host}' not found under {family}/{distro}")

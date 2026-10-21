@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
+
 # ------------------------------------------------------------
 # Colors
 # ------------------------------------------------------------
@@ -20,8 +21,10 @@ class Color:
     YELLOW = "\033[33m"
     BLUE = "\033[34m"
 
+
 def ctext(color, msg):
     return f"{color}{msg}{Color.RESET}"
+
 
 # ------------------------------------------------------------
 # Logging
@@ -31,12 +34,14 @@ def setup_logging(script_name: str, project_path: Path) -> Path:
     logs_root.mkdir(exist_ok=True)
     return logs_root / f"{script_name}_{project_path.name}.log"
 
+
 def log(msg: str, log_file: Path):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{timestamp}] {msg}"
     print(ctext(Color.BLUE, line))
     with log_file.open("a") as f:
         f.write(line + "\n")
+
 
 # ------------------------------------------------------------
 # Helpers
@@ -48,15 +53,19 @@ def rm(path: Path):
         else:
             path.unlink()
 
+
 def check_pyinstaller():
     return shutil.which("pyinstaller") is not None
+
 
 def check_upx():
     return shutil.which("upx") is not None
 
+
 def load_toml(path: Path) -> dict:
     with path.open("rb") as f:
         return tomllib.load(f)
+
 
 # ------------------------------------------------------------
 # Config loading
@@ -86,10 +95,7 @@ def load_project_metadata(project_path: Path, log_file: Path) -> dict:
             # Fall back to [project] metadata
             project_meta = pyproject_data.get("project", {})
             log("Merging [project] metadata from pyproject.toml", log_file)
-            config = {
-                **project_meta,
-                **config
-            }
+            config = {**project_meta, **config}
 
     # 3) Final merged config with defaults
     return {
@@ -104,6 +110,7 @@ def load_project_metadata(project_path: Path, log_file: Path) -> dict:
         "release_compress": bool(config.get("release_compress", False)),
     }
 
+
 # ------------------------------------------------------------
 # Versioning
 # ------------------------------------------------------------
@@ -111,6 +118,7 @@ def write_version_file(project_path: Path, version: str, log_file: Path):
     version_file = project_path / "VERSION"
     version_file.write_text(f'VERSION = "{version}"\n')
     log(f"Injected version into {version_file}", log_file)
+
 
 def bump_version_in_pyproject(project_path: Path, bump: str, log_file: Path):
     pyproject_toml = project_path / "pyproject.toml"
@@ -137,7 +145,7 @@ def bump_version_in_pyproject(project_path: Path, bump: str, log_file: Path):
         minor = 0
         patch = 0
     elif bump == "minor":
-        minor += 1 
+        minor += 1
         patch = 0
     elif bump == "patch":
         patch += 1
@@ -149,10 +157,17 @@ def bump_version_in_pyproject(project_path: Path, bump: str, log_file: Path):
     pyproject_toml.write_text(new_text)
     return new_version
 
+
 # ------------------------------------------------------------
 # Hooks
 # ------------------------------------------------------------
-def run_hook(project_path: Path, hook_path: str | None, default_names: list[str], label: str, log_file: Path):
+def run_hook(
+    project_path: Path,
+    hook_path: str | None,
+    default_names: list[str],
+    label: str,
+    log_file: Path,
+):
     hook = None
 
     if hook_path:
@@ -181,6 +196,7 @@ def run_hook(project_path: Path, hook_path: str | None, default_names: list[str]
     if result.returncode != 0:
         log(f"{label} hook failed with exit code {result.returncode}", log_file)
 
+
 # ------------------------------------------------------------
 # Entry Point Resolver
 # ------------------------------------------------------------
@@ -204,7 +220,9 @@ def resolve_entry_point(project_path: Path, meta: dict, log_file: Path) -> Path:
     # 3) Single-file layout: ProjectRoot/PackageName.py
     single_file = project_path / f"{package_name}.py"
     if single_file.exists():
-        log(f"Detected single-file project layout. Entry point: {single_file}", log_file)
+        log(
+            f"Detected single-file project layout. Entry point: {single_file}", log_file
+        )
         return single_file
 
     # 4) Nothing found
@@ -215,6 +233,7 @@ def resolve_entry_point(project_path: Path, meta: dict, log_file: Path) -> Path:
     log(f" - {single_file}", log_file)
     raise FileNotFoundError("Entry point not found in any expected location.")
 
+
 # ------------------------------------------------------------
 # Granular Build Steps
 # ------------------------------------------------------------
@@ -224,7 +243,7 @@ def clean_directories(
     build_dir: Path,
     release_dir: Path,
     log_file: Path,
-    current_version: Optional[str]
+    current_version: Optional[str],
 ):
     log("Cleaning old build directories...", log_file)
 
@@ -250,7 +269,7 @@ def clean_directories(
                 f"Existing release binary is older "
                 f"(binary mtime={binary_mtime}, source mtime={latest_source_mtime}); "
                 f"removing release_dir.",
-                log_file
+                log_file,
             )
             rm(release_dir)
 
@@ -259,7 +278,7 @@ def clean_directories(
                 f"Existing release binary is up-to-date "
                 f"(binary mtime={binary_mtime}, source mtime={latest_source_mtime}); "
                 f"keeping release_dir.",
-                log_file
+                log_file,
             )
 
     # Remove PyInstaller output dirs
@@ -276,20 +295,20 @@ def clean_directories(
         rm(pyinstaller_cache)
         log(f"Cleared PyInstaller cache: {pyinstaller_cache}", log_file)
 
+
 def get_binary_version(binary: Path) -> str | None:
     if not binary.exists():
         return None
     try:
         result = subprocess.run(
-            [str(binary), "--version"],
-            capture_output=True,
-            text=True
+            [str(binary), "--version"], capture_output=True, text=True
         )
         if result.returncode == 0:
             return result.stdout.strip()
     except Exception:
         pass
     return None
+
 
 def get_latest_source_mtime(project_path: Path) -> float:
     latest = 0.0
@@ -299,18 +318,23 @@ def get_latest_source_mtime(project_path: Path) -> float:
             latest = mtime
     return latest
 
+
 def get_binary_mtime(binary: Path) -> float | None:
     if not binary.exists():
         return None
     return binary.stat().st_mtime
 
-def build_pyinstaller_command(project_path: Path, meta: dict, args, log_file: Path) -> list[str]:
+
+def build_pyinstaller_command(
+    project_path: Path, meta: dict, args, log_file: Path
+) -> list[str]:
     entry_path = resolve_entry_point(project_path, meta, log_file)
 
     cmd = [
         "pyinstaller",
         "--onefile",
-        "--name", meta["name"],
+        "--name",
+        meta["name"],
         str(entry_path),
     ]
     python_tools_path = project_path.parent / "PythonTools"
@@ -337,6 +361,7 @@ def build_pyinstaller_command(project_path: Path, meta: dict, args, log_file: Pa
 
     return cmd
 
+
 def run_pyinstaller(cmd: list[str], args, project_path: Path, log_file: Path) -> bool:
     if args.dry_run:
         log("Dry-run mode:", log_file)
@@ -358,6 +383,7 @@ def run_pyinstaller(cmd: list[str], args, project_path: Path, log_file: Path) ->
 
     return result.returncode == 0
 
+
 def copy_binary(project_path: Path, meta: dict, log_file: Path):
     dist_dir = project_path / "dist"
     release_dir = project_path / "release"
@@ -367,21 +393,25 @@ def copy_binary(project_path: Path, meta: dict, log_file: Path):
     shutil.copy2(binary, final)
     log(f"Copied binary to {final}", log_file)
 
+
 def finalize_release(project_path: Path, meta: dict, args, log_file: Path):
     if args.release and meta["release_sign"]:
         log(f"Signing with: {meta['release_sign']}", log_file)
         subprocess.run(meta["release_sign"], shell=True)
 
+
 # ------------------------------------------------------------
 # Argument Parser
 # ------------------------------------------------------------
 def get_arguments():
-    parser = argparse.ArgumentParser(description="Reusable build script for Python projects.")
+    parser = argparse.ArgumentParser(
+        description="Reusable build script for Python projects."
+    )
     parser.add_argument(
         "project_path",
         nargs="?",
         default=".",
-        help="Path to project (defaults to current directory)"
+        help="Path to project (defaults to current directory)",
     )
     parser.add_argument("--clean-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -389,9 +419,13 @@ def get_arguments():
     parser.add_argument("--bump", choices=["major", "minor", "patch"])
     parser.add_argument("--release", action="store_true")
     parser.add_argument("--spec", help="Use an explicit PyInstaller spec file")
-    parser.add_argument("--keep-spec", action="store_true",
-                        help="Keep and auto-use an existing .spec file")
+    parser.add_argument(
+        "--keep-spec",
+        action="store_true",
+        help="Keep and auto-use an existing .spec file",
+    )
     return parser.parse_args()
+
 
 # ------------------------------------------------------------
 # Orchestrator
@@ -402,7 +436,7 @@ def main():
     project_path = Path(args.project_path).resolve()
     script_name = Path(sys.argv[0]).stem
     log_file = setup_logging(script_name, project_path)
-    
+
     meta = load_project_metadata(project_path, log_file)
     version = meta["version"]
 
@@ -425,9 +459,15 @@ def main():
         log("PyInstaller not found.", log_file)
         return
 
-    run_hook(project_path, meta["prebuild"], ["prebuild.sh", "prebuild.py"], "pre-build", log_file)
+    run_hook(
+        project_path,
+        meta["prebuild"],
+        ["prebuild.sh", "prebuild.py"],
+        "pre-build",
+        log_file,
+    )
     write_version_file(project_path, version, log_file)
-    
+
     # Determine if we should use a spec file
     spec_file = None
 
@@ -452,7 +492,13 @@ def main():
         return
 
     copy_binary(project_path, meta, log_file)
-    run_hook(project_path, meta["postbuild"], ["postbuild.sh", "postbuild.py"], "post-build", log_file)
+    run_hook(
+        project_path,
+        meta["postbuild"],
+        ["postbuild.sh", "postbuild.py"],
+        "post-build",
+        log_file,
+    )
     finalize_release(project_path, meta, args, log_file)
     clean_directories(project_path, dist_dir, build_dir, release_dir, log_file, version)
     spec_file = project_path / f"{meta['name']}.spec"
@@ -460,6 +506,7 @@ def main():
         rm(spec_file)
 
     print(ctext(Color.GREEN, f"Build complete: {meta['name']} v{version}"))
+
 
 # ------------------------------------------------------------
 if __name__ == "__main__":

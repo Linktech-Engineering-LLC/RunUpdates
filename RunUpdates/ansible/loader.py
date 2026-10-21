@@ -16,12 +16,14 @@ from typing import Any, Dict, List, Optional
 
 from PythonTools.ansible import GenericInventoryLoader, InventoryError
 
+
 class RunUpdatesInventoryLoader(GenericInventoryLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         tree = self.load()
         self.index = self.build_index(tree)
+
     # ------------------------------------------------------------
     # Normalization Layer
     # ------------------------------------------------------------
@@ -29,7 +31,7 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         self,
         family: Optional[str] = None,
         distro: Optional[str] = None,
-        host: Optional[str] = None
+        host: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Return a flattened list of fully-resolved host objects,
@@ -105,9 +107,7 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         # ------------------------------------------------------------
         for host_name, (fam, dist, host_node) in self.index["hosts"].items():
             if host_node.get("enabled", True):
-                output.append(
-                    self._build_host_obj(fam, dist, host_name, host_node)
-                )
+                output.append(self._build_host_obj(fam, dist, host_name, host_node))
 
         return output
 
@@ -149,11 +149,7 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         return index
 
     def _build_host_obj(
-        self,
-        family: str,
-        distro: str,
-        host_name: str,
-        host_node: Dict[str, Any]
+        self, family: str, distro: str, host_name: str, host_node: Dict[str, Any]
     ) -> Dict[str, Any]:
 
         # Family-level vars
@@ -176,12 +172,7 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         exit_codes = distro_vars.get("exit_codes", {}) or {}
 
         # Host-level overrides
-        host_port = (
-            host_node.get("port")
-            or distro_port
-            or family_port
-            or 22
-        )
+        host_port = host_node.get("port") or distro_port or family_port or 22
 
         # Merge commands: distro first, host overrides last
         merged_cmds = {}

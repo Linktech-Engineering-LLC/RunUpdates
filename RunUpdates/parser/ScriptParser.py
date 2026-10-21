@@ -29,8 +29,7 @@ from RunUpdates.utils.common import resolve_paths
 
 
 DESCRIPTION = (
-    f"{PROJECT_NAME} version {PROJECT_VERSION} "
-    "Manages System Patches and/or Updates"
+    f"{PROJECT_NAME} version {PROJECT_VERSION} " "Manages System Patches and/or Updates"
 )
 
 DEFAULT_SUBCOMMAND = "update"
@@ -90,7 +89,7 @@ class ScriptParser(BaseScriptParser):
         help_parser.add_argument(
             "topic",
             nargs="?",
-            help="Subcommand to show help for (inventory, update, summary)"
+            help="Subcommand to show help for (inventory, update, summary)",
         )
 
     # --------------------------------------------------------
@@ -103,16 +102,31 @@ class ScriptParser(BaseScriptParser):
         )
 
         grp = inv.add_argument_group("Inventory Listing Options")
-        grp.add_argument("--list-families", action="store_true",
-                         help="List all inventory families as JSON")
-        grp.add_argument("--list-distros", action="store_true",
-                         help="List all distros for the selected family as JSON")
-        grp.add_argument("--list-hosts", action="store_true",
-                         help="List all hosts for the selected family/distro as JSON")
-        grp.add_argument("--list-inventory", action="store_true",
-                         help="Dump full inventory block for the selected family/distro as JSON")
-        grp.add_argument("--show-metadata", action="store_true",
-                         help="Show metadata (vars) for the selected family/distro")
+        grp.add_argument(
+            "--list-families",
+            action="store_true",
+            help="List all inventory families as JSON",
+        )
+        grp.add_argument(
+            "--list-distros",
+            action="store_true",
+            help="List all distros for the selected family as JSON",
+        )
+        grp.add_argument(
+            "--list-hosts",
+            action="store_true",
+            help="List all hosts for the selected family/distro as JSON",
+        )
+        grp.add_argument(
+            "--list-inventory",
+            action="store_true",
+            help="Dump full inventory block for the selected family/distro as JSON",
+        )
+        grp.add_argument(
+            "--show-metadata",
+            action="store_true",
+            help="Show metadata (vars) for the selected family/distro",
+        )
 
         sel = inv.add_argument_group("Selection Options")
         sel.add_argument("--family", help="Target family")
@@ -136,12 +150,15 @@ class ScriptParser(BaseScriptParser):
         sel.add_argument("-H", "--host")
 
         execgrp = upd.add_argument_group("Execution Options")
-        execgrp.add_argument("--force", action="store_true",
-                             help="Force update even if checks fail")
-        execgrp.add_argument("--mode",
-                             choices=["sequential", "parallel", "distro-parallel"],
-                             default="sequential",
-                             help="Execution mode for orchestrator")
+        execgrp.add_argument(
+            "--force", action="store_true", help="Force update even if checks fail"
+        )
+        execgrp.add_argument(
+            "--mode",
+            choices=["sequential", "parallel", "distro-parallel"],
+            default="sequential",
+            help="Execution mode for orchestrator",
+        )
 
         self.update_parser = upd
 
@@ -155,12 +172,13 @@ class ScriptParser(BaseScriptParser):
         )
 
         grp = summary.add_argument_group("Summary Options")
-        grp.add_argument("--latest", action="store_true",
-                         help="Show the most recent run summary")
-        grp.add_argument("--list", action="store_true",
-                         help="List all run summaries")
-        grp.add_argument("--host", metavar="HOSTNAME",
-                         help="Show summary for a specific host")
+        grp.add_argument(
+            "--latest", action="store_true", help="Show the most recent run summary"
+        )
+        grp.add_argument("--list", action="store_true", help="List all run summaries")
+        grp.add_argument(
+            "--host", metavar="HOSTNAME", help="Show summary for a specific host"
+        )
 
         self.summary_parser = summary
 

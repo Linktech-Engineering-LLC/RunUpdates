@@ -56,7 +56,11 @@ class HostExecutor:
         name = host["name"]
         use_systemd = host.get("systemd", False)
 
-        self.systemd = SystemdRunner(session, logger=self.logger, hostname=name) if use_systemd else None
+        self.systemd = (
+            SystemdRunner(session, logger=self.logger, hostname=name)
+            if use_systemd
+            else None
+        )
 
         # -----------------------------
         # Initialize summary
@@ -128,7 +132,7 @@ class HostExecutor:
                         "exit_code": exit_code,
                         "status": status,
                     },
-                    logger=self.logger
+                    logger=self.logger,
                 )
 
             # -----------------------------
@@ -214,10 +218,7 @@ class HostExecutor:
 
         # Local execution path
         if session == "local":
-            rc = sudo_run(
-                cmd=command,
-                sudo_password=self.secrets.get("sudo_pass", "")
-            )
+            rc = sudo_run(cmd=command, sudo_password=self.secrets.get("sudo_pass", ""))
             out, exit_code, err = rc.as_tuple
         else:
             result = session.run(command)
@@ -252,7 +253,9 @@ class HostExecutor:
             status = classifier.classify(exit_code)
         else:
             if exit_code != 0:
-                raise RuntimeError(f"[{name}] Step '{step}' failed with exit code {exit_code}")
+                raise RuntimeError(
+                    f"[{name}] Step '{step}' failed with exit code {exit_code}"
+                )
             status = "success"
 
         # Parsing (check step only)
@@ -383,7 +386,7 @@ class HostExecutor:
                         "exit_code": exit_code,
                         "status": reboot_status,
                     },
-                    logger=self.logger
+                    logger=self.logger,
                 )
 
             host_summary["reboot_status"] = status
@@ -397,7 +400,9 @@ class HostExecutor:
         if host_summary["lifecycle_status"] == "in_progress":
             host_summary["lifecycle_status"] = "completed"
 
-        update_event = next((e for e in host_summary["lifecycle_events"] if e["step"] == "update"), None)
+        update_event = next(
+            (e for e in host_summary["lifecycle_events"] if e["step"] == "update"), None
+        )
         if update_event:
             host_summary["update_status"] = update_event["status"]
 

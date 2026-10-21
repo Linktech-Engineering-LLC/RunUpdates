@@ -16,16 +16,19 @@
 from RunUpdates.core.constants import CONFIG_ENV, PACKAGE_ROOT
 from RunUpdates.utils.common import resolve_config_dir
 
+
 def test_config_dir_cli_override(monkeypatch, tmp_path):
     args = type("A", (), {"config_dir": str(tmp_path / "cli")})
     result = resolve_config_dir(args)
     assert result == (tmp_path / "cli").resolve()
+
 
 def test_config_dir_env_override(monkeypatch, tmp_path):
     monkeypatch.setenv(CONFIG_ENV, str(tmp_path / "env"))
     args = type("A", (), {"config_dir": None})
     result = resolve_config_dir(args)
     assert result == (tmp_path / "env").resolve()
+
 
 def test_config_dir_default_dev_mode(monkeypatch):
     monkeypatch.setenv(CONFIG_ENV, "")

@@ -20,25 +20,19 @@ import json
 from pathlib import Path
 
 # PythonTools imports (generic only)
-from PythonTools.ansible import (
-    VaultLoader, 
-    VaultError,
-    InventoryLoadError,
-    load_yaml
-)
+from PythonTools.ansible import VaultLoader, VaultError, InventoryLoadError, load_yaml
 from PythonTools.security import assert_not_root, assert_sudo_available
 from PythonTools.log_helpers import LoggerFactory
 from PythonTools.net import PidGuard
 from PythonTools.utils.common import json_output
+
 # RunUpdates components
 from RunUpdates.operations.listops import ListOperations
 from RunUpdates.operations.orchestrator import UpdateOrchestrator
 from RunUpdates.parser import ScriptParser
 from RunUpdates.ansible.loader import RunUpdatesInventoryLoader
-from RunUpdates.core.constants import (
-    PROJECT_NAME, 
-    PID_FILE
-)
+from RunUpdates.core.constants import PROJECT_NAME, PID_FILE
+
 
 # ------------------------------------------------------------
 # Logging initialization
@@ -69,6 +63,8 @@ def initialize_logging(context):
     logger.lifecycle("RUNUPDATES_LOADER_SETUP", "Loader setup complete")
 
     return logger
+
+
 # ------------------------------------------------------------
 # Inventory loading
 # ------------------------------------------------------------
@@ -91,7 +87,9 @@ def load_inventory_file(inv_path: Path, logger):
     # Case 2: directory
     # ------------------------------------------------------------
     if not inv_path.exists() or not inv_path.is_dir():
-        raise InventoryLoadError(f"Inventory path is not a directory or file: {inv_path}")
+        raise InventoryLoadError(
+            f"Inventory path is not a directory or file: {inv_path}"
+        )
 
     # Prefer hosts.yml
     hosts_file = inv_path / "hosts.yml"
@@ -111,6 +109,8 @@ def load_inventory_file(inv_path: Path, logger):
         f"Inventory directory must contain hosts.yml or exactly one *.yml file "
         f"(found {len(yml_files)} files)"
     )
+
+
 # ------------------------------------------------------------
 # Vault loading
 # ------------------------------------------------------------
@@ -124,11 +124,7 @@ def load_secrets(context: dict) -> dict:
     if not vault_password_file:
         raise VaultError("vault_password_file missing from context")
 
-    loader = VaultLoader(
-        vault_path,
-        vault_password_file,
-        program_name=PROJECT_NAME
-    )
+    loader = VaultLoader(vault_path, vault_password_file, program_name=PROJECT_NAME)
     secrets = loader.decrypt_yaml()
 
     if not isinstance(secrets, dict):
@@ -146,8 +142,10 @@ def load_secrets(context: dict) -> dict:
 
     return secrets
 
-def handle_summary(*, latest: bool, list_all: bool, host: str | None,
-                   summary_dir: Path, logger):
+
+def handle_summary(
+    *, latest: bool, list_all: bool, host: str | None, summary_dir: Path, logger
+):
 
     summary_dir = Path(summary_dir)
 
@@ -156,11 +154,7 @@ def handle_summary(*, latest: bool, list_all: bool, host: str | None,
         return
 
     # Collect summary files
-    files = sorted(
-        summary_dir.glob("*.json")
-    ) + sorted(
-        summary_dir.glob("*.yml")
-    )
+    files = sorted(summary_dir.glob("*.json")) + sorted(summary_dir.glob("*.yml"))
 
     if not files:
         logger.info("No summary files found.")
@@ -203,9 +197,11 @@ def handle_summary(*, latest: bool, list_all: bool, host: str | None,
     latest_file = files[-1]
     print(latest_file.read_text())
 
+
 # ------------------------------------------------------------
 # Main entry point
 # ------------------------------------------------------------
+
 
 def main():
     # 1. Parse CLI arguments
@@ -237,9 +233,8 @@ def main():
         print(f"RunUpdates {parser.VERSION_STRING}")
         return
 
-
     context = {"PROJECT_NAME": PROJECT_NAME, "args": args, "paths": paths}
-    
+
     # 2. Initialize logging
     logger = initialize_logging(context)
     guard = PidGuard(PID_FILE, logger)
@@ -251,18 +246,18 @@ def main():
         # Initialize schema-driven loader
         loader = RunUpdatesInventoryLoader(
             inventory_path=context["paths"].INVENTORY_PATH,
-            schema_path=context["paths"].SCHEMA_DIR / "hosts.schema.yml"
+            schema_path=context["paths"].SCHEMA_DIR / "hosts.schema.yml",
         )
         if args.command != "summary":
             # Normalize inventory into host objects (filtered)
             normalized_inventory = loader.normalize(
-                family = getattr(args, "family", None),
-                distro = getattr(args, "distro", None),
-                host = getattr(args, "host", None),
+                family=getattr(args, "family", None),
+                distro=getattr(args, "distro", None),
+                host=getattr(args, "host", None),
             )
-            
+
         match args.command:
-            
+
             case "inventory":
                 LISTING_FLAGS = (
                     "list_families",
@@ -273,8 +268,7 @@ def main():
                 )
                 # Determine if any listing flag is active
                 active_flag = next(
-                    (flag for flag in LISTING_FLAGS if getattr(args, flag, False)),
-                    None
+                    (flag for flag in LISTING_FLAGS if getattr(args, flag, False)), None
                 )
 
                 # Handle listing BEFORE vault loading
@@ -304,9 +298,7 @@ def main():
                 assert_not_root()
                 # Execute update orchestration
                 orchestrator = UpdateOrchestrator(
-                    context,
-                    hosts=normalized_inventory,
-                    logger=logger
+                    context, hosts=normalized_inventory, logger=logger
                 )
                 orchestrator.run()
             case "summary":
@@ -320,8 +312,6 @@ def main():
                 )
             case _:
                 raise RuntimeError(f"Unknown command: {args.command}")
-
-
 
         # 9. Final banner
         logger.banner("RunUpdates complete")

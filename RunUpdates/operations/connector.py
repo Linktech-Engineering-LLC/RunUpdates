@@ -138,7 +138,5 @@ class HostConnector:
 
         except OSError as e:
             if self.logger:
-                self.logger.debug(
-                    f"[PORT] {host}:{port} unreachable → {e}"
-                )
+                self.logger.debug(f"[PORT] {host}:{port} unreachable → {e}")
             return False

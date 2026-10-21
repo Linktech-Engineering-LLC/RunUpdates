@@ -20,6 +20,7 @@ from .selector import HostSelector
 from .connector import HostConnector
 from .executor import HostExecutor
 
+
 class UpdateOrchestrator:
     """
     Coordinates:
@@ -33,7 +34,7 @@ class UpdateOrchestrator:
     def __init__(self, context, hosts, logger=None):
         self.context = context
         self.args = context["args"]
-        self.secrets = context.get("secrets",{})
+        self.secrets = context.get("secrets", {})
         self.hosts = hosts
         self.logger = logger
         self.paths = context["paths"]
@@ -67,11 +68,12 @@ class UpdateOrchestrator:
 
     def _run_parallel(self):
         raise NotImplementedError("Parallel execution not implemented yet")
+
     def _run_distro_parallel(self):
         raise NotImplementedError("Parallel execution not implemented yet")
 
     def _run_sequential(self):
-        host_summaries = []   # NEW: collect per-host summaries
+        host_summaries = []  # NEW: collect per-host summaries
 
         for host in self.hosts:
             name = host["name"]
@@ -91,13 +93,17 @@ class UpdateOrchestrator:
             # NEW: handle boolean/None returns
             if not session:
                 if self.logger:
-                    self.logger.error(f"[{name}] Connection failed: no SSH session returned")
+                    self.logger.error(
+                        f"[{name}] Connection failed: no SSH session returned"
+                    )
                 continue
 
             # 2c. Execute update lifecycle
             try:
-                summary = self.executor.run_updates(host, session)   # NEW: capture summary
-                host_summaries.append(summary)                       # NEW: store it
+                summary = self.executor.run_updates(
+                    host, session
+                )  # NEW: capture summary
+                host_summaries.append(summary)  # NEW: store it
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"[{name}] Update failed: {e}")
@@ -114,12 +120,10 @@ class UpdateOrchestrator:
 
     def aggregate_run_summary(self, host_summaries: list[dict]) -> dict:
         run_start = min(
-            datetime.fromisoformat(h["timestamps"]["started"])
-            for h in host_summaries
+            datetime.fromisoformat(h["timestamps"]["started"]) for h in host_summaries
         )
         run_end = max(
-            datetime.fromisoformat(h["timestamps"]["completed"])
-            for h in host_summaries
+            datetime.fromisoformat(h["timestamps"]["completed"]) for h in host_summaries
         )
 
         totals = {
@@ -171,7 +175,7 @@ class UpdateOrchestrator:
     def write_final_summary(self, final_summary: dict):
         timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
         summary_path = self.paths.SUMMARY_RUN_DIR / f"final-{timestamp}.json"
-        summary_path.parent.mkdir(parents=True, exist_ok=True)  
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
         with open(summary_path, "w") as f:
             json.dump(final_summary, f, indent=2)
         latest_link = self.paths.SUMMARY_RUN_DIR / "latest.json"

@@ -13,15 +13,16 @@
 """
 
 
-
 import pytest
 from RunUpdates.ansible.loader import RunUpdatesInventoryLoader, InventoryError
+
 
 @pytest.fixture
 def loader(tmp_path):
     # Create inventory
     inv = tmp_path / "inventory.yml"
-    inv.write_text("""
+    inv.write_text(
+        """
 linux:
   vars:
     port: 2222
@@ -39,11 +40,13 @@ linux:
     hosts:
       suse-01:
         address: 10.0.1.1
-""")
+"""
+    )
 
     # Create minimal valid schema
     schema = tmp_path / "schema.yml"
-    schema.write_text("""
+    schema.write_text(
+        """
 root:
   type: dict
   required: true
@@ -72,17 +75,16 @@ root:
             hosts:
               type: dict
               required: false
-""")
-
-    return RunUpdatesInventoryLoader(
-        inventory_path=str(inv),
-        schema_path=str(schema)
+"""
     )
+
+    return RunUpdatesInventoryLoader(inventory_path=str(inv), schema_path=str(schema))
 
 
 # ------------------------------------------------------------
 # INDEX TESTS
 # ------------------------------------------------------------
+
 
 def test_index_families(loader):
     assert "linux" in loader.index["families"]
@@ -108,6 +110,7 @@ def test_host_index_points_to_correct_family_and_distro(loader):
 # ------------------------------------------------------------
 # NORMALIZE TESTS
 # ------------------------------------------------------------
+
 
 def test_normalize_family_distro(loader):
     hosts = loader.normalize(family="linux", distro="debian")

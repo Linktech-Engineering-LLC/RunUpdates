@@ -16,16 +16,21 @@
 from RunUpdates.core.constants import PACKAGE_ROOT
 from RunUpdates.utils.common import resolve_paths
 
+
 def test_resolve_paths_creates_directories(tmp_path, monkeypatch):
     # Fake args
-    args = type("A", (), {
-        "config_dir": None,
-        "schema_dir": None,
-        "log_dir": None,
-        "inventory": None,
-        "vault_path": None,
-        "vault_password_file": None,
-    })
+    args = type(
+        "A",
+        (),
+        {
+            "config_dir": None,
+            "schema_dir": None,
+            "log_dir": None,
+            "inventory": None,
+            "vault_path": None,
+            "vault_password_file": None,
+        },
+    )
 
     # Force HOME to tmp_path (only affects installed mode)
     monkeypatch.setenv("HOME", str(tmp_path))

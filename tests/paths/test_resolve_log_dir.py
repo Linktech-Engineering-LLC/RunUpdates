@@ -14,18 +14,21 @@
 
 
 from RunUpdates.core.constants import LOG_DIR_ENV
-from RunUpdates.utils.common import resolve_log_dir 
+from RunUpdates.utils.common import resolve_log_dir
+
 
 def test_log_dir_cli_override(tmp_path):
     args = type("A", (), {"log_dir": str(tmp_path / "cli")})
     result = resolve_log_dir(args, tmp_path)
     assert result == (tmp_path / "cli").resolve()
 
+
 def test_log_dir_env_override(monkeypatch, tmp_path):
     monkeypatch.setenv(LOG_DIR_ENV, str(tmp_path / "env"))
     args = type("A", (), {"log_dir": None})
     result = resolve_log_dir(args, tmp_path)
     assert result == (tmp_path / "env").resolve()
+
 
 def test_log_dir_default(tmp_path):
     args = type("A", (), {"log_dir": None})

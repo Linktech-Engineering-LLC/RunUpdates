@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 RESERVED_KEYS = {"vars", "defaults", "global"}
 
+
 class ListOperations:
     """
     JSON-based inventory introspection for RunUpdates.
@@ -55,17 +56,13 @@ class ListOperations:
             if family not in self.inventory:
                 raise ValueError(f"Family '{family}' not found")
             distros = [
-                d for d in self.inventory[family].keys()
-                if d not in RESERVED_KEYS
+                d for d in self.inventory[family].keys() if d not in RESERVED_KEYS
             ]
             return distros
 
         # No family specified → list all distros grouped by family
         result = {
-            fam: [
-                d for d in node.keys()
-                if d not in RESERVED_KEYS
-            ]
+            fam: [d for d in node.keys() if d not in RESERVED_KEYS]
             for fam, node in self.inventory.items()
             if isinstance(node, dict)
         }
@@ -124,10 +121,7 @@ class ListOperations:
         return self.inventory
 
     def show_metadata(
-        self,
-        family: Optional[str],
-        distro: Optional[str],
-        host: Optional[str]
+        self, family: Optional[str], distro: Optional[str], host: Optional[str]
     ) -> dict:
         result = {}
 

@@ -63,7 +63,7 @@ else:
         INSTALL_ROOT = PROJECT_ROOT
     else:
         MODE = "INSTALLED"
-        INSTALL_ROOT = PACKAGE_ROOT    
+        INSTALL_ROOT = PACKAGE_ROOT
 # ------------------------------------------------------------
 # System metadata
 # ------------------------------------------------------------
@@ -107,4 +107,3 @@ PID_FILE = DEFAULT_RUN_PATH / f"{PROJECT_NAME.lower()}.pid"
 
 DEFAULT_INVENTORY_FORMAT = "yaml"
 DEFAULT_DISTRO = None
-

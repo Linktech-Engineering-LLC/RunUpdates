@@ -61,9 +61,7 @@ def validate_family_distro_host(inventory_data, family=None, distro=None, host=N
 
     distros = families[family].get("distros", {})
     if not distros:
-        raise InventoryLoadError(
-            f"Family '{family}' contains no distros"
-        )
+        raise InventoryLoadError(f"Family '{family}' contains no distros")
 
     # ------------------------------------------------------------
     # Validate distro
