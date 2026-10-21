@@ -65,7 +65,7 @@ jobs:
       - name: Install SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.RUNUPDATES_SSH_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.RUNUPDATES_GITSSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
       - name: Add GitHub to known_hosts
