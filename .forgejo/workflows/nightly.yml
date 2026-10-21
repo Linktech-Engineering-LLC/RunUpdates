@@ -79,11 +79,6 @@ jobs:
         run: |
           python3 --version
 
-      - name: Install build dependencies
-        run: |
-          apt-get update
-          apt-get install -y pandoc rpm dpkg-dev libarchive-zip-perl
-
       - name: Install Python build dependencies
         run: |
           python3 -m pip install --upgrade pip

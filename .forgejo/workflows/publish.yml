@@ -70,9 +70,6 @@ jobs:
           git clone http://doug:$RUNUPDATES_TOKEN@dad:3000/doug/Pages.git Pages
           cd Pages
           git remote set-url origin http://doug:$RUNUPDATES_TOKEN@dad:3000/doug/Pages.git
-      - name: Install rsync
-        run: |
-          apt-get update && apt-get install -y rsync
 
       - name: Deploy dashboard via rsync
         run: |
