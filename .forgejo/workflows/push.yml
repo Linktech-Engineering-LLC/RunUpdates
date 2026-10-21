@@ -8,6 +8,42 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    container:
+      image: dad:3000/linux/leon-ci:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install linting tools
+        run: |
+          apt-get update
+          apt-get install -y shellcheck
+          pip install ruff black yamllint
+
+      - name: Python compile check
+        run: |
+          find . -name "*.py" -exec python3 -m py_compile {} \;
+
+      - name: Ruff
+        run: |
+          ruff check . || true
+
+      - name: Black
+        run: |
+          black --check . || true
+
+      - name: Yamllint
+        run: |
+          yamllint . || true
+
+      - name: Shellcheck
+        run: |
+          find . -name "*.sh" -exec shellcheck {} \; || true
+          
   sync_to_remote:
     runs-on: ubuntu-latest
     container:

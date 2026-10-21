@@ -14,14 +14,12 @@
         Generic helpers live in PythonTools.utils.common.
 """
 
-import sys
 import os
 from pathlib import Path
 
 # Import generic helpers from PythonTools
 from PythonTools.ansible.helpers import resolve_with_priority
 from PythonTools.parser.errors import CheckArgError
-from PythonTools.system.env.modes import is_dev_mode
 
 # Import RunUpdates-specific constants
 from RunUpdates.core.constants import (
@@ -32,13 +30,11 @@ from RunUpdates.core.constants import (
     VAULT_PATH_ENV,
     VAULT_PASSWORD_ENV,
     PACKAGE_ROOT,
-    PROJECT_ROOT,
     INSTALL_ROOT,
     MODE
 )
 from .paths import Paths
 
-MODE = "DEV" if is_dev_mode() else "INSTALL"
 
 # -------------------------------------------------------------
 # Resolve Config & Schema folders
