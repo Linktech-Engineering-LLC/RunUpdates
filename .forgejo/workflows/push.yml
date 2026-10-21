@@ -76,7 +76,10 @@ jobs:
       - name: Start SSH agent
         run: |
           eval "$(ssh-agent -s)"
-          ssh-add /home/github/.ssh/id_ed25519
+          ssh-add /home/github/.ssh/git_ed25519
+      - name: Test GitHub SSH
+        run: |
+          ssh -T git@github.com || true
 
       - name: Push to Remote Hub
         run: |
