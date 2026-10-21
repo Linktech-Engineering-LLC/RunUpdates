@@ -38,11 +38,9 @@ jobs:
     container:
       image: dad:3000/linux/leon-ci:latest
     env:
-      FORGEJO_URL: "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/tags/nightly"
+      FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
       FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
-      FORGEJO_RELEASES: "http://dad:3000/api/v1/repos/linux/RunUpdates/releases"
-      FORGEJO_TAG: "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/tags/nightly"
-
+      
     steps:
       - name: Install Node 20
         run: |
