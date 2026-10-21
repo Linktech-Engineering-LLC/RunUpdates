@@ -65,7 +65,6 @@ jobs:
     container:
       image: dad:3000/linux/leon-ci:latest
     env:
-      GIT_SSH_COMMAND: "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes"
       FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
       FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
       FORGEJO_SSH_KEY: ${{ secrets.SSH_PAGES_KEY }}
