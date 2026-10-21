@@ -62,6 +62,8 @@ jobs:
       (github.event.workflow_run &&
        github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
+    container:
+      image: dad:3000/linux/leon-ci:latest
     env:
       GIT_SSH_COMMAND: "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes"
       FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
