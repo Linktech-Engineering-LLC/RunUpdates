@@ -40,7 +40,8 @@ jobs:
     env:
       FORGEJO_URL: "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/tags/nightly"
       FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
-      FORGEJO_API: ${{ secrets.TOOLSAPITOKEN}}
+      FORGEJO_RELEASES: "http://dad:3000/api/v1/repos/linux/RunUpdates/releases"
+      FORGEJO_TAG: "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/tags/nightly"
 
     steps:
       - name: Install Node 20
@@ -183,53 +184,64 @@ jobs:
         run: |
           RELEASE=$(curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
-            FORGEJO_URL \
+            "$FORGEJO_API_ROOT/releases/tags/nightly" \
             | jq -r '.id // empty')
 
           if [ -z "$RELEASE" ]; then
             echo "Creating nightly release"
-            curl -X POST \
+
+            curl -s -X POST \
               -H "Authorization: token $FORGEJO_TOKEN" \
               -H "Content-Type: application/json" \
-              -d '{"tag_name":"nightly","name":"Nightly Build","prerelease":true}' \
-              FORGEJO_URL
+              -d '{
+                "tag_name":"nightly",
+                "name":"Nightly Build",
+                "prerelease":true
+              }' \
+              "$FORGEJO_API_ROOT/releases"
           else
-            echo "Nightly release already exists"
+            echo "Nightly release already exists (ID=$RELEASE)"
           fi
 
       - name: Remove existing nightly assets
         run: |
           RELEASE=$(curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
-            FORGEJO_URL \
+            "$FORGEJO_API_ROOT/releases/tags/nightly" \
             | jq -r '.id')
 
           curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
-            FORGEJO_URL \
+            "$FORGEJO_API_ROOT/releases/$RELEASE" \
             | jq -r '.assets // [] | .[].id' \
             | while read ID; do
+
                 echo "Deleting asset $ID"
-                curl -X DELETE \
+
+                curl -s -X DELETE \
                   -H "Authorization: token $FORGEJO_TOKEN" \
-                  http://dad:3000/api/v1/repos/linux/RunUpdates/releases/$RELEASE/assets/$ID
+                  "$FORGEJO_API_ROOT/releases/$RELEASE/assets/$ID"
               done
 
       - name: Upload artifacts to Forgejo nightly release
         run: |
           RELEASE=$(curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
-            FORGEJO_URL \
+            "$FORGEJO_API_ROOT/releases/tags/nightly" \
             | jq -r '.id')
 
           for f in artifacts/*; do
-            echo "Uploading $f"
-            curl -X POST \
+            NAME=$(basename "$f")
+
+            echo "Uploading $NAME"
+
+            curl -s -X POST \
               -H "Authorization: token $FORGEJO_TOKEN" \
               -H "Content-Type: application/octet-stream" \
               --data-binary @"$f" \
-              "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/$RELEASE/assets?name=$(basename "$f")"
+              "$FORGEJO_API_ROOT/releases/$RELEASE/assets?name=$NAME"
           done
+    
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v3
         with:
