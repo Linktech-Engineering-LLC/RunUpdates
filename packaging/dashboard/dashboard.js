@@ -1,5 +1,5 @@
 //
-// dashboard.js — Unified NMS_Tools Dashboard Renderer
+// dashboard.js — Unified Dashboard Renderer
 //
 
 async function loadMetadata() {
