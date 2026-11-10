@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p ~/.ssh
 
-          echo "$RUNUPDATES_SSH_KEY" > ~/.ssh/id_runupdates
+          echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_runupdates
           chmod 600 ~/.ssh/id_runupdates
 
           # Fetch actual host key for dad
