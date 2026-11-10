@@ -257,7 +257,7 @@ jobs:
     env:
       FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
       FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
-      FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
+      FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_KEY }}
 
     steps:
 
