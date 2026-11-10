@@ -38,9 +38,9 @@ jobs:
     container:
       image: dad:3000/linux/leon-ci:latest
     env:
-      GIT_SSH_COMMAND: "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes"
-      RUNUPDATES_SSH_KEY: ${{ secrets.RUNUPDATES_SSH_KEY }}
-      RUNUPDATES_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
+      FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
+      FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
+      FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_KEY }}
 
     steps:
       - name: Setup SSH keys and config
@@ -71,11 +71,67 @@ jobs:
           cd Pages
           git remote set-url origin http://doug:$RUNUPDATES_TOKEN@dad:3000/doug/Pages.git
 
-      - name: Deploy dashboard via rsync
+      - name: Create Dashboard
+        run: |
+          mkdir -p website
+          cp packaging/dashboard/index.html website/
+          cp packaging/dashboard/dashboard.js website/
+          curl -s -o website/qr.png \
+            "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://dad:3000/Linux/RunUpdates/nightly/"
+
+      - name: Download release assets
+        env:
+          FORGEJO_API_ROOT: http://dad:3000/api/v1/repos/linux/RunUpdates
+        run: |
+          mkdir -p website/artifacts
+
+          curl -s \
+            -H "Authorization: token $FORGEJO_TOKEN" \
+            "$FORGEJO_API_ROOT/releases/tags/nightly" \
+            > release.json
+
+          jq -r '.assets[] | "\(.name)|\(.browser_download_url)"' release.json |
+          while IFS='|' read NAME URL; do
+            echo "Downloading $NAME"
+
+            if [ "$NAME" = "metadata.json" ]; then
+              curl -L \
+                -H "Authorization: token $FORGEJO_TOKEN" \
+                "$URL" \
+                -o "website/metadata.json"
+            else
+              curl -L \
+                -H "Authorization: token $FORGEJO_TOKEN" \
+                "$URL" \
+                -o "website/artifacts/$NAME"
+            fi
+          done
+
+          echo "Website contents:"
+          find website -type f | sort
+
+      - name: Verify downloaded assets
+        run: |
+          echo "Website contents:"
+          find website -type f | sort
+
+      - name: Verify metadata
+        run: |
+          test -f website/metadata.json
+
+      - name: Create destination folders
+        run: |
+          ssh -F ~/.ssh/config dad \
+            "mkdir -p /srv/forgejo-pages/RunUpdates/nightly/artifacts"
+
+      - name: Deploy dashboard
         run: |
           rsync -avz --delete \
-            -e "ssh -F /github/home/.ssh/config -o IdentitiesOnly=yes" \
-            Pages/RunUpdates/ \
-            dad:/srv/forgejo-pages/RunUpdates/
+            -e "ssh -F $HOME/.ssh/config -o IdentitiesOnly=yes" \
+            website/ \
+            dad:/srv/forgejo-pages/RunUpdates/nightly
 
-          ssh -F /github/home/.ssh/config dad "ls -l /srv/forgejo-pages/RunUpdates"
+      - name: Verify deployment
+        run: |
+          ssh -F ~/.ssh/config dad \
+            "find /srv/forgejo-pages/RunUpdates/nightly -type f | sort"
