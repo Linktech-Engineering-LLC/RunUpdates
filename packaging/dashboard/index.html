@@ -1,38 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>RunUpdates Nightly Dashboard</title>
-        <style>
-            body { font-family: Arial; margin: 20px; }
-            table { border-collapse: collapse; margin-top: 10px; width: 100%; }
-            th, td { padding: 8px 12px; border: 1px solid #ccc; }
-            th { background: #f0f0f0; }
-            .badge-row img { margin-right: 8px; }
-            .qr { margin-top: 20px; }
-        </style>
-    </head>
-    <body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
 
-        <h1>RunUpdates Nightly Dashboard</h1>
+  <title>RunUpdates Nightly Dashboard</title>
 
-        <div class="badge-row">
-            <img src="https://img.shields.io/badge/version-loading-blue" id="version-badge">
-            <img src="https://img.shields.io/badge/date-loading-lightgrey" id="date-badge">
-            <img src="https://img.shields.io/badge/python-loading-yellow" id="python-badge">
-            <img src="https://img.shields.io/badge/pyinstaller-loading-orange" id="pyi-badge">
-        </div>
+  <link rel="stylesheet" href="styles.css">
+</head>
 
-        <h2>Build Metadata</h2>
-        <div id="build-info"></div>
+<body>
+  <h1>RunUpdates Nightly Dashboard</h1>
 
-        <h2>Artifacts</h2>
-        <div id="artifact-table"></div>
+  <div class="badge-row">
+    <img id="version-badge">
+    <img id="date-badge">
+    <img id="python-badge">
+    <img id="pyi-badge">
+  </div>
 
-        <div class="qr">
-            <h2>QR Code</h2>
-            <img src="qr.png" alt="QR Code">
-        </div>
+  <h2>Build Metadata</h2>
+  <div id="build-info"></div>
 
-        <script src="dashboard.js"></script>
-    </body>
+  <h2>Artifacts</h2>
+  <div id="artifact-table"></div>
+
+  <div class="qr">
+    <h2>QR Code</h2>
+    <img id="qr-code" src="qr.png" alt="QR Code">
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
 </html>

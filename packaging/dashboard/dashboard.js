@@ -1,97 +1,80 @@
-async function loadDashboard() {
-  const metaUrl = "metadata.json";
+//
+// dashboard.js — Unified NMS_Tools Dashboard Renderer
+//
 
-  let meta;
+async function loadMetadata() {
   try {
-    const response = await fetch(metaUrl);
-    meta = await response.json();
+    const response = await fetch("metadata.json");
+    if (!response.ok) throw new Error("metadata.json not found");
+    return await response.json();
   } catch (err) {
     document.getElementById("build-info").innerHTML =
       "<p style='color:red'>Failed to load metadata.json</p>";
-    return;
+    return null;
   }
+}
 
-  // Detect metadata version
-  const isV2 = meta.meta_version === 2;
+function setBadge(id, label, value, color) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.src = `https://img.shields.io/badge/${label}-${value}-${color}`;
+  }
+}
 
-  // Build metadata (v1 fallback included)
-  const build = isV2
-    ? meta.build
-    : {
-        date: meta.date,
-        commit: meta.commit,
-        branch: "nightly",
-        workflow_run_id: "N/A"
-      };
+function renderBuildInfo(meta) {
+  const div = document.getElementById("build-info");
+  if (!div) return;
 
-  const toolchain = isV2
-    ? meta.toolchain
-    : {
-        python: meta.python || "unknown",
-        pyinstaller: meta.pyinstaller || "unknown"
-      };
+  const b = meta.build;
+  const t = meta.toolchain;
 
-  // -----------------------------
-  // ⭐ Update Badges
-  // -----------------------------
-  const shortCommit = build.commit ? build.commit.substring(0, 7) : "unknown";
-
-  document.getElementById("version-badge").src =
-    `https://img.shields.io/badge/version-${shortCommit}-blue`;
-
-  const shortDate = build.date.split("T")[0].replace(/-/g, "_");
-  document.getElementById("date-badge").src =
-    `https://img.shields.io/badge/date-${shortDate}-lightgrey`;
-
-  document.getElementById("python-badge").src =
-    `https://img.shields.io/badge/python-${toolchain.python}-yellow`;
-
-  document.getElementById("pyi-badge").src =
-    `https://img.shields.io/badge/pyinstaller-${toolchain.pyinstaller}-orange`;
-
-  // -----------------------------
-  // ⭐ Build Info Table
-  // -----------------------------
-  document.getElementById("build-info").innerHTML = `
+  div.innerHTML = `
     <table>
       <tr><th>Field</th><th>Value</th></tr>
-      <tr><td>Date</td><td>${build.date}</td></tr>
-      <tr><td>Commit</td><td>${build.commit}</td></tr>
-      <tr><td>Branch</td><td>${build.branch}</td></tr>
+      <tr><td>Date</td><td>${b.date}</td></tr>
+      <tr><td>Commit</td><td>${b.commit}</td></tr>
+      <tr><td>Branch</td><td>${b.branch}</td></tr>
+      <tr><td>Python</td><td>${t.python}</td></tr>
+      <tr><td>PyInstaller</td><td>${t.pyinstaller}</td></tr>
     </table>
   `;
+}
 
-  // -----------------------------
-  // ⭐ Artifact Table
-  // -----------------------------
-  const artifacts = isV2 ? meta.artifacts : meta.files;
+function renderArtifacts(meta) {
+  const div = document.getElementById("artifact-table");
+  if (!div) return;
 
   let rows = "";
-  for (const a of artifacts) {
+
+  for (const a of meta.artifacts) {
+
+    const dl = `artifacts/${a.name}`;
+
     rows += `
       <tr>
         <td>${a.name}</td>
-        <td>${a.size}</td>
-        <td>${a.sha256}</td>
-        <td>${a.crc32}</td>
-        <td>${a.type || "N/A"}</td>
-        <td>${a.os || "N/A"}</td>
-        <td>${a.arch || "N/A"}</td>
-        <td><a href="https://github.com/Linktech-Engineering-LLC/RunUpdates/releases/download/nightly/${a.name}">Download</a></td>
+        <td>${a.type}</td>
+        
+        <td>${a.os}</td>
+        <td>${a.arch}</td>
+        <td>${a.size.toLocaleString()} bytes</td>
+        <td><code>${a.sha256}</code></td>
+        <td><code>${a.crc32}</code></td>
+        <td><a class="download-btn" href="${dl}">Download</a></td>
       </tr>
     `;
   }
 
-  document.getElementById("artifact-table").innerHTML = `
+  div.innerHTML = `
     <table>
       <tr>
         <th>Name</th>
-        <th>Size</th>
-        <th>SHA‑256</th>
-        <th>CRC‑32</th>
         <th>Type</th>
         <th>OS</th>
         <th>Arch</th>
+        <th>Size</th>
+        <th>SHA‑256</th>
+        <th>CRC‑32</th>
         <th>Download</th>
       </tr>
       ${rows}
@@ -99,4 +82,25 @@ async function loadDashboard() {
   `;
 }
 
-window.onload = loadDashboard;
+async function main() {
+  const meta = await loadMetadata();
+  if (!meta) return;
+
+  const build = meta.build;
+  const toolchain = meta.toolchain;
+
+  // Badges
+  const shortCommit = build.commit.substring(0, 7);
+  setBadge("version-badge", "version", shortCommit, "blue");
+
+  const shortDate = build.date.split("T")[0].replace(/-/g, "_");
+  setBadge("date-badge", "date", shortDate, "lightgrey");
+
+  setBadge("python-badge", "python", toolchain.python, "yellow");
+  setBadge("pyi-badge", "pyinstaller", toolchain.pyinstaller, "orange");
+
+  renderBuildInfo(meta);
+  renderArtifacts(meta);
+}
+
+main();
