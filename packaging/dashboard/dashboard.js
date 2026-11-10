@@ -58,7 +58,6 @@ async function loadDashboard() {
       <tr><td>Date</td><td>${build.date}</td></tr>
       <tr><td>Commit</td><td>${build.commit}</td></tr>
       <tr><td>Branch</td><td>${build.branch}</td></tr>
-      <tr><td>Workflow Run</td><td>${build.workflow_run_id}</td></tr>
     </table>
   `;
 

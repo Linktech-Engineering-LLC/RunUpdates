@@ -265,7 +265,7 @@ jobs:
         run: |
           mkdir -p ~/.ssh
 
-          echo "$NMSTOOLS_SSH_KEY" > ~/.ssh/id_runupdates
+          echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_runupdates
           chmod 600 ~/.ssh/id_runupdates
 
           ssh-keyscan -p 2222 -t ed25519 dad >> ~/.ssh/known_hosts
