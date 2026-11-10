@@ -65,11 +65,10 @@ jobs:
               UserKnownHostsFile /github/home/.ssh/known_hosts
           EOF
 
-      - name: Clone Pages repo
-        run: |
-          git clone http://doug:$RUNUPDATES_TOKEN@dad:3000/doug/Pages.git Pages
-          cd Pages
-          git remote set-url origin http://doug:$RUNUPDATES_TOKEN@dad:3000/doug/Pages.git
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Create Dashboard
         run: |
