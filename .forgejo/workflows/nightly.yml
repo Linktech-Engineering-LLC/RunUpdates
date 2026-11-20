@@ -100,6 +100,16 @@ jobs:
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
 
+      - name: Environment diagnostics
+        run: |
+          which python3
+          python3 --version
+          pip --version
+          python3 -m pip show pyinstaller || true
+          uname -a
+
+          python3 -m pip freeze | sort
+
       - name: Build all artifacts
         run: ./packaging/build_all.sh
 

@@ -1,5 +1,22 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+echo "===== BUILD ENV ====="
+which python
+python --version
+
+which pip
+pip --version
+
+which pyinstaller
+pyinstaller --version
+
+pwd
+whoami
+env | sort
+echo "====================="
+echo "==============================================="
+echo "[NMS_Tools] Starting full packaging pipeline..."
+echo "==============================================="
 
 # Resolve repo root (works locally and in GitHub Actions)
 ROOT_DIR="$(git rev-parse --show-toplevel)"

@@ -16,18 +16,25 @@ frozen RunUpdates binary and the required runtime directories under
 directories.
 
 %prep
-# Nothing to prep — frozen build is already provided
+# Nothing to prep — files were copied into SOURCES by build_rpm.sh
 
 %build
 # No build step — binary is prebuilt
 
 %install
 rm -rf %{buildroot}
-mkdir -p %{buildroot}/opt/RunUpdates
-cp -a %{_builddir}/../../staging/opt/RunUpdates/* %{buildroot}/opt/RunUpdates/
 
+echo "SOURCE DIR: %{_sourcedir}"
+find %{_sourcedir}/RunUpdates -maxdepth 3
+
+mkdir -p %{buildroot}/opt/RunUpdates
+
+cp -a %{_sourcedir}/RunUpdates/opt/RunUpdates/* \
+      %{buildroot}/opt/RunUpdates/
+      
 %files
 %dir /opt/RunUpdates
+
 /opt/RunUpdates/LICENSE
 
 %dir /opt/RunUpdates/bin

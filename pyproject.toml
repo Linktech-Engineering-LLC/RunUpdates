@@ -30,3 +30,13 @@ runupdates = "RunUpdates.__main__:main"
 [tool.setuptools.packages.find]
 include = ["RunUpdates*"]
 exclude = ["data*", "Logs*", "archive*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+[tool.ruff.lint]
+ignore = [
+    "BLE001",
+    "SIM103",
+    "N999",
+]
