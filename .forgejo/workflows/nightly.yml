@@ -71,47 +71,63 @@ jobs:
           echo "git_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Install Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Ensure Python 3.12 is installed
         run: |
-          python3 --version
+          apt-get update
+          apt-get install -y \
+            python3.12 \
+            python3.12-dev \
+            python3.12-venv
+
+      - name: Create virtual environment
+        run: |
+          python3.12 -m venv /opt/venv
+
+          source /opt/venv/bin/activate
+
+          python -m pip install --upgrade pip
 
       - name: Install Python build dependencies
         run: |
-          python3 -m pip install \
-            --break-system-packages \
-            --upgrade pip
-          python3 -m pip install \
-            --break-system-packages \
-            pyinstaller
+          source /opt/venv/bin/activate
+
+          pip install pyinstaller
 
       - name: Install PythonTools
         run: |
           if [ ! -d PythonTools ]; then
             git clone http://dad:3000/linux/PythonTools.git
           fi
-          python3 -m pip install \
-            --break-system-packages \
-            PythonTools/
+
+          source /opt/venv/bin/activate
+
+          pip install PythonTools/
 
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
 
       - name: Environment diagnostics
         run: |
-          which python3
-          python3 --version
+          source /opt/venv/bin/activate
+
+          echo "VIRTUAL_ENV=$VIRTUAL_ENV"
+
+          which python
+          which pip
+
+          python --version
           pip --version
-          python3 -m pip show pyinstaller || true
+
+          pyinstaller --version
+
           uname -a
 
-          python3 -m pip freeze | sort
+          pip freeze | sort
 
       - name: Build all artifacts
-        run: ./packaging/build_all.sh
+        run: |
+          source /opt/venv/bin/activate
+
+          ./packaging/build_all.sh
 
       - name: Normalize RPM filename
         run: |
@@ -131,6 +147,7 @@ jobs:
       - name: Generate metadata.json
         run: |
           mkdir -p artifacts
+          source /opt/venv/bin/activate
           PYTHON_VERSION=$(python3 --version | awk '{print $2}')
           PYINSTALLER_VERSION=$(pyinstaller --version 2>/dev/null || echo "unknown")
           BUILDER_OS="forgejo-runner"
