@@ -28,10 +28,29 @@ echo "SOURCE DIR: %{_sourcedir}"
 find %{_sourcedir}/RunUpdates -maxdepth 3
 
 mkdir -p %{buildroot}/opt/RunUpdates
+%install
 
-cp -a %{_sourcedir}/RunUpdates/opt/RunUpdates/* \
+echo "=== DEBUG ==="
+pwd
+
+echo "builddir:"
+ls -ld %{_builddir}
+
+echo "staging:"
+ls -ld %{_builddir}/../../staging || true
+
+echo "opt:"
+ls -ld %{_builddir}/../../staging/opt || true
+
+echo "RunUpdates:"
+ls -la %{_builddir}/../../staging/opt/RunUpdates || true
+
+rm -rf %{buildroot}
+mkdir -p %{buildroot}/opt/RunUpdates
+
+cp -a %{_builddir}/../../staging/opt/RunUpdates/* \
       %{buildroot}/opt/RunUpdates/
-      
+
 %files
 %dir /opt/RunUpdates
 
