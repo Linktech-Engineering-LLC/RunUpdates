@@ -7,51 +7,81 @@ OUTPUT_DIR="$PACKAGING_DIR/output"
 RPMBUILD_DIR="$PACKAGING_DIR/rpmbuild"
 STAGING_DIR="$PACKAGING_DIR/staging"
 
-# Parse version from VERSION file
-VERSION=$(grep -i version "$ROOT_DIR/VERSION" | cut -d '=' -f2 | tr -d ' "')
+VERSION=$(grep -i version "$ROOT_DIR/VERSION" \
+    | cut -d '=' -f2 \
+    | tr -d ' "')
 
 echo "=== Building RPM package ==="
 
-# Clean rpmbuild tree
+#
+# Clean RPM build tree
+#
 rm -rf "$RPMBUILD_DIR"
 mkdir -p "$RPMBUILD_DIR"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 
-# Copy spec file
-cp "$PACKAGING_DIR/rpm/runupdates.spec" "$RPMBUILD_DIR/SPECS/"
-
-# Ensure staging tree exists
+#
+# Verify staging tree exists
+#
 if [[ ! -d "$STAGING_DIR/opt/RunUpdates" ]]; then
-    echo "ERROR: Staging tree missing: $STAGING_DIR/opt/RunUpdates"
+    echo "ERROR: staging tree missing:"
+    echo "  $STAGING_DIR/opt/RunUpdates"
     exit 1
 fi
 
-echo "Using staging tree:"
-tree "$STAGING_DIR/opt/RunUpdates" || true
+#
+# Create RPM source tarball
+#
+echo "Creating source tarball..."
 
-# Copy full staging tree into SOURCES
-# IMPORTANT: This preserves EXACTLY:
-#   SOURCES/RunUpdates/opt/RunUpdates/...
-mkdir -p "$RPMBUILD_DIR/SOURCES/RunUpdates"
-cp -a "$STAGING_DIR/opt" "$RPMBUILD_DIR/SOURCES/RunUpdates/"
+TMPDIR=$(mktemp -d)
 
+TOPDIR="$TMPDIR/RunUpdates-$VERSION"
+
+mkdir -p "$TOPDIR"
+
+cp -a "$STAGING_DIR/opt" "$TOPDIR/"
+
+TARBALL="$RPMBUILD_DIR/SOURCES/RunUpdates-$VERSION.tar.gz"
+
+tar -czf "$TARBALL" \
+    -C "$TMPDIR" \
+    "RunUpdates-$VERSION"
+
+rm -rf "$TMPDIR"
+
+#
+# Copy spec
+#
+cp "$PACKAGING_DIR/rpm/runupdates.spec" \
+   "$RPMBUILD_DIR/SPECS/"
+
+#
 # Build RPM
-rpmbuild -bb "$RPMBUILD_DIR/SPECS/runupdates.spec" \
+#
+echo "Running rpmbuild..."
+
+rpmbuild -ba \
+    "$RPMBUILD_DIR/SPECS/runupdates.spec" \
     --define "version $VERSION" \
     --define "_topdir $RPMBUILD_DIR"
 
-# Copy output RPM to packaging/output
-mkdir -p "$OUTPUT_DIR"
-
-RPM_FILE=$(find "$RPMBUILD_DIR/RPMS" -type f -name "*.rpm" | head -n 1)
+#
+# Locate output RPM
+#
+RPM_FILE=$(find "$RPMBUILD_DIR/RPMS" \
+    -type f \
+    -name "*.rpm" \
+    | head -n 1)
 
 if [[ -z "$RPM_FILE" ]]; then
     echo "ERROR: RPM build produced no output"
     exit 1
 fi
 
-echo "RPM built: $RPM_FILE"
+mkdir -p "$OUTPUT_DIR"
 
 cp "$RPM_FILE" "$OUTPUT_DIR/"
 
-echo "=== RPM build complete ==="
+echo "RPM built: $RPM_FILE"
 echo "Output copied to: $OUTPUT_DIR"
+echo "=== RPM build complete ==="

@@ -1,55 +1,38 @@
-Name: RunUpdates
-Version: %{version}
-Release: 1%{?dist}
-Summary: RunUpdates system updater and automation tool
-License: Proprietary
-URL: https://linktechengineering.net/runupdates
-Vendor: Linktech Engineering
-Packager: Linktech Engineering Support <support@linktechengineering.net>
-BuildArch: x86_64
-Requires: /bin/bash
+Name:           RunUpdates
+Version:        %{version}
+Release:        1%{?dist}
+Summary:        RunUpdates system updater and automation tool
+
+License:        Proprietary
+URL:            https://linktechengineering.net/runupdates
+Source0:        RunUpdates-%{version}.tar.gz
+
+%global debug_package %{nil}
+%global _build_id_links none
+
+BuildArch:      x86_64
+Requires:       /bin/bash
 
 %description
-RunUpdates is a system update orchestration tool. This RPM installs the
-frozen RunUpdates binary and the required runtime directories under
-/opt/RunUpdates, including configuration, schemata, logs, and run
-directories.
+RunUpdates is a system update orchestration tool.
+
+This RPM installs the frozen RunUpdates binary and required runtime
+directories under /opt/RunUpdates, including configuration,
+schemata, log storage, and runtime directories.
 
 %prep
-# Nothing to prep — files were copied into SOURCES by build_rpm.sh
+%setup -q
 
 %build
-# No build step — binary is prebuilt
+# Nothing to build.
+# Binary has already been frozen by PyInstaller.
 
 %install
 rm -rf %{buildroot}
 
-echo "SOURCE DIR: %{_sourcedir}"
-find %{_sourcedir}/RunUpdates -maxdepth 3
+mkdir -p %{buildroot}/opt
 
-mkdir -p %{buildroot}/opt/RunUpdates
-%install
-
-echo "=== DEBUG ==="
-pwd
-
-echo "builddir:"
-ls -ld %{_builddir}
-
-echo "staging:"
-ls -ld %{_builddir}/../../staging || true
-
-echo "opt:"
-ls -ld %{_builddir}/../../staging/opt || true
-
-echo "RunUpdates:"
-ls -la %{_builddir}/../../staging/opt/RunUpdates || true
-
-rm -rf %{buildroot}
-mkdir -p %{buildroot}/opt/RunUpdates
-
-cp -a %{_builddir}/../../staging/opt/RunUpdates/* \
-      %{buildroot}/opt/RunUpdates/
+cp -a opt/RunUpdates %{buildroot}/opt/
 
 %files
 %dir /opt/RunUpdates
