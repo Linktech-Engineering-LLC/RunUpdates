@@ -20,7 +20,9 @@ echo "==============================================="
 
 # Resolve repo root (works locally and in GitHub Actions)
 ROOT_DIR="$(git rev-parse --show-toplevel)"
+# shellcheck disable=SC2034
 DIST_DIR="$ROOT_DIR/dist/RunUpdates"
+# shellcheck disable=SC2034
 SPEC_FILE="$ROOT_DIR/RunUpdates/RunUpdates.spec"
 
 echo "=== Freezing RunUpdates ==="
