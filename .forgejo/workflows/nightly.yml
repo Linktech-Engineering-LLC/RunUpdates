@@ -40,14 +40,19 @@ jobs:
     env:
       FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
       FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
+      VIRTUAL_ENV: /opt/venv
+      PATH: /opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       
     steps:
-      - name: Install Node 20
+      - name: Verify toolchain
         run: |
-          apt-get update
-          apt-get install -y curl
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
+          python3 --version
+          node --version
+          pandoc --version | head -1
+          jq --version
+          ruff --version
+          yamllint --version
+          shellcheck --version
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -70,63 +75,37 @@ jobs:
           echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
           echo "git_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Install Python 3.12
-        run: |
-          apt-get update
-          apt-get install -y \
-            python3.12 \
-            python3.12-dev \
-            python3.12-venv
-
       - name: Create virtual environment
         run: |
           python3.12 -m venv /opt/venv
-
-          source /opt/venv/bin/activate
-
-          python -m pip install --upgrade pip
+          /opt/venv/bin/python -m pip install --upgrade pip
 
       - name: Install Python build dependencies
         run: |
-          source /opt/venv/bin/activate
-
           pip install pyinstaller
 
       - name: Install PythonTools
         run: |
           if [ ! -d PythonTools ]; then
-            git clone http://dad:3000/linux/PythonTools.git
+            pip install git+http://dad:3000/linux/PythonTools.git
           fi
-
-          source /opt/venv/bin/activate
-
-          pip install PythonTools/
 
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
 
       - name: Environment diagnostics
         run: |
-          source /opt/venv/bin/activate
-
           echo "VIRTUAL_ENV=$VIRTUAL_ENV"
-
           which python
           which pip
-
           python --version
           pip --version
-
           pyinstaller --version
-
           uname -a
-
           pip freeze | sort
 
       - name: Build all artifacts
         run: |
-          source /opt/venv/bin/activate
-
           ./packaging/build_all.sh
 
       - name: Normalize RPM filename
@@ -291,12 +270,9 @@ jobs:
       - name: Setup SSH keys and config
         run: |
           mkdir -p ~/.ssh
-
           echo "$FORGEJO_SSH_KEY" > ~/.ssh/id_runupdates
           chmod 600 ~/.ssh/id_runupdates
-
           ssh-keyscan -p 2222 -t ed25519 dad >> ~/.ssh/known_hosts
-
           cat <<EOF > ~/.ssh/config
           Host dad
               HostName dad
@@ -327,16 +303,13 @@ jobs:
           FORGEJO_API_ROOT: http://dad:3000/api/v1/repos/linux/RunUpdates
         run: |
           mkdir -p website/artifacts
-
           curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
             "$FORGEJO_API_ROOT/releases/tags/nightly" \
             > release.json
-
           jq -r '.assets[] | "\(.name)|\(.browser_download_url)"' release.json |
           while IFS='|' read NAME URL; do
             echo "Downloading $NAME"
-
             if [ "$NAME" = "metadata.json" ]; then
               curl -L \
                 -H "Authorization: token $FORGEJO_TOKEN" \
@@ -349,7 +322,6 @@ jobs:
                 -o "website/artifacts/$NAME"
             fi
           done
-
           echo "Website contents:"
           find website -type f | sort
 
