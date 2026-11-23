@@ -4,7 +4,7 @@ set -e
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 STAGING_DIR="$ROOT_DIR/packaging/staging"
 OUT_DIR="$ROOT_DIR/packaging/output"
-VERSION="$(grep -i version $ROOT_DIR/VERSION | cut -d '=' -f2 | tr -d ' "')"
+VERSION="$(grep -i version "${ROOT_DIR}/VERSION" | cut -d '=' -f2 | tr -d ' "')"
 
 mkdir -p "$OUT_DIR"
 
