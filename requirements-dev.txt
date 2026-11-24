@@ -1,0 +1,12 @@
+-r requirements.txt
+
+pytest==9.0.3
+mypy
+
+types-PyYAML
+types-jsonschema
+
+packaging==26.0
+pluggy==1.6.0
+iniconfig==2.3.0
+Pygments==2.20.0
