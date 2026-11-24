@@ -80,6 +80,27 @@ jobs:
           except Exception as e:
               print("sessions.ssh_sessions FAILED:", e)
           EOF
+      - name: Audit PythonTools imports
+        run: |
+          python3 - <<'EOF'
+          MODULES = [
+              "PythonTools.log_helpers.factory",
+              "PythonTools.ansible.helpers",
+              "PythonTools.sessions.ssh_sessions",
+              "PythonTools.net",
+              "PythonTools.system.events.lifecycle",
+              "PythonTools.system.updates.detection",
+          ]
+
+          import importlib
+
+          for m in MODULES:
+              try:
+                  importlib.import_module(m)
+                  print(f"OK: {m}")
+              except Exception as e:
+                  print(f"FAILED: {m}: {e}")
+          EOF
 
       - name: Ruff lint
         if: ${{ hashFiles('**/*.py') != '' }}
