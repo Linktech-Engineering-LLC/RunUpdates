@@ -130,18 +130,12 @@ def resolve_inventory_path(args_inventory: str | None, config_dir: Path) -> Path
 
 def resolve_vault_path(args_vault: str | None) -> Path | None:
     env_value = os.getenv(VAULT_PATH_ENV)
-    path = resolve_with_priority(args_vault, env_value, default=None)
-    if path is None:
-        raise RuntimeError("Unable to resolve Vault directory")
-    return path
+    return resolve_with_priority(args_vault, env_value, default=None)
 
 
 def resolve_vault_password_file(args_password_file: str | None) -> Path | None:
     env_value = os.getenv(VAULT_PASSWORD_ENV)
-    path = resolve_with_priority(args_password_file, env_value, default=None)
-    if path is None:
-        raise RuntimeError("Unable to resolve password file")
-    return path
+    return resolve_with_priority(args_password_file, env_value, default=None)
 
 
 # ------------------------------------------------------------
