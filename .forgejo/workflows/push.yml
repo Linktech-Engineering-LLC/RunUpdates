@@ -47,63 +47,17 @@ jobs:
         if: ${{ github.event.repository.name != 'PythonTools' }}
         run: |
           pip install git+http://dad:3000/linux/PythonTools.git
-      - name: Verify PythonTools
-        run: |
-          echo "Python executable:"
-          which python3
-
-          echo ""
-          echo "Installed package:"
-          pip show PythonTools || true
-
-          echo ""
-          echo "Import test:"
-          python3 -c "import PythonTools; print(PythonTools.__file__)"
-      - name: Verify PythonTools Submodules
+      - name: Verify PythonTools Dependencies
         run: |
           python3 - <<'EOF'
-          try:
-              from PythonTools.log_helpers.factory import LoggerFactory
-              print("log_helpers.factory OK")
-          except Exception as e:
-              print("log_helpers.factory FAILED:", e)
+          import yaml
+          import psutil
+          import requests
+          import paramiko
+          import pysnmp
 
-          try:
-              import PythonTools.ansible.helpers
-              print("ansible.helpers OK")
-          except Exception as e:
-              print("ansible.helpers FAILED:", e)
-
-          try:
-              import PythonTools.sessions.ssh_sessions
-              print("sessions.ssh_sessions OK")
-          except Exception as e:
-              print("sessions.ssh_sessions FAILED:", e)
+          print("All PythonTools dependencies loaded successfully")
           EOF
-      - name: Audit PythonTools imports
-        run: |
-          python3 - <<'EOF'
-          MODULES = [
-              "PythonTools.log_helpers.factory",
-              "PythonTools.ansible.helpers",
-              "PythonTools.sessions.ssh_sessions",
-              "PythonTools.net",
-              "PythonTools.system.events.lifecycle",
-              "PythonTools.system.updates.detection",
-          ]
-
-          import importlib
-
-          for m in MODULES:
-              try:
-                  importlib.import_module(m)
-                  print(f"OK: {m}")
-              except Exception as e:
-                  print(f"FAILED: {m}: {e}")
-          EOF
-      - name: Show PythonTools dependency health
-        run: |
-          python3 -m pip check || true
 
       - name: Ruff lint
         if: ${{ hashFiles('**/*.py') != '' }}
