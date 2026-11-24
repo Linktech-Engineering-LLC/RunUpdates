@@ -95,7 +95,7 @@ class ListOperations:
             for dist, dist_node in fam_node.items():
                 if dist in RESERVED_KEYS:
                     continue
-                hosts = (dist_node.get("hosts") or {}).keys()
+                hosts = list((dist_node.get("hosts") or {}).keys())
                 for h in hosts:
                     result.append(f"{family}.{dist}.{h}")
 
@@ -107,7 +107,7 @@ class ListOperations:
             for dist, dist_node in fam_node.items():
                 if dist in RESERVED_KEYS:
                     continue
-                hosts = (dist_node.get("hosts") or {}).keys()
+                hosts = list((dist_node.get("hosts") or {}).keys())
                 for h in hosts:
                     result.append(f"{fam}.{dist}.{h}")
 

@@ -53,8 +53,12 @@ def resolve_config_dir(args) -> Path:
 def resolve_schema_dir(args, config_dir) -> Path:
     env = os.getenv(SCHEMA_ENV)
     default = str(config_dir / "schema")
-    return resolve_with_priority(args.schema_dir, env, default)
+    path = resolve_with_priority(args.schema_dir, env, default)
 
+    if path is None:
+        raise RuntimeError("Unable to resolve schema directory")
+
+    return path
 
 def resolve_log_dir(args, default_base: Path) -> Path:
     """
@@ -67,8 +71,11 @@ def resolve_log_dir(args, default_base: Path) -> Path:
     """
     env = os.getenv(LOG_DIR_ENV)
     default = str(default_base / "var" / "log")
-    return resolve_with_priority(cli_value=args.log_dir, env_value=env, default=default)
+    path = resolve_with_priority(cli_value=args.log_dir, env_value=env, default=default)
+    if path is None:
+        raise RuntimeError("Unable to resolve log directory")
 
+    return path
 
 def resolve_paths(args) -> Paths:
     """

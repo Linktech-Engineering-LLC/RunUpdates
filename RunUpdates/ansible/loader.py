@@ -112,7 +112,7 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         return output
 
     def build_index(self, tree: Dict[str, Any]) -> Dict[str, Any]:
-        index = {
+        index: Dict[str, Any] = {
             "families": {},
             "distros": {},
             "hosts": {},
@@ -175,7 +175,7 @@ class RunUpdatesInventoryLoader(GenericInventoryLoader):
         host_port = host_node.get("port") or distro_port or family_port or 22
 
         # Merge commands: distro first, host overrides last
-        merged_cmds = {}
+        merged_cmds: Dict[str, Any] = {}
         merged_cmds.update(commands)
         merged_cmds.update(host_node.get("commands", {}) or {})
 
