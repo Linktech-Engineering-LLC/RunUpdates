@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
- Modified: 2026-05-31
+ Modified: 2026-11-24
  File: RunUpdates/utils/common.py
  Version: 1.0.0
  Description: Description of this module
@@ -43,16 +43,16 @@ def resolve_config_dir(args) -> Path:
     env = os.getenv(CONFIG_ENV)
 
     if MODE == "DEV":
-        default = PACKAGE_ROOT / "etc"
+        default = str(PACKAGE_ROOT / "etc")
     else:
-        default = INSTALL_ROOT / "etc"
+        default = str(INSTALL_ROOT / "etc")
 
     return resolve_with_priority(args.config_dir, env, default)
 
 
 def resolve_schema_dir(args, config_dir) -> Path:
     env = os.getenv(SCHEMA_ENV)
-    default = config_dir / "schema"
+    default = str(config_dir / "schema")
     return resolve_with_priority(args.schema_dir, env, default)
 
 
@@ -66,7 +66,7 @@ def resolve_log_dir(args, default_base: Path) -> Path:
       3. Default: <default_base>/var/log
     """
     env = os.getenv(LOG_DIR_ENV)
-    default = default_base / "var" / "log"
+    default = str(default_base / "var" / "log")
     return resolve_with_priority(cli_value=args.log_dir, env_value=env, default=default)
 
 
@@ -116,8 +116,11 @@ def resolve_paths(args) -> Paths:
 
 def resolve_inventory_path(args_inventory: str | None, config_dir: Path) -> Path:
     env_value = os.getenv(INVENTORY_ENV)
-    default_path = config_dir / "hosts.yml"
-    return resolve_with_priority(args_inventory, env_value, default_path)
+    default_path = str(config_dir / "hosts.yml")
+    path = resolve_with_priority(args_inventory, env_value, default_path)
+    if path is None:
+        raise RuntimeError("Unable to resolve config directory")
+    return path
 
 
 # ------------------------------------------------------------
@@ -128,13 +131,17 @@ def resolve_inventory_path(args_inventory: str | None, config_dir: Path) -> Path
 def resolve_vault_path(args_vault: str | None) -> Path | None:
     env_value = os.getenv(VAULT_PATH_ENV)
     path = resolve_with_priority(args_vault, env_value, default=None)
-    return path if path else None
+    if path is None:
+        raise RuntimeError("Unable to resolve Vault directory")
+    return path
 
 
 def resolve_vault_password_file(args_password_file: str | None) -> Path | None:
     env_value = os.getenv(VAULT_PASSWORD_ENV)
     path = resolve_with_priority(args_password_file, env_value, default=None)
-    return path if path else None
+    if path is None:
+        raise RuntimeError("Unable to resolve password file")
+    return path
 
 
 # ------------------------------------------------------------
