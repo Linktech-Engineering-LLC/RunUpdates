@@ -132,6 +132,11 @@ jobs:
             sed 's/^In //' | sed 's/ line.*$//' | \
             sort -u || true
 
+      - name: Install RunUpdates
+        continue-on-error: true
+        run: |
+          python3 -m pip install -e .
+          
       - name: Pytest
         if: ${{ hashFiles('tests/**/*.py', 'test/**/*.py') != '' }}
         continue-on-error: true
