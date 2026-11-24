@@ -43,6 +43,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install PythonTools
+        if: ${{ github.event.repository.name != 'PythonTools' }}
+        run: |
+          pip install git+http://dad:3000/linux/PythonTools.git
+
       - name: Ruff lint
         if: ${{ hashFiles('**/*.py') != '' }}
         continue-on-error: true

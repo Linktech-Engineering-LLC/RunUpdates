@@ -86,9 +86,8 @@ jobs:
 
       - name: Install PythonTools
         run: |
-          if [ ! -d PythonTools ]; then
-            pip install git+http://dad:3000/linux/PythonTools.git
-          fi
+          python3 -c "import PythonTools" 2>/dev/null || \
+              pip install git+http://dad:3000/linux/PythonTools.git
 
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
