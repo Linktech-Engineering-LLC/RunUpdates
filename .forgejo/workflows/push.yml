@@ -34,25 +34,29 @@ jobs:
           uname -a
 
           python3 -m pip freeze | sort
+      - name: Python Paths
+        run: |
+          which python3
+          which pip
+          which pytest
+          which mypy
+
+          python3 --version
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PythonTools
-        if: ${{ github.event.repository.name != 'PythonTools' }}
-        run: |
-          pip install git+http://dad:3000/linux/PythonTools.git
-      - name: Verify PythonTools Dependencies
-        run: |
-          python3 - <<'EOF'
-          import yaml
-          import psutil
-          import requests
-          import paramiko
-          import pysnmp
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-          print("All PythonTools dependencies loaded successfully")
-          EOF
+      - name: Install Workflow Dependencies
+        run: |
+          python3 -m pip install \
+            pytest \
+            mypy \
+            git+http://dad:3000/linux/PythonTools.git
 
       - name: Ruff lint
         if: ${{ hashFiles('**/*.py') != '' }}
