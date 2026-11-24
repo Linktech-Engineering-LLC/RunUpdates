@@ -47,6 +47,18 @@ jobs:
         if: ${{ github.event.repository.name != 'PythonTools' }}
         run: |
           pip install git+http://dad:3000/linux/PythonTools.git
+      - name: Verify PythonTools
+        run: |
+          echo "Python executable:"
+          which python3
+
+          echo ""
+          echo "Installed package:"
+          pip show PythonTools || true
+
+          echo ""
+          echo "Import test:"
+          python3 -c "import PythonTools; print(PythonTools.__file__)"
 
       - name: Ruff lint
         if: ${{ hashFiles('**/*.py') != '' }}
