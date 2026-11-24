@@ -131,19 +131,6 @@ jobs:
           grep '^In .* line [0-9]\+:' shellcheck.log | \
             sed 's/^In //' | sed 's/ line.*$//' | \
             sort -u || true
-      - name: PythonTools Deep Check
-        run: |
-          python3 - <<'EOF'
-          import sys
-
-          print(sys.executable)
-
-          import PythonTools
-          print(PythonTools.__file__)
-
-          from PythonTools.log_helpers.factory import LoggerFactory
-          print("LoggerFactory OK")
-          EOF
 
       - name: Pytest
         if: ${{ hashFiles('tests/**/*.py', 'test/**/*.py') != '' }}
