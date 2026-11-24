@@ -6,14 +6,14 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-02
- Modified: 2026-06-02
+ Modified: 2026-11-24
  File: tests/paths/test_resolve_schema_dir.py
  Version: 1.0.0
  Description: Description of this module
 """
 
 
-from RunUpdates.core.constants import SCHEMA_ENV, PACKAGE_ROOT
+from RunUpdates.core.constants import SCHEMA_ENV
 from RunUpdates.utils.common import resolve_schema_dir
 
 
@@ -38,4 +38,4 @@ def test_schema_default_dev_mode(tmp_path):
     result = resolve_schema_dir(args, config_dir)
 
     # DEV MODE DEFAULT
-    assert result == (PACKAGE_ROOT / "schema").resolve()
+    assert result == (config_dir / "schema").resolve()
