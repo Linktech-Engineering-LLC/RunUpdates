@@ -59,6 +59,27 @@ jobs:
           echo ""
           echo "Import test:"
           python3 -c "import PythonTools; print(PythonTools.__file__)"
+      - name: Verify PythonTools Submodules
+        run: |
+          python3 - <<'EOF'
+          try:
+              from PythonTools.log_helpers.factory import LoggerFactory
+              print("log_helpers.factory OK")
+          except Exception as e:
+              print("log_helpers.factory FAILED:", e)
+
+          try:
+              import PythonTools.ansible.helpers
+              print("ansible.helpers OK")
+          except Exception as e:
+              print("ansible.helpers FAILED:", e)
+
+          try:
+              import PythonTools.sessions.ssh_sessions
+              print("sessions.ssh_sessions OK")
+          except Exception as e:
+              print("sessions.ssh_sessions FAILED:", e)
+          EOF
 
       - name: Ruff lint
         if: ${{ hashFiles('**/*.py') != '' }}
