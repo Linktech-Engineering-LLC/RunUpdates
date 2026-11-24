@@ -53,9 +53,8 @@ jobs:
 
       - name: Install Workflow Dependencies
         run: |
+          python3 -m pip install -r requirements-dev.txt
           python3 -m pip install \
-            pytest \
-            mypy \
             git+http://dad:3000/linux/PythonTools.git
 
       - name: Ruff lint
