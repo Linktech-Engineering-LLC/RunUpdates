@@ -149,6 +149,7 @@ jobs:
         if: ${{ hashFiles('tests/**/*.py', 'test/**/*.py') != '' }}
         continue-on-error: true
         run: |
+          python3 -m pip install -e .
           pytest -v
 
       - name: MyPy
