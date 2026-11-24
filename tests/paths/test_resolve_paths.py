@@ -6,7 +6,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-06-02
- Modified: 2026-06-02
+ Modified: 2026-11-24
  File: tests/paths/test_resolve_paths.py
  Version: 1.0.0
  Description: Description of this module
@@ -44,5 +44,5 @@ def test_resolve_paths_creates_directories(tmp_path, monkeypatch):
 
     # DEV MODE DEFAULTS
     assert paths.CONFIG_DIR == (PACKAGE_ROOT / "etc").resolve()
-    assert paths.SCHEMA_DIR == (PACKAGE_ROOT / "schema").resolve()
+    assert paths.SCHEMA_DIR == (paths.CONFIG_DIR / "schema").resolve()
     assert paths.LOG_DIR == (PACKAGE_ROOT / "var" / "log").resolve()
