@@ -262,8 +262,14 @@ class HostExecutor:
         parsed = None
         if step == "check":
             distro = host.get("distro") or host.get("family")
-            parsed = Parser.parse(distro, step, out) or {}
 
+            if not isinstance(distro, str):
+                raise RuntimeError(
+                    f"Host '{name}' is missing distro/family information"
+                )
+
+            parsed = Parser.parse(distro, step, out) or {}
+    
             status = "up_to_date"
 
             if parsed.get("summary") or parsed.get("upgradable"):

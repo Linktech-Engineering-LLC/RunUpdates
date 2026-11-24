@@ -47,7 +47,11 @@ def resolve_config_dir(args) -> Path:
     else:
         default = str(INSTALL_ROOT / "etc")
 
-    return resolve_with_priority(args.config_dir, env, default)
+    path = resolve_with_priority(args.config_dir, env, default)
+    if path is None:
+        raise RuntimeError("Unable to resolve Config directory")
+
+    return path
 
 
 def resolve_schema_dir(args, config_dir) -> Path:
