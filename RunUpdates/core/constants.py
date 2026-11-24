@@ -5,7 +5,7 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-04-13
-Modified: 2026-09-24
+ Modified: 2026-11-24
  File: RunUpdates/core/constants.py
  Version: 1.0.0
  Description: 
@@ -34,7 +34,12 @@ if getattr(sys, "frozen", False):
     INSTALL_ROOT = binary_path.parents[1]
 
     # PACKAGE_ROOT: <_MEIPASS>/RunUpdates
-    MEIPASS_ROOT = Path(sys._MEIPASS)
+    meipass = getattr(sys, "_MEIPASS", None)
+
+    if meipass is None:
+        raise RuntimeError("Frozen mode detected but _MEIPASS is unavailable")
+
+    MEIPASS_ROOT = Path(meipass)
     PACKAGE_ROOT = MEIPASS_ROOT / PROJECT_NAME
 
     # PROJECT_ROOT is the install root in frozen mode

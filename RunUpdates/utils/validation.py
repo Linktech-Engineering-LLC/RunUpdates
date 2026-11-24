@@ -6,14 +6,14 @@
  Author: Leon McClatchey
  Company: Linktech Engineering LLC
  Created: 2026-05-30
- Modified: 2026-05-30
+ Modified: 2026-11-24
  File: RunUpdates/utils/validation.py
  Version: 1.0.0
  Description: Description of this module
 """
 
 
-from PythonTools.ansible.helpers import InventoryLoadError
+from PythonTools.ansible.helpers import InventoryError
 
 
 def validate_family_distro_host(inventory_data, family=None, distro=None, host=None):
@@ -39,18 +39,18 @@ def validate_family_distro_host(inventory_data, family=None, distro=None, host=N
     """
 
     if not inventory_data:
-        raise InventoryLoadError("Inventory is empty or failed to load")
+        raise InventoryError("Inventory is empty or failed to load")
 
     families = inventory_data.get("families", {})
     if not families:
-        raise InventoryLoadError("Inventory contains no families")
+        raise InventoryError("Inventory contains no families")
 
     # ------------------------------------------------------------
     # Validate family
     # ------------------------------------------------------------
     if family:
         if family not in families:
-            raise InventoryLoadError(
+            raise InventoryError(
                 f"Family '{family}' not found in inventory. "
                 f"Available families: {', '.join(sorted(families.keys()))}"
             )
@@ -61,14 +61,14 @@ def validate_family_distro_host(inventory_data, family=None, distro=None, host=N
 
     distros = families[family].get("distros", {})
     if not distros:
-        raise InventoryLoadError(f"Family '{family}' contains no distros")
+        raise InventoryError(f"Family '{family}' contains no distros")
 
     # ------------------------------------------------------------
     # Validate distro
     # ------------------------------------------------------------
     if distro:
         if distro not in distros:
-            raise InventoryLoadError(
+            raise InventoryError(
                 f"Distro '{distro}' not found under family '{family}'. "
                 f"Available distros: {', '.join(sorted(distros.keys()))}"
             )
@@ -79,7 +79,7 @@ def validate_family_distro_host(inventory_data, family=None, distro=None, host=N
 
     hosts = distros[distro].get("hosts", {})
     if not hosts:
-        raise InventoryLoadError(
+        raise InventoryError(
             f"Distro '{distro}' under family '{family}' contains no hosts"
         )
 
@@ -88,7 +88,7 @@ def validate_family_distro_host(inventory_data, family=None, distro=None, host=N
     # ------------------------------------------------------------
     if host:
         if host not in hosts:
-            raise InventoryLoadError(
+            raise InventoryError(
                 f"Host '{host}' not found under {family}/{distro}. "
                 f"Available hosts: {', '.join(sorted(hosts.keys()))}"
             )
@@ -96,6 +96,6 @@ def validate_family_distro_host(inventory_data, family=None, distro=None, host=N
         # Disabled host check
         host_data = hosts[host]
         if host_data.get("disabled", False):
-            raise InventoryLoadError(
+            raise InventoryError(
                 f"Host '{host}' is marked as disabled in the inventory"
             )
