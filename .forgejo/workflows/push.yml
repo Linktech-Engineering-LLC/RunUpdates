@@ -101,6 +101,9 @@ jobs:
               except Exception as e:
                   print(f"FAILED: {m}: {e}")
           EOF
+      - name: Show PythonTools dependency health
+        run: |
+          python3 -m pip check || true
 
       - name: Ruff lint
         if: ${{ hashFiles('**/*.py') != '' }}
