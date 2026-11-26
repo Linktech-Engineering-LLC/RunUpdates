@@ -21,6 +21,9 @@
 #   dashboard.yml
 
 name: Forgejo Nightly Build
+env:
+  FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
+  FORGEJO_URL: "http://dad:3000/api/v1/repos/linux/RunUpdates/releases/tags/nightly"
 
 on:
   schedule:
@@ -38,21 +41,20 @@ jobs:
     container:
       image: dad:3000/linux/leon-ci:latest
     env:
-      FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
       FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
-      VIRTUAL_ENV: /opt/venv
-      PATH: /opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       
     steps:
       - name: Verify toolchain
         run: |
+          which python3
           python3 --version
+          which pip
+          pip --version
+          which pyinstaller
+          pyinstaller --version
           node --version
           pandoc --version | head -1
           jq --version
-          ruff --version
-          yamllint --version
-          shellcheck --version
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -75,33 +77,19 @@ jobs:
           echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
           echo "git_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Create virtual environment
+      - name: Install Build Dependencies
         run: |
-          python3.12 -m venv /opt/venv
-          /opt/venv/bin/python -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install \
+            git+http://dad:3000/linux/PythonTools.git
 
-      - name: Install Python build dependencies
+      - name: Verify PythonTools
         run: |
-          pip install pyinstaller
-
-      - name: Install PythonTools
-        run: |
-          python3 -c "import PythonTools" 2>/dev/null || \
-              pip install git+http://dad:3000/linux/PythonTools.git
+          python3 -c "import PythonTools; print('PythonTools OK')"
+          python3 -m pip list
 
       - name: Make scripts executable
         run: chmod +x packaging/*.sh
-
-      - name: Environment diagnostics
-        run: |
-          echo "VIRTUAL_ENV=$VIRTUAL_ENV"
-          which python
-          which pip
-          python --version
-          pip --version
-          pyinstaller --version
-          uname -a
-          pip freeze | sort
 
       - name: Build all artifacts
         run: |
@@ -125,7 +113,6 @@ jobs:
       - name: Generate metadata.json
         run: |
           mkdir -p artifacts
-          source /opt/venv/bin/activate
           PYTHON_VERSION=$(python3 --version | awk '{print $2}')
           PYINSTALLER_VERSION=$(pyinstaller --version 2>/dev/null || echo "unknown")
           BUILDER_OS="forgejo-runner"
@@ -211,7 +198,7 @@ jobs:
         run: |
           RELEASE=$(curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
-            "$FORGEJO_API_ROOT/releases/tags/nightly" \
+            "$FORGEJO_URL" \
             | jq -r '.id')
 
           curl -s \
@@ -231,7 +218,7 @@ jobs:
         run: |
           RELEASE=$(curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
-            "$FORGEJO_API_ROOT/releases/tags/nightly" \
+            "$FORGEJO_URL" \
             | jq -r '.id')
 
           for f in artifacts/*; do
@@ -260,7 +247,6 @@ jobs:
       image: dad:3000/linux/leon-ci:latest
 
     env:
-      FORGEJO_API_ROOT: "http://dad:3000/api/v1/repos/linux/RunUpdates"
       FORGEJO_TOKEN: ${{ secrets.RUNUPDATESTOKEN }}
       FORGEJO_SSH_KEY: ${{ secrets.RUNUPDATES_KEY }}
 
@@ -304,7 +290,7 @@ jobs:
           mkdir -p website/artifacts
           curl -s \
             -H "Authorization: token $FORGEJO_TOKEN" \
-            "$FORGEJO_API_ROOT/releases/tags/nightly" \
+            "$FORGEJO_URL" \
             > release.json
           jq -r '.assets[] | "\(.name)|\(.browser_download_url)"' release.json |
           while IFS='|' read NAME URL; do

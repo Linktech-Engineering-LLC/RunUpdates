@@ -135,26 +135,54 @@ jobs:
         continue-on-error: true
         run: |
           python3 -m pip install -e .
+
       - name: Verify Python Environment
+        if: always()
+        continue-on-error: true
         run: |
-          python3 -m pip list
-          python3 -m pip show mypy
-          python3 -m pip show PyYAML
+          echo "===== Python ====="
+          which python3 || true
+          python3 --version || true
+
+          echo "===== Pip ====="
+          which pip || true
+          pip --version || true
+
+          echo "===== Pytest ====="
+          which pytest || true
+          pytest --version || true
+
+          echo "===== MyPy ====="
+          which mypy || true
+          mypy --version || true
+
+          echo "===== Installed Packages ====="
+          python3 -m pip list || true
+
+          echo "===== PyYAML ====="
+          python3 -m pip show PyYAML || true
           python3 -m pip show types-PyYAML || true
+
+          echo "===== JSONSchema ====="
           python3 -m pip show jsonschema || true
-          python3 -m pip show types-jsonschema || true          
-          
+          python3 -m pip show types-jsonschema || true
+
+          echo "===== Python Executable ====="
+          python3 -c "import sys; print(sys.executable)"
+          python3 -c "import site; print(site.getsitepackages())"
+          python3 -c "import sys; print(sys.path)"
+
       - name: Pytest
         if: ${{ hashFiles('tests/**/*.py', 'test/**/*.py') != '' }}
         continue-on-error: true
         run: |
-          python3 -m pytest -v
+          pytest -v
 
       - name: MyPy
         if: ${{ hashFiles('pyproject.toml') != '' }}
         continue-on-error: true
         run: |
-          python3 -m mypy .
+          mypy .
 
   sync_to_remote:
     runs-on: ubuntu-latest
