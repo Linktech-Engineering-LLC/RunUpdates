@@ -12,7 +12,7 @@ concurrency:
 jobs:
 
   nightly-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     outputs:
       build_date: ${{ steps.capture.outputs.build_date }}
@@ -206,7 +206,7 @@ jobs:
           files: packaging/output/*
 
   publish-dashboard:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: nightly-build
 
     steps:
