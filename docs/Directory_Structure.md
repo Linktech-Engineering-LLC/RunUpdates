@@ -1,14 +1,49 @@
-# RunUpdates — Directory Structure
+# Directory Structure — RunUpdates
 
-This document describes the directory layout of the RunUpdates repository.  
-It explains the purpose of each folder and file, how components relate to one another, and the conventions used throughout the project.
+**Part of:** RunUpdates
+**Document:** Directory Structure Reference
+**Author:** Leon McClatchey, Linktech Engineering LLC
+**License:** MIT
+**Requires:** RunUpdates Source Tree
+**Last Updated:** 2026-11-26
 
-RunUpdates follows a deterministic, operator‑grade structure designed for clarity, maintainability, and future expansion.
+## Table of Contents
+1. [Overview](#1-overview)
+2. [Repository Overview](#2-repository-overview)
+3. [Core Execution Engine](#3-core-execution-engine)
+4. [Build & CI/CD Utilities](#4--build--cicd-utilities)
+5. [Documentation Structure](#5-subsystem-documentation)
+6. [Root-Level Documents](#6-rootlevel-documents)
+7. [Reserved Directories](#7-future-directories-reserved)
+8. [Summary](#8-summary)
 
 ---
 
-## 1. Repository Overview
+## 1. Overview
 
+This document describes the directory layout of the
+RunUpdates repository.
+
+It explains the purpose of each folder and file, how
+components relate to one another, and the conventions
+used throughout the project.
+
+RunUpdates follows a deterministic, operator-grade
+structure designed for clarity, maintainability, and
+future expansion.
+
+The repository is organized around explicit subsystem
+boundaries. Each directory and file has a well-defined
+responsibility and is intended to support deterministic,
+auditable operation.
+
+---
+
+## 2. Repository Overview
+
+The repository is organized into dedicated functional
+areas.
+```text
 RunUpdates/
     operations/
     scripts/
@@ -20,26 +55,28 @@ RunUpdates/
     CONTRIBUTING.md
     CHANGELOG.md
     SECURITY.md
-
+```
 
 Each directory has a single, explicit responsibility.  
 There are no hidden behaviors, no implicit defaults, and no auto‑generated structure.
 
 ---
 
-## 2. <operations/> — Core Execution Engine
+## 3. Core Execution Engine
 
 This directory contains the core logic of RunUpdates.  
 Each module has a narrow, well‑defined responsibility.
 
+```text
 operations/
     selector.py
     connector.py
     executor.py
     orchestrator.py
     sessions.py
+```
 
-### 2.1 <selector.py>
+### 3.1 <selector.py>
 
 Responsible for:
 * loading and flattening the inventory  
@@ -47,7 +84,7 @@ Responsible for:
 * validating host entries  
 * building HostExecutionPlan objects  
 
-### 2.2 <connector.py>
+### 3.2 <connector.py>
 
 Responsible for:
 * creating sessions  
@@ -55,7 +92,7 @@ Responsible for:
 * handling authentication  
 * providing a unified interface for command execution  
 
-### 2.3 <executor.py>
+### 3.3 <executor.py>
 
 Responsible for:
 * running distro‑specific update commands  
@@ -64,7 +101,7 @@ Responsible for:
 * detecting reboot requirements  
 * producing HostResult objects  
 
-### 2.4 <orchestrator.py>
+### 3.4 <orchestrator.py>
 
 Responsible for:
 * coordinating the entire update lifecycle  
@@ -73,7 +110,7 @@ Responsible for:
 * writing per‑host summaries  
 * returning aggregated results  
 
-### 2.5 <sessions.py>
+### 3.5 <sessions.py>
 
 Defines:
 
@@ -83,16 +120,16 @@ Local execution is handled by PythonTools’ <sudo_run> and does not use a Local
 
 ---
 
-## 3. <scripts/> — Build & CI/CD Utilities
+## 4.  Build & CI/CD Utilities
 
-`
+```text
 scripts/
     build.py
-`
+```
 
 This directory contains **only the scripts required for CI/CD.**
 
-### 3.1 build.py
+### 4.1 build.py
 
 * A **copied** version of the canonical script in PythonTools
 * Required by GitHub Actions (symlinks are not supported)
@@ -103,24 +140,28 @@ This directory contains **only the scripts required for CI/CD.**
 
 ---
 
-## 4. <docs/> — Subsystem Documentation
+## 5. Subsystem Documentation
 
+```text
 docs/
-    Design.md
-    Directory_Structure.md
-    Error_Classification.md
-    Execution_Flow.md
-    Inventory.md
-    Logging.md
-    Operation.md
-    PythonTools.md
-    Schema_Reference.md
-    Troubleshooting.md
+    [Build.md](Build.md)
+    [Design.md](Design.md)
+    Directory_Structure.md - This Document
+    [Error_Classification.md](Error_Classification.md)
+    [Execution_Flow.md](Execution_Flow.md)
+    [Inventory.md](Inventory.md)
+    [Logging.md](Logging.md)
+    [Operation.md](Operation.md)
+    [PythonTools.md](PythonTools.md)
+    [Schema_Reference.md](Schema_Reference.md)
+    [Troubleshooting.md](Troubleshooting.md)
+```
 
 Each document focuses on a single aspect of the system.
 
 | File | Purpose |
 | --- | --- |
+| **Build.md** | Build environment, toolchain requirements, and packaging workflow. |
 | **Design.md** | Core architectural and subsystem design — the authoritative technical overview. |
 | **Directory_Structure.md** | Repository layout and file responsibility map. |
 | **Error_Classification.md** | Defines deterministic error categories and logging behavior. |
@@ -132,52 +173,83 @@ Each document focuses on a single aspect of the system.
 | **Schema_Reference.md** | Formal YAML schema reference for validation and contributor guidance. |
 | **Troubleshooting.md** | Diagnostic procedures, common failure modes, and recovery steps. |
 
+Together, these documents provide a complete technical reference for the project.
+
 ---
 
-# 5. Root‑Level Documents
+## 6. Root‑Level Documents
 
 These documents define the project’s identity, policies, and architecture.
 
-### 5.1 `README.md`
-High‑level overview, quickstart, and operator guidance.
+### 6.1 [README.md](../README.md)
+Provides:
+* Project overview
+* Feature summary
+* Quick-start information
+* Operator guidance
 
-### 5.2 `ARCHITECTURE.md`
-Describes the internal structure and design principles.
+### 6.2 [CONTRIBUTING.md](../CONTRIBUTING.md)
+Defines:
+* Contribution procedures
+* Coding standards
+* Documentation requirements
+* Review expectations
 
-### 5.3 `CONTRIBUTING.md`
-Defines contribution rules, coding standards, and schema stability.
+### 6.3 [CHANGELOG.md](../CHANGELOG.md)
+Tracks:
+* Releases
+* Version history
+* Notable changes
 
-### 5.4 `CHANGELOG.md`
-Tracks version history and notable changes.
+### 6.4 [SECURITY.md](../SECURITY.md)
+Documents:
+* Security expectations
+* Vulnerability reporting procedures
+* Secret-handling requirements
 
-### 5.5 `SECURITY.md`
-Defines security expectations, reporting procedures, and safe handling of secrets.
+### 6.5 `main.py`
+The primary application entry point.
 
-### 5.6 `main.py`
-Entry point for the CLI.
+Responsibilities include:
+* CLI initialization
+* Configuration processing
+* Orchestrator startup
+* Program termination handling
 
 ---
 
-# 6. Future Directories (Reserved)
+## 7. Future Directories (Reserved)
 
 To avoid namespace collisions, the following directories are reserved for future expansion:
 
-tests/             (unit and integration tests)
-examples/          (safe placeholder inventories)
+### 7.1 tests/
 
+Reserved for:
+* Unit tests
+* Integration tests
+* Validation workflows
 
-These directories may be introduced in future releases.
+### 7.2 examples/
+
+Reserved for:
+* Example inventories
+* Demonstration configurations
+* Safe reference environments
+
+These directories may be introduced in future releases as project requirements evolve.
 
 ---
 
-# 7. Summary
+## 8. Summary
 
 The RunUpdates directory structure is:
 
-- explicit  
-- deterministic  
-- stable  
-- operator‑grade  
-- easy to navigate  
+* explicit  
+* deterministic  
+* stable  
+* operator‑grade  
+* easy to navigate  
 
-Each component has a clear purpose, and the layout is designed to support long‑term maintainability and future growth.
+Each component has a clearly defined responsibility.
+
+The layout is intentionally designed to support long-term maintainability, predictable behavior, audit-friendly operation, and future growth without introducing unnecessary complexity.

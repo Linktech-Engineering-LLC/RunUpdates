@@ -1,269 +1,492 @@
-# RunUpdates — Error Classification Model
+# Error Classification — RunUpdates
 
-This document describes how RunUpdates interprets exit codes, classifies errors, and records them in logs and summaries.  
-The goal is to provide deterministic, operator‑grade behavior across all supported distributions.
+**Part of:** RunUpdates
+**Document:** Error Classification Reference
+**Author:** Leon McClatchey, Linktech Engineering LLC
+**License:** MIT
+**Requires:** RunUpdates
+**Last Updated:** 2026-11-26
 
-RunUpdates uses a simple, explicit classification model:
-
-* **success**
-* **warning**
-* **error**
-* **fatal**
-
-These classifications appear in:
-
-* operator logs  
-* per‑host summaries  
-* aggregated results  
-
-They never contain sensitive data.
-
----
-
-# 1. Purpose of Error Classification
-
-Error classification provides:
-
-* consistent interpretation across distros  
-* predictable operator behavior  
-* stable automation hooks  
-* clear reporting in summaries  
-* deterministic logging  
-
-RunUpdates does **not** rely on distro‑specific semantics alone.  
-Instead, it maps exit codes into a unified model.
+## Table of Contents
+1. [Overview](#1-overview)
+2. [Classification Philosophy](#2-classification-philosophy)
+3. [Inventory-Based Exit-Code Model](#3-inventory-based-exit-code-model)
+4. [Host Classification Categories](#4-host-classification-categories)
+5. [Repository Health Classification](#5-repository-health-classification)
+6. [Update Availability Classification](#6-update-availability-classification)
+7. [Execution Flow Integration](#7-execution-flow-integration)
+8. [PythonTools Integration](#8-pythontools-integration)
+9. [Logging & Reporting](#9-logging--reporting)
+10. [Examples](#10-examples)
+11. [Notes](#11-notes)
 
 ---
 
-# 2. Classification Levels
+## 1. Overview
 
-## 2.1 success
-Indicates that the command completed without errors.
+This document describes how RunUpdates interprets
+command results, classifies host states, and records
+those classifications throughout the update pipeline.
 
-Examples:
+Unlike traditional update tools, RunUpdates does not
+assign universal meaning to exit codes.
 
-* <zypper lu> returned 0  
-* <apt upgrade -y> returned 0  
-* <dnf upgrade -y> returned 0  
+Instead, command results are interpreted using
+inventory-defined rules combined with deterministic
+fallback mechanisms.
 
-Recorded as:
-
-"classification": "success"
-
----
-
-## 2.2 warning
-Indicates a non‑fatal issue that did not prevent execution.
-
-Examples:
-
-* package manager returned a non‑zero code but still produced usable output  
-* a list command returned partial results  
-* a reboot is required (not an error, but noteworthy)  
-
-Recorded as:
-
-"classification": "warning"
-
-
-Warnings do **not** stop execution.
+This approach allows RunUpdates to support multiple
+Linux distributions without requiring code changes
+for every package manager.
 
 ---
 
-## 2.3 error
-Indicates a failure that affected the command but did not stop the host’s overall execution flow.
+## 2. Classification Philosophy
 
-Examples:
+RunUpdates is designed around several core principles.
 
-* update command failed  
-* list command failed  
-* SSH command returned a non‑zero exit code  
-* stderr contained actionable errors  
+### 2.1 Deterministic Behavior
 
-Recorded as:
+Command interpretation must always produce the same
+result given the same inventory, commands, and outputs.
 
-"classification": "error"
+### 2.2 Inventory-Driven Rules
 
+Exit-code meanings originate from the inventory rather
+than application code.
 
-Execution continues to:
+RunUpdates does not assume that:
 
-* clean  
-* reboot detection  
-* summary generation  
+* Exit code 0 means updates are unavailable
+* Exit code 100 means updates are available
+* Exit code 1 indicates failure
 
----
+These interpretations are defined per distribution.
 
-## 2.4 fatal
-Indicates a failure that prevents further execution for the host.
+### 2.3 Distribution Independence
 
-Examples:
+Different package managers use different commands,
+outputs, and exit codes.
 
-* SSH session could not be created  
-* authentication failed  
-* inventory entry was invalid  
-* command could not be executed at all  
-* PythonTools raised an unrecoverable exception  
+RunUpdates provides a common interpretation layer
+without forcing distributions into a single behavior
+model.
 
-Recorded as:
+### 2.4 Explicit Classification
 
-"classification": "fatal"`
+Every lifecycle stage produces a documented
+classification.
 
-
-A fatal classification ends processing for that host.
-Other hosts are unaffected.
+No hidden assumptions or implicit interpretations
+are permitted.
 
 ---
 
-# 3. How Exit Codes Are Interpreted
+## 3. Inventory-Based Exit-Code Model
 
-RunUpdates uses a deterministic mapping:
+Exit-code interpretation is defined within the
+inventory.
 
-| Exit Code | Classification | Meaning |
-|-----------|----------------|---------|
-| [0]       | success        | Command completed normally |
-| [1–99]    | error          | Command failed but execution may continue |
-| [100–199] | warning        | Non‑fatal issues (distro‑specific) |
-| [200+]    | fatal          | Unrecoverable failure |
+Example:
 
-This mapping is intentionally simple and distro‑agnostic.
+```yaml
+exit_codes:
+  check:
+    up_to_date: [0]
+    patches_available: [101]
+    error: ["*"]
+```
 
-### Notes
+Classifications are defined per lifecycle command.
 
-- Some distros use special codes (e.g., `zypper` reboot codes).  
-  These are mapped into **warning** or **success** depending on context.
-- PythonTools may override classification if stderr indicates a fatal condition.
+For example:
 
----
+```yaml
+exit_codes:
+  refresh:
+    success: [0]
+    error: ["*"]
 
-# 4. PythonTools Integration
+  check:
+    up_to_date: [0]    
+    patches_available: [101]
+    error: ["*"]
 
-PythonTools provides:
+  update:
+    success: [0]
+    reboot_required: [102]
+    error: ["*"]
+```
 
-- exit code capture  
-- stderr/stdout capture  
-- exception handling  
-- SSH error detection  
-- redaction of sensitive data  
+The executor evaluates each command against the
+corresponding classification *ap.
 
-RunUpdates then applies its classification model on top of this.
-
-### PythonTools fatal conditions include:
-
-- SSH connection failure  
-- authentication failure  
-- command execution failure (no exit code)  
-- unexpected exceptions  
-
-These are always mapped to:
-
-"classification": "fatal"
-
----
-
-# 5. How Classification Affects Execution Flow
-
-## 5.1 success
-Execution continues normally.
-
-## 5.2 warning
-Execution continues, but the summary records the issue.
-
-## 5.3 error
-Execution continues, but the host is marked as having failed operations.
-
-## 5.4 fatal
-Execution stops for that host immediately.
-Other hosts continue unaffected.
+* command can therefore use completely different
+exit-code meanings then another command on the
+same distribution.
 
 ---
 
-# 6. Logging Behavior
+## 4. Host Classification Categories
 
-Each command produces a log entry:
+RunUpdates classifies host state rather than simply
+classifying process exit codes.
 
+Common classifications include:
+
+### 4.1 Up To Date
+
+The host does not require updates.
+
+Typical Sources:
+
+* Inventory exit-code match
+* Distro-specific command output
+
+### 4.2 Patches Available
+*Updates are available for installation*.
+
+Typical Sources:
+
+* Inventory-defined exit-code mappings
+* Stdout analysis fallback
+
+### 4.3 Updated
+
+Updates were successfully installed.
+
+Typical Sources:
+
+* Successful update command execution
+* Post update validation
+
+### 4.4 Reboot Required
+
+Updates completed successfully but additional action
+is necessary before the host is considered fully
+updated.
+
+Typical Sources:
+
+* Inventory-defined reboot exit codes
+* Distribution-specific reboot indicators
+
+### 4.5 Repo Broken
+
+Repository metadata could not be retrieved or
+validated.
+
+Hosts classified as repo_broken are excluded from
+update execution unless overridden.
+
+### 4.6 Error
+
+Command execution completed but produced a failure
+condition.
+
+Examples include:
+
+* Package manager failures
+* Invalid command output
+* Unexpected lifecycle results
+
+### 4.7 Fatal
+
+An unrecoverable error prevented further host
+processing.
+
+Examples include:
+
+* Authentication failure
+* Session initialization failure
+* Missing required configuration
+* Unexpected execution exceptions
+
+Fatal classifications terminate processing for the
+current host only.
+
+---
+
+## 5. Repository Health Classification
+
+Repository availability is evaluated independently
+of update availability.
+
+RunUpdates analyzes stderr output and execution
+results from repository operations.
+
+Common indicators include:
+
+* Repository metadata failures
+* Repository synchronization failures
+* Missing repositories
+* Authentication failures
+* Signature validation failures
+
+Hosts classified as:
+
+```text
+repo_broken
+```
+
+are skipped during update execution.
+
+This prevents accidental execution against hosts that
+cannot reliably determine package state.
+
+### 5.1 Force Override
+
+When:
+
+```text
+--force
+```
+
+is specified, execution may continue despite
+repository health warnings.
+
+The  host classification remains recorded in logs and
+summaries.
+
+---
+
+## 6. Update Availability Classification
+
+RunUpdates uses a layered classification strategy.
+
+### 6.1 Primary Method
+Exit-code mappings defined in the inventory.
+
+Example:
+
+```yaml
+check
+  up_to_date: [0]
+  patches_avail*ble: [101]
+  error: ["*"]
+```
+
+### 6.2 Secondary Method
+
+Stdout-based detection.
+
+RunUpdates scans command output for common update
+indicators.
+
+Examples include:
+
+```text
+upgradable
+updates available
+patches available
+```
+
+This provides a distribution-agnostic fallback when
+package-manager exit codes are unreliable.
+
+### 6.3 Deterministic Precedence
+
+Classification priority is:
+
+```text
+Inventory Rules
+        ↓
+Stdout Detection
+        ↓
+Generic Error Classification
+```
+
+Inventory rules always take precedence.
+
+---
+
+## 7. Execution Flow Integration
+
+Classification occurs throughout the update lifecycle.
+
+```text
+CHECK
+  ↓
+CLASSIFY
+  ↓
+REFRESH
+  ↓
+CLASSIFY
+  ↓
+UPDATE
+  ↓
+CLASSIFY
+  ↓
+CLEAN
+  ↓
+CLASSIFY
+```
+
+Every lifecycle stage produces a deterministic result.
+
+Classification results influence:
+
+* Update execution decisions
+* Reboot handling
+* Summary generation
+* Operator reporting
+
+Classification never relies on external state.
+
+---
+
+## 8. PythonTools Integration
+
+PythonTools provides the underlying execution layer.
+
+Responsibilities include:
+
+* Command execution
+* SSH session management
+* Exit-code capture
+* stdout capture
+* stderr capture
+* Exception handling
+* Secret redaction
+
+RunUpdates performs classification using the data
+returned by PythonTools.
+
+### 8.1 Fatal Conditions
+
+Examples include:
+
+* SSH connection failure
+* Authentication failure
+* Command execution failure
+* Session initialization failure
+* Unexpected exceptions
+
+These conditions are typically classified as fatal
+because execution cannot continue safely.
+
+### 8.2 Separation of Responsibilities
+
+PythonTools performs execution.
+
+RunUpdates performs interpretation.
+
+This separation keeps PythonTools project-agnostic
+while allowing RunUpdates to implement
+inventory-specific behavior.
+
+---
+
+## 9. Logging & Reporting
+
+Classification information is recorded in structured
+logs and host summaries.
+
+Logged information may include:
+
+* Lifecycle stage
+* Command
+* Exit code
+* Classification
+* Repository health
+* Update status
+* Reboot requirements
+
+Sensitive data is never recorded.
+
+Examples include:
+
+* Passwords
+* SSH private keys
+* Vault secrets
+* Authentication tokens
+
+### 9.1 Host Summaries
+
+Per-host Summaries may contain:
+
+```json
 {
-[2025-05-01 14:03:22] COMMAND: zypper lu
-[2025-05-01 14:03:23] EXIT: 4
-[2025-05-01 14:03:23] CLASSIFICATION: warning
+  "hostname": "web01",
+  "status": "*atches_available",
+  "repo_broken" false,
+  "reboot_required": true
 }
+```
 
+### 9.2 Aggregated Results
 
-Logs contain:
+Classification information is also included in:
 
-* timestamp  
-* command  
-* exit code  
-* classification  
-* stderr (redacted if needed)  
+```text
+summary.json
+```
 
-Logs never contain:
-
-* passwords  
-* SSH keys  
-* vault secrets  
-* sensitive inventory data  
+and other build or reporting artifacts.
 
 ---
 
-# 7. Summary Behavior
+## 10. Examples
 
-Each host summary includes:
+## 10.1 Host Up To Date
 
-{
-"exit_code": 4,
-"classification": "warning",
-"errors": ["Reboot required"],
-"reboot_required": true
-}
-
-Summaries are machine‑readable and safe for long‑term retention.
-
----
-
-# 8. Examples
-
-## 8.1 Successful update
-
-{
+```yaml
 exit_code: 0
-classification: success
-reboot_required: false
-}
+classification: up_to_date
+```
 
-## 8.2 Update succeeded but reboot required
+### 10.2 Updates Available
 
-{
-exit_code: 103
-classification: warning
-reboot_required: true
-}
+```yaml
+exit_code: 101
+classification: patches_available
+```
 
-## 8.3 Update failed
+### 10.3 Reboot Required
 
-{
-exit_code: 1
-classification: error
-reboot_required: false
-}
+```yaml
+exit_code: 102
+classification: reboot_required
+```
 
-## 8.4 SSH failure
+### 10.4 Repository Failure
+```yaml
+classification: repo_broken
+```
 
-{
-exit_code: null
+### 10.5 Authentication Failure
+
+```yaml
 classification: fatal
-error: "SSH connection failed"
-}
+```
+
+### 10.6 Package Manager Failure
+
+```yaml
+classification: error
+```
 
 ---
 
-# 9. Summary
+## 11. Notes
 
-RunUpdates uses a deterministic, distro‑agnostic error classification model that ensures:
+RunUpdates does not maintain a universal exit-code
+table.
 
-* predictable operator behavior  
-* consistent logging  
-* clear summaries  
-* stable automation hooks  
-* safe, audit‑friendly output  
+Classifications originate from inventory definitions
+and deterministic interpretation rules.
 
-This document defines the authoritative classification rules for all RunUpdates operations.
+This design allows support for multiple Linux
+distributions without embedding package-manager
+semantics in application code.
+
+The classification model is intentionally:
+
+* Deterministic
+* Inventory-driven
+* Distribution-agnostic
+* Auditable
+* Extensible
+
+All classification behavior described in this document
+is considered authoritative for RunUpdates operation.
