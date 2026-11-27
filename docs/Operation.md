@@ -1,333 +1,463 @@
-# RunUpdates — Operation Guide
-This document describes the runtime behavior of RunUpdates, including host selection, connection logic, command execution, exit‑code interpretation, logging, and error handling.
-It reflects the current architecture using PythonTools, sudo_run, and SSHSession.
+# RunUpdates Operation Guide
 
-## 🧭 1. Overview
-RunUpdates executes a deterministic update pipeline across one or more Linux hosts.
-Each host is processed independently using:
+**Part of:** RunUpdates
+**Document:** Operation Guide
+**Author:** Leon McClatchey, Linktech Engineering LLC
+**License:** MIT
+**Requires:** RunUpdates
+**Last Updated:** 2026-11-26
 
-* a flattened inventory object
-* a unified execution model
-* a YAML‑driven distro command set
-* a YAML‑driven exit‑code interpretation model
-* injected secrets and logging
+---
 
-The orchestrator ensures predictable, audit‑friendly behavior regardless of distro or environment.
+## Table of Contents
 
-## 🧩 2. Inventory Processing
-The inventory is loaded and normalized by InventoryProcessor.
+1. [Overview](#1-overview)
+2. [Purpose](#2-purpose)
+3. [Operating RunUpdates](#3-operating-runupdates)
+4. [Host Selection](#4-host-selection)
+5. [Execution Modes](#5-execution-modes)
+   1. [Normal Mode](#51-normal-mode)
+   2. [Dry-Run Mode](#52-dry-run-mode)
+6. [Connection Behavior](#6-connection-behavior)
+   1. [Local Execution](#61-local-execution)
+   2. [Remote Execution](#62-remote-execution)
+   3. [Authentication](#63-authentication)
+7. [Update Execution](#7-update-execution)
+   1. [Lifecycle Execution](#71-lifecycle-execution)
+   2. [Repository Health Handling](#72-repository-health-handling)
+   3. [openSUSE Update Modes](#73-opensuse-update-modes)
+8. [Monitoring Execution](#8-monitoring-execution)
+9. [Reviewing Results](#9-reviewing-results)
+10. [Common Operational Scenarios](#10-common-operational-scenarios)
+11. [Failure Handling](#11-failure-handling)
+12. [Future Enhancements](#12-future-enhancements)
+13. [Summary](#13-summary)
+14. [Notes](#14-notes)
 
-### Flattening Rules
+---
 
-For each host:
+## 1. Overview
 
-1. Family defaults
-2. Distro defaults
-3. Host overrides
+RunUpdates is an operator-focused update orchestration tool designed to execute deterministic update workflows across one or more Linux hosts.
 
-…are merged into a single deterministic object:
+The application uses inventory-driven configuration, structured logging, declarative classification rules, and normalized host definitions to ensure consistent behavior across environments.
 
-```python
-{
-  "family": "linux",
-  "distro": "opensuse",
-  "address": ["192.168.0.67"],
-  "port": 2222,
-  "packages": {...},
-  "exit_codes": {...},
-  "enabled": true
-}
+This document focuses on how operators interact with RunUpdates and how execution behaves from an operational perspective.
+
+---
+
+## 2. Purpose
+
+The purpose of this document is to:
+
+* Explain how RunUpdates is operated.
+* Describe host selection behavior.
+* Define execution modes.
+* Explain connection behavior.
+* Describe update execution from an operator perspective.
+* Explain how results should be monitored and reviewed.
+* Document common operational scenarios.
+
+After reviewing this document, operators should understand how to safely execute and monitor RunUpdates across supported environments.
+
+---
+
+## 3. Operating RunUpdates
+
+RunUpdates operates against hosts defined in the inventory.
+
+Execution behavior is determined by:
+
+* Inventory configuration.
+* Host selection filters.
+* Distro-specific command definitions.
+* Exit-code classifications.
+* Runtime options.
+
+The inventory, execution lifecycle, logging model, and classification system are documented separately.
+
+Operators are expected to understand the inventory being used before executing updates.
+
+---
+
+## 4. Host Selection
+
+RunUpdates supports selective host execution through command-line filters.
+
+Available filters include:
+
+* `--family`
+* `--distro`
+* `--host`
+
+Examples:
+
+```bash
+runupdates --family linux
 ```
 
-This flattened host object is passed to HostSelector, HostConnector, and HostExecutor.
+```bash
+runupdates --distro opensuse
+```
 
-## 🎯 3. Host Selection
-Host selection is performed by HostSelector, based on CLI filters:
+```bash
+runupdates --host suse-node-01
+```
 
-* --family
-* --distro
-* --host
-* --list-* operations
+Hosts must satisfy all supplied filters.
 
-Rules:
+The following selection rules apply:
 
-* Disabled hosts are skipped
-* Hosts must match all provided filters
-* If no filters are provided, all enabled hosts run
+* Disabled hosts are excluded.
+* Hosts must match all specified filters.
+* If no filters are supplied, all enabled hosts are selected.
+* Invalid host and family combinations result in an error.
+* Host selection is validated before execution begins.
 
-Dry‑run mode (--dry-run) still performs selection but does not execute commands.
+Additional inventory details are documented in `Inventory.md`.
 
-## 🔌 4. Connection Model (HostConnector)
-HostConnector determines whether a host is executed locally or remotely.
+---
 
-### Local Execution
-Triggered when:
+## 5. Execution Modes
 
-* the host address matches localhost, 127.0.0.1, or the machine’s own IP
-* OR the host explicitly sets local: true
+RunUpdates currently supports two execution modes.
 
-Local commands use:
+### 5.1 Normal Mode
+
+Normal mode performs full update execution.
+
+This includes:
+
+* Host selection.
+* Session establishment.
+* Lifecycle execution.
+* Logging.
+* Classification.
+* Summary generation.
+
+Normal mode is the default operating mode.
+
+### 5.2 Dry-Run Mode
+
+Dry-run mode validates execution without making changes.
+
+Dry-run mode performs:
+
+* Host selection.
+* Configuration validation.
+* Lifecycle planning.
+
+Dry-run mode does not perform:
+
+* Command execution.
+* SSH connections.
+* Package updates.
+* System modifications.
+
+Operators should use dry-run mode before executing updates against new hosts or newly modified inventories.
+
+Example:
+
+```bash
+runupdates --dry-run
+```
+
+---
+
+## 6. Connection Behavior
+
+RunUpdates automatically determines how each host should be accessed.
+
+Connection decisions are made using normalized host definitions.
+
+### 6.1 Local Execution
+
+Local execution occurs when the target host is the current system.
+
+Examples include:
+
+* `localhost`
+* `127.0.0.1`
+* The system's own configured address
+* Hosts explicitly configured as local
+
+Local execution uses:
 
 ```text
-sudo_run(command)
+sudo_run()
 ```
 
-### Remote Execution
+through PythonTools.
 
-Triggered when:
+Local operations do not require SSH connectivity.
 
-* the host has an address list
-* OR the host is not local
+### 6.2 Remote Execution
 
-Remote commands use:
+Remote execution occurs when the target host is a remote system.
+
+Remote execution uses:
 
 ```text
-SSHSession(address, port, username, keyfile, password)
+SSHSession()
 ```
 
-### Authentication Rules
+through PythonTools.
 
-1. keyfile → primary SSH authentication
-2. password → fallback SSH authentication
-3. password → sudo password for privileged commands
+Remote systems are accessed using addresses defined within the inventory.
 
-If no authentication method is available, the host is marked as failed before execution begins.
+### 6.3 Authentication
 
-## 🛠 5. Execution Pipeline (HostExecutor)
+RunUpdates supports multiple authentication mechanisms.
 
-Each host runs the following deterministic sequence:
+Supported authentication methods include:
 
-1. check
-2. refresh
-3. update
-4. clean
-5. reboot (optional)
+* SSH key authentication.
+* Password authentication.
+* Sudo credential elevation.
 
-Commands are defined in the inventory under:
+Authentication preference order is:
 
-```yaml
-packages:
-  check: ...
-  refresh: ...
-  update: ...
-  clean: ...
-  reboot: ...
+1. SSH key authentication
+2. Password authentication
+
+Authentication data is typically supplied through vault integration.
+
+If no valid authentication method is available, execution fails before lifecycle processing begins.
+
+---
+
+## 7. Update Execution
+
+RunUpdates executes updates using inventory-defined commands.
+
+Commands are never hardcoded within the orchestrator.
+
+### 7.1 Lifecycle Execution
+
+Hosts execute the standard lifecycle defined in `Execution_Flow.md`.
+
+The lifecycle consists of:
+
+```text
+check
+refresh
+update
+clean
+reboot detection
 ```
 
-### Repo Health Check (Implemented)
+Commands are executed in deterministic order.
 
-After the check and refresh stages, RunUpdates analyzes stderr for repository metadata failures.
-* If repo metadata cannot be retrieved:
-* the host is marked repo_broken
-* update is skipped unless --force is used
-* the error is logged
-* the summary records the repo health state
+The following execution rules apply:
 
-### Execution Rules
+* Commands execute sequentially.
+* Commands are logged before execution.
+* Commands are logged after execution.
+* Output is captured.
+* Classifications are generated.
+* Failures do not automatically stop the lifecycle.
 
-* Commands are executed in order
-* Each command is logged before and after execution
-* Failures do not stop the pipeline
-* stdout, stderr, and exit code are captured
-* Exit codes are interpreted using the YAML model
+After execution completes, summaries are generated.
 
-If --dry-run is enabled, commands are printed but not executed.
+### 7.2 Repository Health Handling
 
-## 🧩 5.1 SUSE Update Behavior (zypper up vs zypper dup)
+RunUpdates evaluates repository health during execution.
 
-RunUpdates supports both zypper up and zypper dup for SUSE‑family hosts.
-Because this environment contains no SLES/SLED systems, SUSE update semantics follow openSUSE behavior exclusively.
+Repository problems may include:
 
-### openSUSE Leap and Tumbleweed
+* Missing metadata.
+* Unreachable repositories.
+* Repository configuration errors.
+* Refresh failures.
 
-openSUSE uses two distinct update modes:
+When repository failures are detected:
 
-`zypper up` — **conservative mode**
-* Installs same‑vendor updates only
-* Does not switch repositories
-* Does not replace or downgrade packages
-* Holds back updates requiring vendor or repo changes
-* Suitable only for Leap systems with strict OSS‑only repositories
+* Repository health is classified.
+* The condition is logged.
+* Summaries are updated accordingly.
 
-`zypper dup` — **full synchronization mode**
-* Performs vendor changes
-* Switches repositories when required
-* Replaces and downgrades packages to match repo state
-* Required for Tumbleweed
-* Required for Leap systems using mixed repositories (OSS + Packman + KDE)
-* Required when zypper up reports large sets of “updates will NOT be installed”
+Repository classification behavior is documented in `Error_Classification.md`.
 
-### RunUpdates Behavior
+### 7.3 openSUSE Update Modes
 
-RunUpdates does not enforce a specific update mode.
-The update command is taken directly from hosts.yml:
+RunUpdates does not enforce a specific openSUSE update strategy.
 
-```yaml
-packages:
-  update: zypper dup
-```
+The update behavior is defined entirely by the inventory.
 
-or
+Example:
 
 ```yaml
 packages:
   update: zypper up
 ```
 
-Because this environment contains **no SUSE Enterprise hosts**, `zypper dup` is considered safe and correct for all openSUSE systems unless explicitly overridden.
-
-This ensures deterministic behavior when vendor changes, repo transitions, or rolling‑release updates are required.
-
-## 📦 6. YAML‑Driven Exit‑Code Interpretation
-
-Each distro defines exit‑code behavior:
+or
 
 ```yaml
-exit_codes:
-  check:
-    up_to_date: [0]
-    patches_available: [101]
-    error: ["*"]
+packages:
+  update: zypper dup
 ```
 
-### Interpretation Rules
+Current environments primarily target openSUSE systems rather than SUSE Enterprise distributions.
 
-* The command key (e.g., check) must match the exit‑code key
-* Lists define explicit matches
-* "*" matches any unspecified exit code
-* The first matching category is used
-* Categories are passed to the orchestrator for reporting
+For openSUSE systems:
 
-**Example**
+* `zypper up` performs conservative upgrades.
+* `zypper dup` performs full repository synchronization.
 
-If check returns exit code 101:
+Tumbleweed systems typically require `zypper dup`.
 
-* patches_available matches
-* HostExecutor logs the classification
-* The pipeline continues normally
+Leap systems may use either approach depending on repository configuration.
 
-If exit code is unrecognized:
+RunUpdates executes whichever command is defined in the inventory.
 
-* "*" → error
-* The error is logged
-* The pipeline continues
+---
 
-This ensures deterministic behavior across distros.
+## 8. Monitoring Execution
 
-## 🧰 7. PythonTools Integration
+Operators should monitor execution using available runtime outputs.
 
-RunUpdates uses PythonTools for all command execution.
+The primary execution records include:
 
-### Local Execution
+* Console output.
+* Active log files.
+* Host summary files.
+* Fleet summary files.
 
-```python
-result = sudo_run(command)
+During execution, lifecycle progress is visible through structured logging.
+
+Logging behavior is documented in `Logging.md`.
+
+---
+
+## 9. Reviewing Results
+
+After execution completes, operators should review generated artifacts.
+
+Recommended review items include:
+
+* Host execution status.
+* Update status.
+* Repository health.
+* Reboot requirements.
+* Logged errors.
+* Fleet summary information.
+
+Primary output files include:
+
+```text
+summary.json
 ```
 
-### Remote Execution
+and:
 
-```python
-session = SSHSession(address, port, username, keyfile, password)
-result = session.run(command)
+```text
+<hostname>.json
 ```
 
-### Return Structure
+Classification interpretation is documented in `Error_Classification.md`.
 
-Both local and remote execution return:
+---
 
-```python
-{
-  "stdout": "...",
-  "stderr": "...",
-  "exit_code": 0,
-  "ok": True/False
-}
-```
+## 10. Common Operational Scenarios
 
-### Logging & Secrets
+RunUpdates supports several common operational workflows.
 
-* PythonTools receives an injected logger
-* PythonTools receives injected secrets
-* PythonTools never initializes logging
-* PythonTools never loads YAML
-* PythonTools never stores secrets
+Typical scenarios include:
 
-This keeps the execution layer reusable and project‑agnostic.
+* Updating an entire environment.
+* Updating a specific distro.
+* Updating a single host.
+* Validating inventory changes.
+* Reviewing repository health.
+* Identifying systems requiring reboot.
+* Running audit-only dry-run executions.
 
-## 📜 8. Logging Behavior
+Operators should select the most specific execution scope appropriate for the task.
 
-RunUpdates uses an operator‑grade logging model:
+---
 
-### Logged for each command
+## 11. Failure Handling
 
-* timestamp
-* host
-* command name
-* command string
-* exit code
-* stdout
-* stderr
-* classification (from exit‑code model)
+RunUpdates is designed to continue processing whenever practical.
 
-### Redaction Rules
+Failure handling depends upon the type of failure encountered.
 
-* passwords
-* sudo prompts
-* SSH authentication failures
-* sensitive inventory fields
+Inventory failures:
 
-…are never logged.
+* Stop execution immediately.
+* Prevent host processing.
 
-### PythonTools Logging
+Connection failures:
 
-PythonTools uses:
+* Mark the host as failed.
+* Continue processing remaining hosts.
 
-* injected logger
-* _NullLogger fallback if none is provided
+Command failures:
 
-## 🧪 9. Error Handling
-RunUpdates is designed to be deterministic and resilient.
+* Are logged.
+* Are classified.
+* Continue through remaining lifecycle stages when possible.
 
-### Command Errors
+Repository failures:
 
-If a command fails:
+* Are classified independently.
+* Are included in summaries.
+* Do not necessarily prevent other hosts from executing.
 
-* the error is logged
-* the exit‑code classification is applied
-* the pipeline continues
+Additional classification details are documented in `Error_Classification.md`.
 
-### Connection Errors
+---
 
-If SSHSession cannot connect:
+## 12. Future Enhancements
 
-* the host is marked as failed
-* the pipeline is skipped
-* the error is logged
+Future releases may add:
 
-### Inventory Errors
+* Parallel execution.
+* Enhanced classification categories.
+* Additional distro support.
+* Inventory schema versioning.
+* UI integrations.
+* Structured execution reporting.
+* Advanced repository management.
 
-If the inventory is invalid:
+The operational workflow described in this document is expected to remain stable as these enhancements are introduced.
 
-* RunUpdates exits before execution
-* errors are printed with context
+---
 
-## 🚦 10. Dry‑Run Mode
+## 13. Summary
 
-Dry‑run mode prints:
+RunUpdates provides a deterministic and operator-focused update management workflow.
 
-* selected hosts
-* commands that would run
-* connection type (local/remote)
-* no commands are executed
-* no SSH connections are made
+Key operational characteristics include:
 
-This is ideal for validation and audit review.
+* Inventory-driven behavior.
+* Deterministic execution.
+* Consistent host selection.
+* Flexible execution modes.
+* Structured logging.
+* Declarative classification.
+* Comprehensive reporting.
 
-## 🔮 11. Future Enhancements
+The operational model is designed to provide repeatable and auditable update execution across supported environments.
 
-* parallel execution
-* richer exit‑code categories
-* inventory schema validation
-* PythonTools extraction into standalone repo
+---
 
-additional distro support
+## 14. Notes
+
+This document focuses on operational usage and runtime interaction with RunUpdates.
+
+For related information, see:
+
+* [Build.md](Build.md)
+* [Design.md](Design.md)
+* [Directory_Structure.md](Directory_Structure.md)
+* [Error_Classification.md](Error_Classification.md)
+* [Execution_Flow.md](Execution_Flow.md)
+* [Inventory.md](Inventory.md)
+* [Logging.md](Logging.md)
+* [PythonTools.md](PythonTools.md)
+* [Schema_Reference.md](Schema_Reference.md)
+* [Troubleshooting.md](Troubleshooting.md)
+
+The operational guidance defined in this document is considered authoritative for the day-to-day use of RunUpdates.

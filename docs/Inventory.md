@@ -1,43 +1,86 @@
-# RunUpdates — Inventory Model
+# RunUpdates Inventory Model
+
+**Part of:** RunUpdates
+**Document:** Inventory Reference
+**Author:** Leon McClatchey, Linktech Engineering LLC
+**License:** MIT
+**Requires:** RunUpdates
+**Last Updated:** 2026-11-26
+
+---
+
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Purpose](#2-purpose)
+3. [Inventory Hierarchy](#3-inventory-hierarchy)
+   1. [Families](#31-families-operating-systems)
+   2. [Distros](#32-distros)
+   3. [Hosts](#33-hosts)
+4. [Inheritance Model](#4-inheritance-model)
+5. [Vault Integration](#5-vault-integration)
+   1. [Merge Rules](#51-merge-rules)
+   2. [Example Vault Entry](#52-example-vault-entry)
+6. [Normalization Pipeline](#6-normalization-pipeline)
+   1. [Raw Inventory](#61-raw_yaml)
+   2. [Normalized Inventory](#62-normalized)
+   3. [Pipeline Flow](#63-pipeline-flow)
+7. [Required Fields](#7-required-fields)
+   1. [Required Distro Fields](#71-at-the-distro-level)
+   2. [Required Host Fields](#72-required-host-fields)
+   3. [Optional Fields](#73-optional-fields)
+8. [Validation Rules](#8-validation-rules)
+   1. [Family and Host Consistency](#81-family-and-host-consistency-rule)
+9. [Distro Command Model](#9-distro-command-model)
+10. [Exit-Code Model](#10-exitcode-model)
+11. [Inventory Scope](#11-inventory-scope)
+12. [Design Principles](#12-design-principles)
+13. [Planned Enhancements](#13-planned-enhancements)
+14. [Summary](#14-summary)
+15. [Notes](#15-notes)
+
+---
+
+## 1. Overview
 
 The inventory is the core configuration source for RunUpdates.
-It defines operating systems (families), distros, hosts, commands, exit‑codes, and connection parameters in a deterministic, YAML‑driven structure.
 
-This document describes:
+It defines operating system families, distributions, hosts, command definitions, exit-code mappings, and connection parameters using a deterministic YAML-based model.
 
-* the inventory hierarchy
-* inheritance and normalization
-* required fields
-* vault integration
-* selection and validation rules
-* how the loader interprets the YAML
-* future enhancements
+The inventory is loaded and validated by the `RunUpdatesInventoryLoader`, which produces both raw and normalized representations for use throughout the application.
 
-The inventory is loaded and validated by the **RunUpdatesInventoryLoader**, which produces both raw and normalized representations.
+This document defines the structure, behavior, and interpretation of the RunUpdates inventory model.
 
-## 1. Purpose of the Inventory
+---
 
-The inventory defines:
+## 2. Purpose
 
-* which hosts exist
-* which operating system (family) each host belongs to
-* which distro each host uses
-* which commands apply to that distro
-* how exit codes should be interpreted
-* how to connect to each host
-* how vault secrets merge into host definitions
+The inventory serves as the authoritative source of configuration for RunUpdates.
 
-RunUpdates contains **no hardcoded distro logic**.
-Everything comes from the inventory and vault.
+The goals of the inventory model are to:
 
-## 2. Inventory Hierarchy
+* Define which hosts exist.
+* Associate hosts with operating system families and distributions.
+* Define update lifecycle commands.
+* Define exit-code classifications.
+* Provide connection configuration.
+* Integrate vault-provided secrets.
+* Support deterministic execution.
 
-RunUpdates uses a three‑level hierarchy:
+After the inventory is loaded and validated, all execution behavior derives from the normalized inventory model.
 
-Code
-```
-family (OS) → distro → hosts
-```
+RunUpdates contains no hardcoded distribution-specific execution logic.
+
+---
+
+## 3. Inventory Hierarchy
+
+RunUpdates uses a three-level hierarchy:
+
+```text
+Family
+    └─ Distro
+          └─ Host
 
 Example:
 
@@ -66,7 +109,7 @@ linux:
 
 All examples in this document use **placeholder hostnames and RFC‑5737 test IPs**.
 
-## 2.1 Families (Operating Systems)
+### 3.1 Families (Operating Systems)
 
 A **family** represents an **operating system**.
 
@@ -78,7 +121,7 @@ Examples:
 
 Each family contains one or more **distros**, which define the actual command and exit‑code behavior.
 
-## 2.2 Distros
+### 3.2 Distros
 
 A distro is an OS variant that shares a command model.
 
@@ -89,12 +132,12 @@ Examples under linux:
 * redhat
 * arch (future)
 
-### openSUSE Note
+#### openSUSE Note
 
 In the current implementation, **both Leap and Tumbleweed hosts** are grouped under the opensuse distro because they share the same command and exit‑code model as implemented today.
 Future versions may split these into separate distros if update semantics diverge (e.g., [zypper up] vs [zypper dup]).
 
-## 2.3 Hosts
+### 3.3 Hosts
 
 A host defines:
 
@@ -112,7 +155,9 @@ hosts:
     address: [ 192.0.2.10 ]
 ```
 
-## 3. Inheritance Model
+---
+
+## 4. Inheritance Model
 
 RunUpdates supports inheritance at three levels:
 
@@ -142,7 +187,7 @@ Normalization produces:
 | Distro default | 2222 |
 | Host override |	2200 |
 
-## 4. Vault Integration
+## 5. Vault Integration
 
 RunUpdates loads:
 
@@ -158,13 +203,13 @@ Vault entries may include:
 * tokens
 * future: per‑host metadata
 
-## 4.1 Merge Rules
+### 5.1 Merge Rules
 
 * Vault values override inventory values when both define the same field.
 * Missing vault entries do not disable a host.
 * Validation ensures required secrets exist before execution.
 
-## 4.2 Example Vault Entry
+### 5.2 Example Vault Entry
 
 ```yaml
 suse-node-01:
@@ -174,17 +219,19 @@ suse-node-01:
 ```
 After merge, the normalized host includes both inventory and vault fields.
 
-## 5. Normalization Pipeline
+---
+
+## 6. Normalization Pipeline
 
 The **RunUpdatesInventoryLoader** produces two representations:
 
-### 5.1 raw_yaml
+### 6.1 raw_yaml
 
 * exact structure from disk
 * used for list operations
 * preserves comments, ordering, formatting
 
-### 5.2 normalized
+### 6.2 normalized
 
 Flattened host entries used by the orchestrator.
 
@@ -205,7 +252,7 @@ Example normalized host:
 }
 ```
 
-### 5.3 Pipeline Flow
+### 6.3 Pipeline Flow
 
 1. Load raw inventory YAML
 2. Load raw vault YAML
@@ -217,27 +264,31 @@ Example normalized host:
 8. Validate selection
 9. Return final host list to orchestrator
 
-## 6. Required Fields
+---
 
-### 6.1 At the distro level
+## 7. Required Fields
+
+### 7.1 Required Distro Fields
 
 * packages
 * exit_codes
 * hosts
 
-### 6.2 At the host level
+### 7.2 Required Host Fields
 
 * enabled
 * address
 
-### 6.3 Optional fields
+### 7.3 Optional fields
 
 * port
 * multiple addresses (list)
 * vault‑provided fields
 * future: tags, roles, metadata
 
-## 7. Validation Rules
+---
+
+## 8. Validation Rules
 
 The loader enforces:
 
@@ -250,7 +301,7 @@ The loader enforces:
 * exit‑code blocks must be well‑formed
 * vault secrets must match expected types
 
-### 7.1 Family/Host Consistency Rule
+### 8.1 Family and Host Consistency Rule
 
 If the user specifies:
 
@@ -271,7 +322,9 @@ Code
 --family linux --host win-node-01
 ```
 
-## 8. Distro Command Model
+---
+
+## 9. Distro Command Model
 
 Each distro defines:
 
@@ -289,7 +342,7 @@ RunUpdates does not modify or interpret commands beyond:
 * substitution (future)
 * exit‑code classification
 
-## 9. Exit‑Code Model
+## 10. Exit‑Code Model
 
 Each command has a mapping:
 
@@ -305,7 +358,9 @@ The executor uses this to classify results.
 
 This model is distro‑agnostic and fully declarative.
 
-## 10. Inventory Scope
+---
+
+## 11. Inventory Scope
 
 The RunUpdates inventory is RunUpdates‑specific.
 
@@ -315,7 +370,9 @@ The RunUpdates inventory is RunUpdates‑specific.
 
 This document describes only the RunUpdates inventory model.
 
-## 11. Design Principles
+---
+
+## 12. Design Principles
 
 The inventory model reflects RunUpdates’ core philosophy:
 
@@ -325,7 +382,9 @@ The inventory model reflects RunUpdates’ core philosophy:
 * **Distro‑agnostic execution** — everything comes from YAML
 * **Auditability** — normalized host objects show exactly what will run
 
-## 12. Planned Enhancements
+---
+
+## 13. Planned Enhancements
 
 Future versions will add:
 
@@ -339,7 +398,9 @@ Future versions will add:
 * vault schema validation
 * inventory diffing
 
-## 13. Summary
+---
+
+## 14. Summary
 
 The inventory is:
 
@@ -351,4 +412,24 @@ The inventory is:
 * merged with vault secrets
 
 It is the single source of truth for all RunUpdates behavior.
- 
+
+---
+
+## 15. Notes
+
+This document focuses exclusively on inventory structure, validation, normalization, and runtime interpretation.
+
+For related information, see:
+
+* [Build.md](Build.md)
+* [Design.md](Design.md)
+* [Directory_Structure.md](Directory_Structure.md)
+* [Error_Classification.md](Error_Classification.md)
+* [Execution_Flow.md](Execution_Flow.md)
+* [Logging.md](Logging.md)
+* [Operation.md](Operation.md)
+* [PythonTools.md](PythonTools.md)
+* [Schema_Reference.md](Schema_Reference.md)
+* [Troubleshooting.md](Troubleshooting.md)
+
+The inventory model defined in this document is considered authoritative for all RunUpdates host and distro configuration.
