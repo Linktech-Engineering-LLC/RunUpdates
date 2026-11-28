@@ -1,29 +1,133 @@
-# RunUpdates Vault Template
-# -------------------------
-# This file contains secrets and credentials used by RunUpdates.
-# DO NOT commit real secrets to version control.
+# Linktech Engineering Vault Template
 #
-# Use environment variables to load this file securely:
+# This vault is organized by application.
 #
-#   RUNUPDATES_VAULT_PATH=/path/to/vault.yml
-#   RUNUPDATES_VAULT_PASSWORD_FILE=/path/to/password.txt
+# Each application owns its own section and is responsible for
+# consuming only the credentials beneath its application key.
 #
-# The vault password file must contain ONLY the password.
+# DO NOT COMMIT REAL SECRETS TO VERSION CONTROL.
 #
-# IMPORTANT:
-# - All credentials belong here, not in hosts.yml.
-# - Users, passwords, SSH keys, and sudo credentials are merged into hosts.
+# Store the vault in a secured directory.
+#
+# Recommended permissions:
+#
+#   Vault directory : 0700
+#   Vault file      : 0600
+#
+# Examples:
+#
+#   RUNUPDATES_VAULT_PATH=/secure/vault/vault.yml
+#   RUNUPDATES_VAULT_PASSWORD_FILE=/secure/vault/vault.pass
+#
+#   MEDICAL_VAULT_PATH=/secure/vault/vault.yml
+#   MEDICAL_VAULT_PASSWORD_FILE=/secure/vault/vault.pass
+#
+# The password file must contain only the vault password.
+#
+# ----------------------------------------------------------------------
+# GENERAL RULES
+# ----------------------------------------------------------------------
+#
+# * Inventory files must not contain credentials.
+# * Passwords belong in the vault.
+# * Usernames belong in the vault.
+# * SSH keys belong in the vault.
+# * API tokens belong in the vault.
+# * Database credentials belong in the vault.
+# * Certificates and private keys belong in the vault.
+#
+# Applications should consume only their own section.
+#
+# ----------------------------------------------------------------------
+# RunUpdates
+# ----------------------------------------------------------------------
 
 runupdates:
-  # SSH login user (root in your environment)
-  sudo_user: "root"
 
-  # SSH private key used for all hosts
-  # "~" is allowed and will be expanded
+  sudo_user: "CHANGE_ME"
+
   keyfile: "~/.ssh/runupdates"
 
-  # Sudo password used for all hosts
   sudo_pass: "CHANGE_ME"
 
-  # Present but unused by current code:
-  # sudo_user: "root"
+  # Optional SSH password fallback
+  #
+  # password: "CHANGE_ME"
+
+# ----------------------------------------------------------------------
+# Medical
+# ----------------------------------------------------------------------
+
+medical:
+
+  database:
+
+    server: "localhost"
+
+    database: "Medical"
+
+    username: "CHANGE_ME"
+
+    password: "CHANGE_ME"
+
+  encryption:
+
+    key: "CHANGE_ME"
+
+# ----------------------------------------------------------------------
+# LicenseGen
+# ----------------------------------------------------------------------
+
+licensegen:
+
+  database:
+
+    server: "localhost"
+
+    database: "LicenseGen"
+
+    username: "CHANGE_ME"
+
+    password: "CHANGE_ME"
+
+  signing:
+
+    private_key: "/path/to/private.key"
+
+    public_key: "/path/to/public.key"
+
+# ----------------------------------------------------------------------
+# BotScanner
+# ----------------------------------------------------------------------
+
+botscanner:
+
+  ssh:
+
+    username: "CHANGE_ME"
+
+    keyfile: "~/.ssh/botscanner"
+
+# ----------------------------------------------------------------------
+# NMS_Tools
+# ----------------------------------------------------------------------
+
+nmstools:
+
+  notifications:
+
+    email_user: "CHANGE_ME"
+
+    email_password: "CHANGE_ME"
+
+  weather:
+
+    api_key: "CHANGE_ME"
+
+# ----------------------------------------------------------------------
+# Future Applications
+# ----------------------------------------------------------------------
+
+future_application:
+
+  example_key: "CHANGE_ME"

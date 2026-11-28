@@ -411,6 +411,7 @@ This document focuses exclusively on logging architecture and execution recordin
 * [Inventory.md](Inventory.md)
 * [Operation.md](Operation.md)
 * [PythonTools.md](PythonTools.md)
+* [QuickStart.md](QuickStart.md)
 * [Schema_Reference.md](Schema_Reference.md)
 * [Troubleshooting.md](Troubleshooting.md)
 

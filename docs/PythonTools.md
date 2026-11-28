@@ -1,275 +1,431 @@
-# PythonTools — Shared Execution Layer
+# RunUpdates PythonTools Integration
 
-PythonTools is a standalone, reusable execution library that provides deterministic,
-cross‑platform command execution for multiple Linktech Engineering tools. It is not
-an internal component of RunUpdates; instead, RunUpdates depends on PythonTools as
-its execution layer.
+**Part of:** RunUpdates
+**Document:** PythonTools Reference
+**Author:** Leon McClatchey, Linktech Engineering LLC
+**License:** MIT
+**Requires:** RunUpdates, PythonTools
+**Last Updated:** 2026-11-27
 
-PythonTools provides:
+---
 
-* a unified execution model
-* local privileged execution ([sudo_run])
-* non‑privileged local execution ([local_command])
-* remote execution via [SSHSession]
-* injected logging
-* injected secrets
-* reusable helpers (in progress)
+## Table of Contents
 
-PythonTools is intentionally project‑agnostic. It does not know anything about:
+1. [Overview](#1-overview)
+2. [Purpose](#2-purpose)
+3. [Design Principles](#3-design-principles)
+4. [Architecture Overview](#4-architecture-overview)
+5. [Logging Integration](#5-logging-integration)
+   1. [Logger Injection](#51-logger-injection)
+   2. [NullLogger Fallback](#52-nulllogger-fallback)
+6. [Secrets Integration](#6-secrets-integration)
+7. [Execution Primitives](#7-execution-primitives)
+   1. [Local Command Execution](#71-local-command-execution)
+   2. [Privileged Local Execution](#72-privileged-local-execution)
+   3. [Remote Execution](#73-remote-execution)
+8. [Return Structures](#8-return-structures)
+9. [Helpers](#9-helpers)
+   1. [Current Helpers](#91-current-helpers)
+   2. [Planned Helpers](#92-planned-helpers)
+10. [Boundaries and Responsibilities](#10-boundaries-and-responsibilities)
+11. [Distribution and Versioning](#11-distribution-and-versioning)
+12. [RunUpdates Integration](#12-runupdates-integration)
+13. [Summary](#13-summary)
+14. [Notes](#14-notes)
 
-* YAML
-* inventory structure
-* distro models
-* exit‑code interpretation
-* orchestration logic
+---
 
-RunUpdates, BotScanner, and future tools inject everything PythonTools needs.
+## 1. Overview
 
-## 🧱 1. Purpose
+PythonTools is a standalone execution library used by RunUpdates to provide deterministic command execution across local and remote systems.
 
-PythonTools exists to provide a **deterministic, minimal, operator‑grade execution layer** that can be shared across multiple tools without duplication.
+PythonTools is not an internal RunUpdates component. It is a reusable, project-agnostic dependency that provides command execution, SSH connectivity, logging integration, and secret injection.
 
-Its goals:
-* predictable execution
-* consistent return structures
-* clean separation of concerns
-* safe logging and secret handling
-* portability across projects
+RunUpdates relies on PythonTools as its execution layer but retains responsibility for orchestration, configuration management, classification, and reporting.
 
-## 🧩 2. Design Principles
+---
+
+## 2. Purpose
+
+PythonTools exists to provide a shared execution platform for Linktech Engineering tools.
+
+Its goals are to:
+
+* Provide deterministic execution behavior.
+* Provide consistent return structures.
+* Eliminate duplicate execution code.
+* Support secure authentication methods.
+* Support injected logging.
+* Remain independent from downstream applications.
+
+After PythonTools returns execution results, downstream applications are responsible for interpreting those results.
+
+---
+
+## 3. Design Principles
+
+PythonTools was designed around several core principles.
 
 ### Deterministic
 
-Execution results are predictable, structured, and stable.
+Execution results are structured, predictable, and stable.
 
 ### Minimal
 
-No unnecessary dependencies, no magic behavior, no hidden state.
+PythonTools avoids unnecessary dependencies, hidden behavior, and implicit state.
 
-### Project‑agnostic
+### Project-Agnostic
 
-PythonTools never imports downstream tools or knows anything about their configuration.
+PythonTools contains no knowledge of:
+
+* YAML structures
+* Inventory models
+* Operating system classifications
+* Exit-code interpretation
+* Application orchestration
 
 ### Injectable
 
-Logging and secrets are provided externally.
+Logging and secrets are always provided externally.
 
-### Extractable
+### Reusable
 
-The module is maintained as an independent micro‑library.
+PythonTools is intended to serve multiple downstream applications.
 
-## 🔌 3. Logging Integration
+---
 
-PythonTools does **not** initialize logging.
-It receives a logger from the downstream tool:
+## 4. Architecture Overview
 
-```python
+PythonTools provides execution services only.
+
+```text
+RunUpdates
+        │
+        ▼
+PythonTools
+        │
+        ├─ local_command()
+        ├─ sudo_run()
+        └─ SSHSession()
+```
+PythonTools executes commands and returns results.
+
+RunUpdates consumes those results and applies operational meaning.
+
+The relationship between components remains intentionally simple:
+
+* PythonTools executes commands.
+* RunUpdates performs classification.
+* RunUpdates generates summaries.
+
+---
+
+## 5. Logging Integration
+
+PythonTools supports externally supplied logging.
+
+### 5.1 Logger Injection
+
+PythonTools does not initialize logging.
+
+Instead, downstream tools provide a logger:
+
+```Python
 from PythonTools.logging import set_logger
+
 set_logger(runupdates_logger)
 ```
 
-### Logging API
+After logger injection, all execution pathways use the supplied logger.
 
-PythonTools uses a minimal, structured API:
+### 5.2 NullLogger Fallback
 
-```python
-logger.debug(...)
-logger.info(...)
-logger.warning(...)
-logger.error(...)
+If no logger is provided, PythonTools uses NullLogger.
 
-logger.command_start(host, step, command)
-logger.command_end(host, step, exit_code, classification)
-logger.command_error(host, step, exit_code, stderr)
-```
+Characteristics include:
 
-### _NullLogger Fallback
+* Supports all logging APIs.
+* Produces no output.
+* Requires no configuration.
+* Prevents execution failures caused by missing loggers.
 
-If no logger is injected:
-* _NullLogger is used
-* all methods are no‑ops
-* no output is produced
+This allows PythonTools to operate safely in:
 
-This ensures PythonTools is safe in:
-* unit tests
-* standalone scripts
-* early development environments
+* Unit tests
+* Development environments
+* Standalone scripts
 
-## 🔐 4. Secrets Injection
+---
 
-PythonTools does not load or validate secrets.
-Downstream tools inject them:
+## 6. Secrets Integration
 
-```python
+PythonTools does not load, validate, or manage secrets.
+
+Secrets are supplied by downstream applications:
+
+```Python
 from PythonTools.secrets import set_secrets
+
 set_secrets(secrets_dict)
 ```
 
-Typical secrets:
+Common secret types include:
 
-```yaml
-username: "ssh username"
-password: "optional ssh + sudo password"
-keyfile: "/path/to/private/key"
-```
+* Usernames
+* Passwords
+* SSH keys
+* Authentication tokens
 
-PythonTools uses secrets only for:
-* SSH authentication
-* sudo password injection
+PythonTools uses these values only during execution.
 
-PythonTools never logs secrets and never stores them beyond runtime.
+PythonTools never:
 
-## 🛠 5. Execution Primitives
+* Logs secrets.
+* Persists secrets.
+* Validates inventory structures.
 
-PythonTools provides two local execution paths and one remote execution path.
+---
 
-### A. Local Execution — [local_command]
+## 7. Execution Primitives
 
-Runs a command without privilege escalation.
+PythonTools provides three primary execution mechanisms.
 
-```python
+### 7.1 Local Command Execution
+
+Non-privileged commands execute through local_command().
+
+Example:
+```Python
 result = local_command("ls -la")
 ```
 
-Used for:
-* non‑privileged operations
-* environment checks
-* local diagnostics
+Typical uses include:
 
-### B. Local Privileged Execution — [sudo_run]
+* Environment inspection
+* Diagnostics
+* Status collection
 
-Runs a command with sudo using the injected password.
+### 7.2 Privileged Local Execution
 
-```python
+Privileged commands execute through sudo_run().
+
+Example:
+```Python
 result = sudo_run("zypper refresh")
 ```
 
-Characteristics:
-* password is passed securely
-* password is never logged
-* stdout/stderr/exit_code are captured
-* deterministic return structure
+Characteristics include:
 
-### C. Remote Execution — [SSHSession]
+* Secure password handling.
+* Captured output.
+* Captured exit codes.
+* Deterministic results.
 
-PythonTools provides a full SSH session abstraction:
+Passwords are never written to logs.
 
-```python
+### 7.3 Remote Execution
+
+Remote execution occurs through SSHSession.
+
+Example:
+```Python
 session = SSHSession(
-    address="192.168.0.67",
+    address="192.0.2.10",
     port=2222,
     username="admin",
     keyfile="/path/to/key",
     password="fallback"
 )
 
-result = session.run("zypper up -y")
+result = session.run("zypper up")
 ```
 
-**Authentication Model**
+Authentication priority:
 
-* keyfile → primary
-* password → fallback
+1. SSH key authentication
+2. Password authentication
 
-**Responsibilities**
+SSHSession manages:
 
-* connection lifecycle
-* command execution
-* stdout/stderr capture
-* exit‑code retrieval
-* error normalization
-* logging hooks
+* Connection establishment
+* Session lifecycle
+* Command execution
+* Output collection
+* Error normalization
 
-SSHSession converts transport‑level failures (timeouts, handshake errors, DNS failures) into deterministic PythonTools exceptions so downstream tools can classify them consistently.
+Transport failures are converted into deterministic exceptions.
 
-## 📦 6. Return Structure
+---
 
-All execution functions return the same deterministic structure:
+## 8. Return Structures
 
-```python
+All execution interfaces return a common structure.
+
+Example:
+```Python
 {
-  "stdout": "...",
-  "stderr": "...",
-  "exit_code": 0,
-  "ok": True/False
+    "stdout": "...",
+    "stderr": "...",
+    "exit_code": 0,
+    "ok": True
 }
 ```
 
-PythonTools truncates stdout to a fixed length to prevent log bloat.
-Truncation length is fixed in code and not user‑configurable.
+Characteristics include:
 
-This allows downstream tools to remain distro‑agnostic and inventory‑agnostic.
+* Consistent keys.
+* Consistent types.
+* Consistent behavior across local and remote execution.
 
-## 🧰 7. Helpers (Current + Planned)
+PythonTools records facts but does not interpret those facts.
 
-### Current
+Classification occurs in downstream applications.
 
-* _NullLogger
-* logging injection
-* secrets injection
+---
+
+## 9. Helpers
+
+PythonTools includes supporting utilities that simplify common operations.
+
+### 9.1 Current Helpers
+
+Current helper functionality includes:
+
+* NullLogger
+* Logging injection
+* Secrets injection
 * SSH session management
-* local command wrappers
+* Local execution wrappers
 
-### Planned
+### 9.2 Planned Helpers
 
-* network helpers (host_exists, is_ip_address)
-* OS helpers (is_linux, is_root)
-* command helpers (shlex_split_safe)
-* file helpers (read_text, write_text)
+Future helper functionality may include:
 
-These will be added as they stabilize.
+* Network helpers
+* Operating system helpers
+* Command helpers
+* File helpers
 
-## 🧭 8. Boundaries & Non‑Responsibilities
+Additional helper functionality will be added as requirements stabilize.
+
+---
+
+## 10. Boundaries and Responsibilities
+
+PythonTools intentionally limits its scope.
 
 PythonTools must not:
 
-* load YAML
-* interpret exit codes
-* understand distros
-* manage inventory
-* initialize logging
-* store secrets
-* define orchestration logic
-* define update pipelines
+* Load YAML.
+* Manage inventory.
+* Interpret exit codes.
+* Understand operating system models.
+* Initialize logging.
+* Store secrets.
+* Define orchestration logic.
+* Define update workflows.
 
-PythonTools is upstream; downstream tools must not fork or modify it.
+After execution completes, responsibility transfers to the downstream application.
 
-## 🔮 9. Distribution & Versioning
+This separation preserves portability and maintainability.
 
-PythonTools is maintained as a standalone micro‑library inside its own repository.
-It is not published to PyPI or any external package index.
+---
 
-### 📦 Local Installation
+## 11. Distribution and Versioning
 
-After cloning the repository:
+PythonTools is maintained as an independent repository.
 
-```bash
+It is currently distributed as source code and is not published to public package repositories.
+
+*** Local Installation
+
+Example installation:
+```Shell
 pip install -e .
 ```
 
-This installs PythonTools into the active virtual environment in editable mode, allowing downstream tools (RunUpdates, BotScanner, etc.) to import it normally:
+Editable installation allows downstream projects to immediately consume updates.
 
-```python
-import PythonTools
+### Repository Layout
+
+```Plain Text
+PythonTools/
+├── logging.py
+├── secrets.py
+├── sessions.py
+├── commands.py
+└── helpers/
 ```
 
-### 📁 Repository Layout
-Code
-PythonTools/
-  python_tools/
-    logging.py
-    secrets.py
-    sessions.py
-    commands.py
-    helpers/
+### Versioning
 
-### 🔢 Versioning
+PythonTools maintains its own versioning independent of downstream applications.
 
-PythonTools uses a simple internal version number stored in the repository.
-Downstream tools should treat PythonTools as an upstream dependency but must not fork or modify it.
+---
 
-### 🔗 Integration with RunUpdates
+## 12. RunUpdates Integration
 
-RunUpdates treats PythonTools as a black‑box dependency. It imports only the public interfaces ([local_command], [sudo_run], [SSHSession], and the logger/secrets injectors) and never references internal folders such as [core], [net], or [utils].
-During development, RunUpdates should keep PythonTools installed in editable mode ([pip install -e .]) so updates propagate automatically.
-Once PythonTools stabilizes, RunUpdates can pin a version in its pyproject.toml to ensure compatibility.
+RunUpdates treats PythonTools as a stable execution dependency.
+
+RunUpdates consumes:
+
+* local_command()
+* sudo_run()
+* SSHSession()
+* set_logger()
+* set_secrets()
+
+RunUpdates does not access PythonTools internals.
+
+The separation between the projects is intentional.
+
+PythonTools provides execution.
+
+RunUpdates provides:
+
+* Inventory management.
+* Orchestration.
+* Classification.
+* Logging policy.
+* Summary generation.
+
+This separation allows both projects to evolve independently.
+
+---
+
+## 13. Summary
+
+PythonTools provides deterministic execution services for RunUpdates and other Linktech Engineering applications.
+
+Key characteristics include:
+
+* Consistent execution behavior.
+* Unified return structures.
+* Local and remote execution support.
+* Logging integration.
+* Secret injection.
+* Clear responsibility boundaries.
+
+PythonTools serves as the execution foundation while downstream tools provide operational behavior.
+
+---
+
+## 14. Notes
+
+This document focuses exclusively on PythonTools integration and execution services.
+
+For related information, see:
+
+* [Build.md](Build.md)
+* [Design.md](Design.md)
+* [Directory_Structure.md](Directory_Structure.md)
+* [Error_Classification.md](Error_Classification.md)
+* [Execution_Flow.md](Execution_Flow.md)
+* [Inventory.md](Inventory.md)
+* [Logging.md](Logging.md)
+* [Operation.md](Operation.md)
+* [QuickStart.md](QuickStart.md)
+* [Schema_Reference.md](Schema_Reference.md)
+* [Troubleshooting.md](Troubleshooting.md)
+
+PythonTools behavior described in this document is considered authoritative for all RunUpdates execution-layer interactions.

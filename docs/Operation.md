@@ -14,25 +14,30 @@
 1. [Overview](#1-overview)
 2. [Purpose](#2-purpose)
 3. [Operating RunUpdates](#3-operating-runupdates)
-4. [Host Selection](#4-host-selection)
-5. [Execution Modes](#5-execution-modes)
-   1. [Normal Mode](#51-normal-mode)
-   2. [Dry-Run Mode](#52-dry-run-mode)
-6. [Connection Behavior](#6-connection-behavior)
-   1. [Local Execution](#61-local-execution)
-   2. [Remote Execution](#62-remote-execution)
-   3. [Authentication](#63-authentication)
-7. [Update Execution](#7-update-execution)
-   1. [Lifecycle Execution](#71-lifecycle-execution)
-   2. [Repository Health Handling](#72-repository-health-handling)
-   3. [openSUSE Update Modes](#73-opensuse-update-modes)
-8. [Monitoring Execution](#8-monitoring-execution)
-9. [Reviewing Results](#9-reviewing-results)
-10. [Common Operational Scenarios](#10-common-operational-scenarios)
-11. [Failure Handling](#11-failure-handling)
-12. [Future Enhancements](#12-future-enhancements)
-13. [Summary](#13-summary)
-14. [Notes](#14-notes)
+4. [Environment Configuration](#4-environment-configuration)
+   1. [Interactive Shell Usage](#41-interactive-shell-usage)
+   2. [Cron Usage](#42-cron-usage)
+   3. [systemd Usage](#43-systemd-usage)
+   4. [Environment Variable Requirements](#44-environment-variable-requirements)
+5. [Host Selection](#5-host-selection)
+6. [Execution Modes](#6-execution-modes)
+   1. [Normal Mode](#61-normal-mode)
+   2. [Dry-Run Mode](#62-dry-run-mode)
+7. [Connection Behavior](#7-connection-behavior)
+   1. [Local Execution](#71-local-execution)
+   2. [Remote Execution](#72-remote-execution)
+   3. [Authentication](#73-authentication)
+8. [Update Execution](#8-update-execution)
+   1. [Lifecycle Execution](#81-lifecycle-execution)
+   2. [Repository Health Handling](#82-repository-health-handling)
+   3. [openSUSE Update Modes](#83-opensuse-update-modes)
+9. [Monitoring Execution](#9-monitoring-execution)
+10. [Reviewing Results](#10-reviewing-results)
+11. [Common Operational Scenarios](#11-common-operational-scenarios)
+12. [Failure Handling](#12-failure-handling)
+13. [Future Enhancements](#13-future-enhancements)
+14. [Summary](#14-summary)
+15. [Notes](#15-notes)
 
 ---
 
@@ -80,7 +85,124 @@ Operators are expected to understand the inventory being used before executing u
 
 ---
 
-## 4. Host Selection
+## 4. Environment Configuration
+
+RunUpdates supports several deployment models.
+
+All deployment methods use the same environment variables:
+
+* `RUNUPDATES_CONFIG`
+* `RUNUPDATES_SCHEMA`
+* `RUNUPDATES_LOG_DIR`
+* `RUNUPDATES_VAULT_PATH`
+* `RUNUPDATES_VAULT_PASSWORD_FILE`
+
+These variables define the inventory, schema, logging, and vault locations used by RunUpdates.
+
+### 4.1 Interactive Shell Usage
+
+For interactive execution, RunUpdates may load environment variables from a shell environment file.
+
+Example:
+
+```bash
+source bash.env
+
+runupdates update
+```
+
+Example configuration:
+
+```bash
+export RUNUPDATES_CONFIG=/etc/runupdates/hosts.yml
+
+export RUNUPDATES_SCHEMA=/etc/runupdates/schemata/hosts.schema.yml
+
+export RUNUPDATES_LOG_DIR=/var/log/runupdates
+
+export RUNUPDATES_VAULT_PATH=/secure/vault/vault.yml
+
+export RUNUPDATES_VAULT_PASSWORD_FILE=/secure/vault/password.txt
+```
+
+This approach is recommended for manual execution and testing.
+
+### 4.2 Cron Usage
+
+RunUpdates may be executed from cron.
+
+Example cron entry:
+
+```cron
+0 2 * * * /opt/runupdates/runupdates update
+```
+
+Cron environments typically use a simple key/value environment file.
+
+Example:
+
+```text
+RUNUPDATES_CONFIG=/etc/runupdates/hosts.yml
+
+RUNUPDATES_SCHEMA=/etc/runupdates/schemata/hosts.schema.yml
+
+RUNUPDATES_LOG_DIR=/var/log/runupdates
+
+RUNUPDATES_VAULT_PATH=/secure/vault/vault.yml
+
+RUNUPDATES_VAULT_PASSWORD_FILE=/secure/vault/password.txt
+```
+
+Cron jobs should verify that all required environment variables are available before execution begins.
+
+### 4.3 systemd Usage
+
+RunUpdates may be executed as a systemd service or timer.
+
+Systemd environments typically use an EnvironmentFile.
+
+Example service fragment:
+
+```ini
+[Service]
+
+EnvironmentFile=/etc/runupdates/systemd.env
+
+ExecStart=/opt/runupdates/runupdates update
+```
+
+Example environment file:
+
+```text
+RUNUPDATES_CONFIG=/etc/runupdates/hosts.yml
+
+RUNUPDATES_SCHEMA=/etc/runupdates/schemata/hosts.schema.yml
+
+RUNUPDATES_LOG_DIR=/var/log/runupdates
+
+RUNUPDATES_VAULT_PATH=/secure/vault/vault.yml
+
+RUNUPDATES_VAULT_PASSWORD_FILE=/secure/vault/password.txt
+```
+
+This approach is recommended for scheduled production execution.
+
+### 4.4 Environment Variable Requirements
+
+RunUpdates requires:
+
+* `RUNUPDATES_CONFIG`
+* `RUNUPDATES_SCHEMA`
+* `RUNUPDATES_VAULT_PATH`
+* `RUNUPDATES_VAULT_PASSWORD_FILE`
+
+The log directory may be configured explicitly or supplied by package defaults depending on the deployment method.
+
+If a required environment variable is missing, RunUpdates will fail during startup validation.
+
+---
+
+## 5. Host Selection
 
 RunUpdates supports selective host execution through command-line filters.
 
@@ -114,15 +236,15 @@ The following selection rules apply:
 * Invalid host and family combinations result in an error.
 * Host selection is validated before execution begins.
 
-Additional inventory details are documented in `Inventory.md`.
+Additional inventory details are documented in [Inventory.md](Inventory.md).
 
 ---
 
-## 5. Execution Modes
+## 6. Execution Modes
 
 RunUpdates currently supports two execution modes.
 
-### 5.1 Normal Mode
+### 6.1 Normal Mode
 
 Normal mode performs full update execution.
 
@@ -137,7 +259,7 @@ This includes:
 
 Normal mode is the default operating mode.
 
-### 5.2 Dry-Run Mode
+### 6.2 Dry-Run Mode
 
 Dry-run mode validates execution without making changes.
 
@@ -164,13 +286,13 @@ runupdates --dry-run
 
 ---
 
-## 6. Connection Behavior
+## 7. Connection Behavior
 
 RunUpdates automatically determines how each host should be accessed.
 
 Connection decisions are made using normalized host definitions.
 
-### 6.1 Local Execution
+### 7.1 Local Execution
 
 Local execution occurs when the target host is the current system.
 
@@ -191,7 +313,7 @@ through PythonTools.
 
 Local operations do not require SSH connectivity.
 
-### 6.2 Remote Execution
+### 7.2 Remote Execution
 
 Remote execution occurs when the target host is a remote system.
 
@@ -205,7 +327,7 @@ through PythonTools.
 
 Remote systems are accessed using addresses defined within the inventory.
 
-### 6.3 Authentication
+### 7.3 Authentication
 
 RunUpdates supports multiple authentication mechanisms.
 
@@ -226,25 +348,19 @@ If no valid authentication method is available, execution fails before lifecycle
 
 ---
 
-## 7. Update Execution
+## 8. Update Execution
 
 RunUpdates executes updates using inventory-defined commands.
 
 Commands are never hardcoded within the orchestrator.
 
-### 7.1 Lifecycle Execution
+### 8.1 Lifecycle Execution
 
-Hosts execute the standard lifecycle defined in `Execution_Flow.md`.
+Hosts execute the lifecycle defined by the inventory.
 
-The lifecycle consists of:
+Lifecycle stages may differ between distros and are documented in the inventory configuration.
 
-```text
-check
-refresh
-update
-clean
-reboot detection
-```
+Hosts execute the standard lifecycle defined in [Execution_Flow.md](Execution_Flow.md).
 
 Commands are executed in deterministic order.
 
@@ -259,7 +375,7 @@ The following execution rules apply:
 
 After execution completes, summaries are generated.
 
-### 7.2 Repository Health Handling
+### 8.2 Repository Health Handling
 
 RunUpdates evaluates repository health during execution.
 
@@ -278,7 +394,7 @@ When repository failures are detected:
 
 Repository classification behavior is documented in `Error_Classification.md`.
 
-### 7.3 openSUSE Update Modes
+### 8.3 openSUSE Update Modes
 
 RunUpdates does not enforce a specific openSUSE update strategy.
 
@@ -313,7 +429,7 @@ RunUpdates executes whichever command is defined in the inventory.
 
 ---
 
-## 8. Monitoring Execution
+## 9. Monitoring Execution
 
 Operators should monitor execution using available runtime outputs.
 
@@ -330,7 +446,7 @@ Logging behavior is documented in `Logging.md`.
 
 ---
 
-## 9. Reviewing Results
+## 10. Reviewing Results
 
 After execution completes, operators should review generated artifacts.
 
@@ -359,7 +475,7 @@ Classification interpretation is documented in `Error_Classification.md`.
 
 ---
 
-## 10. Common Operational Scenarios
+## 11. Common Operational Scenarios
 
 RunUpdates supports several common operational workflows.
 
@@ -377,7 +493,7 @@ Operators should select the most specific execution scope appropriate for the ta
 
 ---
 
-## 11. Failure Handling
+## 12. Failure Handling
 
 RunUpdates is designed to continue processing whenever practical.
 
@@ -409,7 +525,7 @@ Additional classification details are documented in `Error_Classification.md`.
 
 ---
 
-## 12. Future Enhancements
+## 13. Future Enhancements
 
 Future releases may add:
 
@@ -425,7 +541,7 @@ The operational workflow described in this document is expected to remain stable
 
 ---
 
-## 13. Summary
+## 14. Summary
 
 RunUpdates provides a deterministic and operator-focused update management workflow.
 
@@ -443,7 +559,7 @@ The operational model is designed to provide repeatable and auditable update exe
 
 ---
 
-## 14. Notes
+## 15. Notes
 
 This document focuses on operational usage and runtime interaction with RunUpdates.
 
@@ -457,6 +573,7 @@ For related information, see:
 * [Inventory.md](Inventory.md)
 * [Logging.md](Logging.md)
 * [PythonTools.md](PythonTools.md)
+* [QuickStart.md](QuickStart.md)
 * [Schema_Reference.md](Schema_Reference.md)
 * [Troubleshooting.md](Troubleshooting.md)
 

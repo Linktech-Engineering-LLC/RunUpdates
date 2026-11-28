@@ -1,299 +1,434 @@
-# RunUpdates — Quick Start
+# RunUpdates Quick Start
 
-RunUpdates is a deterministic, YAML‑driven update orchestrator for Linux hosts.  
-This guide provides the minimum steps required to install, configure, and run RunUpdates from source.
+**Part of:** RunUpdates
+**Document:** Quick Start Guide
+**Author:** Leon McClatchey, Linktech Engineering LLC
+**License:** MIT
+**Requires:** RunUpdates
+**Last Updated:** 2026-11-27
 
 ---
 
-## 1. Requirements
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Requirements](#2-requirements)
+3. [Installation Methods](#3-installation-methods)
+   1. [Frozen Package Installation](#31-frozen-package-installation)
+   2. [Source Installation](#32-source-installation)
+4. [Configuration Setup](#4-configuration-setup)
+5. [Vault Setup](#5-vault-setup)
+   1. [Vault File](#51-vault-file)
+   2. [Vault Password File](#52-vault-password-file)
+   3. [Providing Vault Paths](#53-providing-vault-paths)
+6. [Validating Configuration](#6-validating-configuration)
+7. [Running RunUpdates](#7-running-runupdates)
+8. [Reviewing Results](#8-reviewing-results)
+9. [Runtime Directories](#9-runtime-directories)
+10. [Common Examples](#10-common-examples)
+11. [Next Steps](#11-next-steps)
+12. [Summary](#12-summary)
+13. [Notes](#13-notes)
+
+---
+
+## 1. Overview
+
+RunUpdates is a deterministic, YAML-driven update orchestrator for Linux hosts.
+
+The application uses inventory-driven configuration, structured logging, vault-managed credentials, and declarative classification rules to provide predictable and auditable update execution.
+
+This guide provides the minimum information required to install, configure, validate, and execute RunUpdates.
+
+---
+
+## 2. Requirements
 
 RunUpdates requires:
 
-* Python 3.10+
-* A Python virtual environment (venv)
-* PythonTools installed in the same venv
-* RunUpdates installed in the same venv
-* SSH access to remote hosts (password or key‑based)
-* A valid `hosts.yml` inventory
-* A valid Vault file and Vault password file (required)
+* A supported Linux operating system.
+* A valid `hosts.yml` inventory.
+* A valid vault file.
+* A valid vault password file.
+* Network connectivity to managed hosts.
+* Appropriate authentication credentials.
 
-RunUpdates is **source‑only** in this version. Frozen binaries and RPM packaging are documented separately.
+Additional requirements depend on the selected installation method.
 
 ---
 
-## 2. Installation (Source)
+## 3. Installation Methods
+
+RunUpdates supports multiple installation methods.
+
+Available methods include:
+
+* Frozen packages (recommended)
+* Source installation
+
+Frozen packages are recommended for operators and production deployments.
+
+Source installation is recommended for development and testing.
+
+### 3.1 Frozen Package Installation
+
+RunUpdates frozen releases are available in multiple formats:
+
+* RPM
+* DEB
+* TGZ
+* ZIP
+
+Install the appropriate package for your platform using the instructions provided with the release package.
+
+Frozen packages include all required Python dependencies and do not require a Python virtual environment.
+
+After installation completes, proceed to Configuration Setup.
+
+### 3.2 Source Installation
+
+Source installation is intended for developers and contributors.
 
 Create and activate a virtual environment:
 
 ```bash
 python3 -m venv venv
+
 source venv/bin/activate
 ```
 
-Install PythonTools into the venv:
+Install PythonTools:
 
 ```bash
 pip install git+https://github.com/Linktech-Engineering-LLC/PythonTools.git
 ```
 
-Clone and install RunUpdates into the same venv:
+Clone and install RunUpdates:
 
 ```bash
 git clone https://github.com/Linktech-Engineering-LLC/RunUpdates.git
+
 cd RunUpdates
+
 pip install -e .
+
 pip install -r requirements.txt
 ```
 
-RunUpdates is now installed as a package and ready to execute.
+After installation completes, proceed to Configuration Setup.
 
-## 3. Configuration Directory Setup
+Detailed build instructions are documented in [Build.md](Build.md).
+
+---
+
+## 4. Configuration Setup
 
 RunUpdates expects a configuration directory containing:
 
-```Code
+```text
 etc/
-  hosts.yml
-  schemata/   (symlink to source schemata/)
+├── hosts.yml
+└── schemata/
 ```
 
-The cloned repository does not include an etc/ directory.
-You must create it manually:
+For source installations, create the directory structure:
 
 ```bash
 mkdir -p etc
 ```
 
-Populate hosts.yml
-Copy or create a hosts.yml from your templates:
+Populate the inventory:
 
 ```bash
 cp templates/hosts.yml.example etc/hosts.yml
-Symlink schemata into etc/
-bash
+```
+
+Create the schema link:
+
+```bash
 ln -s ../schemata etc/schemata
 ```
 
-This ensures the loader can find schema definitions without duplicating files.
+Frozen package installations typically create the required directory structure automatically.
 
-Validate your inventory
+After configuration files are present, vault configuration may begin.
 
-```bash
-python -m RunUpdates inventory
-```
+---
 
-List specific scopes:
+## 5. Vault Setup
 
-```bash
-python -m RunUpdates inventory --family linux
-python -m RunUpdates inventory --distro opensuse
-python -m RunUpdates inventory --host leap-node
-```
+RunUpdates requires a vault file and a vault password file.
 
-## 4. Vault Setup (Required)
+Execution will fail if either component is unavailable.
 
-RunUpdates requires a Vault file for credentials.
+### 5.1 Vault File
 
-If neither CLI options nor environment variables are provided, RunUpdates will exit with an error.
+The vault file:
 
-### Vault file (``vault.yml``)
-
-* Must not be placed in the RunUpdates repository
-* Must not be placed in ``etc/``
-* Must reside in a secure directory with **0700** permissions
-* The file itself must be **0600**
+* Must reside in a secured directory.
+* Must use restrictive file permissions.
+* Should not be stored alongside the inventory.
+* Should not be committed to source control.
 
 Example:
 
 ```bash
 mkdir -m 700 ~/runupdates-vault
+
 cp vault.yml ~/runupdates-vault/
+
 chmod 600 ~/runupdates-vault/vault.yml
 ```
 
-### Vault password file
+### 5.2 Vault Password File
 
-* Must be stored separately from the vault
-* Must be **0600**
+The vault password file should be stored separately from the vault.
 
 Example:
 
 ```bash
 echo "mypassword" > ~/.vault_pass
+
 chmod 600 ~/.vault_pass
 ```
 
-### Providing vault paths
+### 5.3 Providing Vault Paths
 
-RunUpdates accepts vault paths via **CLI** or **environment variables**.
+Vault locations may be supplied through command-line arguments.
 
-#### Option 1 — CLI flags
+Example:
 
 ```bash
-python -m RunUpdates update \
-  --vault-path ~/runupdates-vault/vault.yml \
-  --vault-password-file ~/.vault_pass
+runupdates update \
+    --vault-path ~/runupdates-vault/vault.yml \
+    --vault-password-file ~/.vault_pass
 ```
 
-#### Option 2 — Environment variables
+Vault locations may also be supplied through environment variables:
 
 ```bash
 export RUNUPDATES_VAULT_PATH=~/runupdates-vault/vault.yml
+
 export RUNUPDATES_VAULT_PASSWORD_FILE=~/.vault_pass
 ```
 
-Then simply run:
+After vault configuration is complete, inventory validation should be performed.
+
+---
+
+## 6. Validating Configuration
+
+Validate the entire inventory:
 
 ```bash
-python -m RunUpdates update
+runupdates inventory
 ```
 
-RunUpdates will not run unless both the vault path and password file are provided.
-
-## 5. Running RunUpdates
-
-RunUpdates uses subcommands:
-
-* ``inventory`` — inspect inventory
-* ``update`` — run updates
-* ``summary`` — show run summaries
-* ``version`` — show version
-* ``help`` — show help for subcommands
-
-Run updates on all hosts:
+Validate a specific family:
 
 ```bash
-python -m RunUpdates update
+runupdates inventory --family linux
 ```
 
-Run updates on a specific host:
+Validate a specific distro:
 
 ```bash
-python -m RunUpdates update --host leap-node
+runupdates inventory --distro opensuse
 ```
 
-Run updates on a distro:
+Validate a specific host:
 
 ```bash
-python -m RunUpdates update --distro opensuse
+runupdates inventory --host leap-node
 ```
 
-Run updates on a family:
+Inventory validation should be performed whenever inventory or schema files are modified.
+
+---
+
+## 7. Running RunUpdates
+
+RunUpdates provides several subcommands:
+
+* `inventory`
+* `update`
+* `summary`
+* `version`
+* `help`
+
+Execute updates against all hosts:
 
 ```bash
-python -m RunUpdates update --family linux
+runupdates update
 ```
 
-## 6. Runtime Directories
+Execute updates against a single host:
 
-RunUpdates uses the following default runtime paths:
+```bash
+runupdates update --host leap-node
+```
+
+Execute updates against a distro:
+
+```bash
+runupdates update --distro opensuse
+```
+
+Execute updates against a family:
+
+```bash
+runupdates update --family linux
+```
+
+Detailed operational behavior is documented in `Operation.md`.
+
+---
+
+## 8. Reviewing Results
+
+After execution completes, review:
+
+* Execution logs.
+* Host summaries.
+* Fleet summaries.
+* Repository health classifications.
+* Reboot requirements.
+
+Important output files include:
+
+```text
+summary.json
+```
+
+and:
+
+```text
+<hostname>.json
+```
+
+Classification details are documented in `Error_Classification.md`.
+
+---
+
+## 9. Runtime Directories
+
+RunUpdates stores runtime artifacts in dedicated directories.
 
 ### Logs
 
-```Code
+```text
 var/logs/
 ```
 
 Contains:
 
-* rotating logs
-* compressed archives
-* operator‑level logs
+* Active logs.
+* Archived logs.
+* Operator events.
 
 ### Summaries
 
-```Code
+```text
 var/log/summaries/
 ```
 
 Contains:
 
-* per‑host summaries
-* per‑run summaries
+* Host summaries.
+* Fleet summaries.
 
-### PID file
+### PID File
 
-```Code
+```text
 var/run/runupdates.pid
 ```
 
-Independent of ``--log-dir``.
+The PID file location is independent of log configuration.
 
-## 7. What Happens During a Run
+---
 
-Each host executes the same deterministic lifecycle:
+## 10. Common Examples
 
-```Code
-refresh → check → update? → clean → reboot detection
-```
-
-* RunUpdates logs:
-* lifecycle events
-* stdout/stderr
-* exit codes
-* timestamps
-* update decisions
-* repo health
-* reboot requirements
-
-## 8. Exit Codes
-
-The exit codes listed below apply **only to the RunUpdates orchestrator itself** — the Python program that coordinates all hosts.
-
-RunUpdates returns:
-
-* **0** — all hosts completed successfully  
-* **1** — one or more hosts failed  
-* **2** — inventory or schema validation error  
-* **3** — connection failure  
-* **4** — internal error  
-
-### Note on Package‑Manager Exit Codes
-
-These exit codes do **not** represent the exit codes returned by package managers such as APT, DNF, YUM, Zypper, or Pacman.
-
-Package‑manager exit codes are:
-
-- **distro‑specific**
-- **command‑specific**
-- **version‑specific**
-- **host‑overrideable**
-
-RunUpdates does **not** hardcode these values.  
-Instead, each distro defines its own exit‑code rules in the inventory under:
-
-```yaml
-exit_codes:
-  check:
-    up_to_date: [...]
-    patches_available: [...]
-    reboot_required: [...]
-    error: ["*"]
-```
-
-Hosts may override these rules.
-RunUpdates interprets package‑manager exit codes using the merged host configuration via ``classify_exit_code()``.
-
-## 9. Updating Inventory or Schema
-
-After modifying:
-
-* ``etc/hosts.yml``
-* ``schemata/*.yml``
-
-Validate again:
+Validate inventory:
 
 ```bash
-python -m RunUpdates inventory
+runupdates inventory
 ```
 
-RunUpdates is strict and fail‑fast — invalid inventory stops execution immediately.
+Perform a dry run:
 
-## 10. Next Steps
+```bash
+runupdates update --dry-run
+```
 
-* Review [ARCHITECTURE](ARCHITECTURE.md) for internal design
-* See [Packaging](docs/Packaging.md) for packaging and release instructions
-* Use ``--family``, ``--distro``, and ``--host`` to target specific groups
+Update a single host:
 
-RunUpdates is designed to be predictable, auditable, and operator‑grade.
-This Quick Start covers everything needed to run it from source.
+```bash
+runupdates update --host leap-node
+```
+
+Update all Linux hosts:
+
+```bash
+runupdates update --family linux
+```
+
+Display version information:
+
+```bash
+runupdates version
+```
+
+---
+
+## 11. Next Steps
+
+After completing the Quick Start process, review:
+
+* [Design.md](Design.md)
+* [Inventory.md](Inventory.md)
+* [Execution_Flow.md](Execution_Flow.md)
+* [Error_Classification.md](Error_Classification.md)
+* [Logging.md](Logging.md)
+* [Operation.md](Operation.md)
+
+These documents provide detailed information about system behavior and operational design.
+
+---
+
+## 12. Summary
+
+RunUpdates provides deterministic, inventory-driven update orchestration for Linux environments.
+
+Key characteristics include:
+
+* Inventory-driven configuration.
+* Vault-managed credentials.
+* Structured logging.
+* Declarative classification.
+* Runtime summaries.
+* Deterministic execution.
+
+This guide provides the minimum information required to install, configure, validate, and execute RunUpdates using either a frozen package or source installation.
+
+---
+
+## 13. Notes
+
+This document provides introductory installation and usage guidance for RunUpdates.
+
+For related information, see:
+
+* [Build.md](Build.md)
+* [Design.md](Design.md)
+* [Directory_Structure.md](Directory_Structure.md)
+* [Error_Classification.md](Error_Classification.md)
+* [Execution_Flow.md](Execution_Flow.md)
+* [Inventory.md](Inventory.md)
+* [Logging.md](Logging.md)
+* [Operation.md](Operation.md)
+* [PythonTools.md](PythonTools.md)
+* [Schema_Reference.md](Schema_Reference.md)
+* [Troubleshooting.md](Troubleshooting.md)
+
+Quick Start is intended for initial deployment and first execution of RunUpdates.

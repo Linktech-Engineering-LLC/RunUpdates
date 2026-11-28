@@ -429,6 +429,7 @@ For related information, see:
 * [Logging.md](Logging.md)
 * [Operation.md](Operation.md)
 * [PythonTools.md](PythonTools.md)
+* [QuickStart.md](QuickStart.md)
 * [Schema_Reference.md](Schema_Reference.md)
 * [Troubleshooting.md](Troubleshooting.md)
 

@@ -1,60 +1,234 @@
 # RunUpdates Inventory Template
-# -----------------------------
-# This file defines all hosts, families, and distros managed by RunUpdates.
-# All values here are placeholders. Replace them with your real environment.
 #
-# IMPORTANT:
-# - No usernames belong in this file.
-# - No passwords or SSH keys belong in this file.
-# - All credentials must be stored in the vault.
-# - Overrideable metadata (like port) must be placed under `vars`.
+# This file defines operating-system families, distros, commands,
+# lifecycle stages, exit-code classifications, and managed hosts.
+#
+# All values in this file are placeholders.
+# Replace them with values appropriate for your environment.
+#
+# IMPORTANT
+#
+# * No usernames belong in this file.
+# * No passwords belong in this file.
+# * No SSH keys belong in this file.
+# * All credentials must be stored in the vault.
+# * Shared configuration belongs under vars.
+# * Address values must always be lists.
+#
 
 linux:
-    vars:
-        port: 2222
+
+  vars:
+
+    port: 2222
+
   # ---------------------------------------------------------
-  # Debian-family (Debian, Ubuntu, Mint, etc.)
+  # Debian Family
   # ---------------------------------------------------------
+
   debian:
-    defaults:
-      vars:
-        port: 22
-        # Optional: if these hosts are VMs, specify the hypervisor
-        # vm_host: "HypervisorName"
+
+    vars:
+
+      systemd: true
+
+      systemd_mode: wait
+
+    lifecycle:
+
+      - check
+      - update
+      - clean
+      - reboot
+
+    commands:
+
+      check: "apt update"
+
+      update: "apt upgrade -y"
+
+      clean: "apt autoremove -y"
+
+      list: "apt list --upgradeable"
+
+      reboot: "test -f /var/run/reboot-required"
+
+      reboot_now: "systemctl reboot || shutdown -r now"
+
+    exit_codes:
+
+      check:
+
+        up_to_date: [0]
+
+        updates_available: [0]
+
+        error: ["*"]
+
+      update:
+
+        success: [0]
+
+        error: ["*"]
+
+      reboot:
+
+        reboot_required: [0]
+
+        no_reboot: [1]
+
+        error: ["*"]
 
     hosts:
+
       sample-debian:
+
+        enabled: true
+
         address:
+
           - "192.0.2.10"
-        # Optional host-level overrides:
-        # vars:
-        #   port: 2222
-        #   vm_host: "HypervisorName"
 
   # ---------------------------------------------------------
-  # openSUSE-family (Leap, Tumbleweed)
+  # openSUSE Family
   # ---------------------------------------------------------
+
   opensuse:
-    defaults:
-      vars:
-        port: 22
+
+    vars:
+
+      systemd: true
+
+      systemd_mode: wait
+
+    lifecycle:
+
+      - refresh
+      - check
+      - list
+      - update
+      - clean
+      - reboot
+
+    commands:
+
+      refresh: "zypper refresh"
+
+      check: "zypper patch-check --with-optional"
+
+      list: "zypper list-updates --all"
+
+      update: "zypper dup"
+
+      clean: "zypper clean"
+
+      reboot: "zypper needs-rebooting"
+
+      reboot_now: "systemctl reboot || shutdown -r now"
+
+    exit_codes:
+
+      refresh:
+
+        success: [0]
+
+        error: ["*"]
+
+      check:
+
+        up_to_date: [0]
+
+        patches_available: [100, 101]
+
+        error: ["*"]
+
+      update:
+
+        success: [0]
+
+        error: ["*"]
+
+      reboot:
+
+        no_reboot: [0]
+
+        reboot_required: [102]
+
+        error: ["*"]
 
     hosts:
+
       sample-opensuse:
+
+        enabled: true
+
         address:
+
           - "192.0.2.20"
 
   # ---------------------------------------------------------
-  # RedHat-family (RHEL, CentOS, Rocky, Alma, Fedora)
+  # Red Hat Family
   # ---------------------------------------------------------
+
   redhat:
-    defaults:
-      vars:
-        port: 22
+
+    vars:
+
+      systemd: true
+
+      systemd_mode: wait
+
+    lifecycle:
+
+      - check
+      - update
+      - clean
+      - reboot
+
+    commands:
+
+      check: "dnf check-update"
+
+      update: "dnf upgrade -y"
+
+      clean: "dnf clean all"
+
+      list: "dnf list updates"
+
+      reboot: "needs-restarting -r"
+
+      reboot_now: "systemctl reboot || shutdown -r now"
+
+    exit_codes:
+
+      check:
+
+        up_to_date: [0]
+
+        updates_available: [100]
+
+        error: ["*"]
+
+      update:
+
+        success: [0]
+
+        error: ["*"]
+
+      reboot:
+
+        no_reboot: [0]
+
+        reboot_required: [1]
+
+        error: ["*"]
 
     hosts:
-      sample-redhat:
-        address:
-          - "192.0.2.30"
 
-# End of inventory
+      sample-redhat:
+
+        enabled: true
+
+        address:
+
+          - "192.0.2.30"
